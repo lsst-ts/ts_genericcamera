@@ -28,12 +28,13 @@ import struct
 from astropy.io import fits
 import numpy as np
 import sys
-import GenericCameraInterface
 import time
-import ZWOFilterWheel
+import zwofilterwheel
+import exposure
+import genericcamera
 
 
-class ASICamera(GenericCameraInterface.GenericCamera):
+class ASICamera(genericcamera.GenericCamera):
     def __init__(self):
         self.lib = ASILibrary()
         self.lib.initialiseLibrary()
@@ -50,14 +51,13 @@ class ASICamera(GenericCameraInterface.GenericCamera):
         self.binValue = 1
         self.normalImageType = ASI_IMAGE_TYPE.Raw16
         self.currentImageType = self.normalImageType
-        self.useZWOFilterWheel = False
+        self.useZWOFilterWheel = True
         self.filterId = 0
         self.filterNumber = 0
         self.dev = self.lib.openASI(self.id)
-        self.setExposureTime(0.1)
         self.setFullFrame()
         if self.useZWOFilterWheel:
-            self.zwoLib = ZWOFilterWheel.EFWLibrary()
+            self.zwoLib = zwofilterwheel.EFWLibrary()
             self.zwoLib.initialiseLibrary()
             self.zwoDev = self.zwoLib.openEFW(self.filterId)
             self.zwoDev.setPosition(self.filterNumber)
@@ -72,7 +72,20 @@ class ASICamera(GenericCameraInterface.GenericCamera):
         info = self.dev.getCameraInfo()
         return info.Name
 
-    def setValue(self, key, value):
+    def getValue(self, key):
+        """Gets the value of a unique property of the camera.
+        Parameters
+        ----------
+        key : str
+            The name of the property.
+        Returns
+        -------
+        str
+            The value of the property.
+            Returns 'UNDEFINED' if the property doesn't exist. """
+        return super().getValue(key)
+
+    async def setValue(self, key, value):
         """Set a unique property of the camera.
 
         Parameters
@@ -81,42 +94,15 @@ class ASICamera(GenericCameraInterface.GenericCamera):
             The name of the property.
         value : str
             The value of the property."""
-        super().setValue(key, value)
-
-    def getValue(self, key):
-        """Gets the value of a unique property of the camera.
-
-        Parameters
-        ----------
-        key : str
-            The name of the property.
-
-        Returns
-        -------
-        str
-            The value of the property.
-            Returns 'UNDEFINED' if the property doesn't exist. """
-        return super().getValue(key)
-
-    def setROI(self, top, left, width, height):
-        """Sets the region of interest.
-
-        Parameters
-        ----------
-        top : int
-            The top most pixel of the region.
-        left : int
-            The left most pixel of the region.
-        width : int
-            The width of the region in pixels.
-        height : int
-            The height of the region in pixels."""
-        self.dev.setStartPosition(left, top)
-        self.dev.setROI(width, height, self.binValue, self.currentImageType)
+        key = key.lower()
+        if key == "filter" and self.useZWOFilterWheel:
+            self.zwoDev.setPosition(int(value))
+            while not self.zwoDev.isInPosition():
+                await asyncio.sleep(0.02)
+        await super().setValue(key, value)
 
     def getROI(self):
         """Gets the region of interest.
-
         Returns
         -------
         int
@@ -131,22 +117,29 @@ class ASICamera(GenericCameraInterface.GenericCamera):
         width, height, bin, imgType = self.dev.getROI()
         return top, left, width, height
 
+    def setROI(self, top, left, width, height):
+        """Sets the region of interest.
+
+        Parameters
+        ----------
+        top : int
+            The top most pixel of the region.
+        left : int
+            The left most pixel of the region.
+        width : int
+            The width of the region in pixels.
+        height : int
+            The height of the region in pixels."""
+        self.dev.setROI(width, height, self.binValue, self.currentImageType)
+        self.dev.setStartPosition(left, top)
+
     def setFullFrame(self):
         """Sets the region of interest to the whole sensor.
         """
         info = self.dev.getCameraInfo()
         self.setROI(0, 0, info.MaxWidth, info.MaxHeight)
 
-    def setExposureTime(self, duration):
-        """Sets the exposure time.
-
-        Parameters
-        ----------
-        duration : float
-            The exposure time in seconds."""
-        self.dev.setControlValue(ASI_CONTROL_TYPE.Exposure, int(duration * 1000000), False)
-
-    def configureForLiveView(self):
+    def startLiveView(self):
         """Configure the camera for live view.
 
         This should change the image format to 8bits per pixel so
@@ -155,40 +148,50 @@ class ASICamera(GenericCameraInterface.GenericCamera):
         top, left, width, height = self.getROI()
         self.setROI(top, left, width, height)
         self.isLiveExposure = True
+        super().startLiveView()
 
-    def configureForExposure(self):
+    def stopLiveView(self):
         """Configure the camera for a standard exposure.
         """
         self.currentImageType = self.normalImageType
         top, left, width, height = self.getROI()
         self.setROI(top, left, width, height)
         self.isLiveExposure = False
+        super().stopLiveView()
 
-    async def takeExposure(self):
-        """Take an exposure with the currently configured settings.
+    async def startTakeImage(self, expTime):
+        """Prepare the camera to take an image.
 
-        The exposure should be the raw image data from the camera which
-        most likely means a buffer created by ctypes.create_string_buffer()
+        Parameters
+        ----------
+        expTime : float
+            The exposure time in seconds."""
+        self.dev.setControlValue(ASI_CONTROL_TYPE.Exposure, int(expTime * 1000000), False)
+        await super().startTakeImage(expTime)
 
-        The Exposure class handles converting the image to the correct
-        format. If live view, the image data is converted into a JPEG
-        to be sent over a TCP socket. If a standard exposure then the
-        image data is converted into a FITS to be saved onto the local
-        machine.
-
-        Returns
-        -------
-        Exposure
-            The exposure captured by the camera."""
+    async def startIntegration(self):
+        """Start integrating.
+        """
         self.dev.startExposure()
+        await super().startIntegration()
+
+    async def endIntegration(self):
+        """End integration.
+
+        This should wait for the integration period to complete."""
         result = self.dev.getExposureStatus()
         while result == ASI_EXPOSURE_STATUS.Working:
             await asyncio.sleep(0.02)
             result = self.dev.getExposureStatus()
         if result == ASI_EXPOSURE_STATUS.Failed:
             raise ASIImageFailed()
+        await super().endIntegration()
+
+    async def endReadout(self):
+        """Start reading out the image.
+        """
         buffer = self.dev.getExposureData()
-        exposure, auto = self.dev.getControlValue(ASI_CONTROL_TYPE.Exposure)
+        exposureTime, auto = self.dev.getControlValue(ASI_CONTROL_TYPE.Exposure)
         offset, auto = self.dev.getControlValue(ASI_CONTROL_TYPE.Offset)
         temperature, auto = self.dev.getControlValue(ASI_CONTROL_TYPE.Temperature)
         coolerPowerPercentage, auto = self.dev.getControlValue(ASI_CONTROL_TYPE.CoolerPowerPercentage)
@@ -200,14 +203,16 @@ class ASICamera(GenericCameraInterface.GenericCamera):
             'LEFT':left,
             'WIDTH':width,
             'HEIGHT':height,
-            'EXPOSURE':(exposure / 1000000.0),
+            'EXPOSURE':(exposureTime / 1000000.0),
             'OFFSET':offset,
             'TEMPERATURE':(temperature / 10.0),
             'COOLER_POWER_PERCENTAGE':coolerPowerPercentage,
             'TARGET_TEMPERATURE':targetTemperature,
             'COOLER_ON':coolerOn
         }
-        return GenericCameraInterface.Exposure(buffer, width, height, tags)
+        image = await super().startReadout()
+        image = exposure.Exposure(buffer, width, height, tags)
+        return image
 
 
 class ASI_BAYER_PATTERN(enum.Enum):

@@ -2,6 +2,7 @@ import os
 
 os.environ["PYQTGRAPH_QT_LIB"] = "PySide2"
 
+import asyncio
 import sys
 import time
 
@@ -13,21 +14,23 @@ from PIL import Image
 from PIL.ImageQt import ImageQt
 from io import BytesIO
 
-from GenericCameraInterface import *
+from liveview import *
 
 from lsst.ts import salobj
 import SALPY_GenericCamera
+import genericcameraremote
 
 class EUI(QDialog):
-    def __init__(self, ip, port, salIndex, parent=None):
+    def __init__(self, ip, port, salIndex, sal, parent=None):
         super(EUI, self).__init__(parent)
         self.ip = ip
         self.port = port
         self.client = None
-        
-        self.sal = salobj.Remote(SALPY_GenericCamera, index=salIndex)
-        self.sal.salinfo.manager.setDebugLevel(0)
-        
+
+        #self.sal = salobj.Remote(SALPY_GenericCamera, index=salIndex)
+        self.sal = sal
+        # self.sal.subscribeEvent
+
         self.layout = QHBoxLayout()
         self.controlsLayout = QVBoxLayout()
         self.imageLayout = QVBoxLayout()
@@ -40,9 +43,6 @@ class EUI(QDialog):
         layout.addWidget(self.startLiveViewButton)
         layout.addWidget(self.stopLiveViewButton)
         self.controlsLayout.addLayout(layout)
-        self.resumeLiveViewButton = QPushButton("Resume Live")
-        self.resumeLiveViewButton.clicked.connect(self.resumeLiveView)
-        self.controlsLayout.addWidget(self.resumeLiveViewButton)
 
         layout = QHBoxLayout()
         layout.addWidget(QLabel("Exposure"))
@@ -50,9 +50,6 @@ class EUI(QDialog):
         self.exposureTimeEdit.setRange(0, 900.0)
         self.exposureTimeEdit.setDecimals(6)
         layout.addWidget(self.exposureTimeEdit)
-        self.setExposureTimeButton = QPushButton("Set")
-        self.setExposureTimeButton.clicked.connect(self.setExposureTime)
-        layout.addWidget(self.setExposureTimeButton)
         self.controlsLayout.addLayout(layout)
 
         layout = QVBoxLayout()
@@ -96,8 +93,8 @@ class EUI(QDialog):
         layout.addWidget(QLabel("File Path:"))
         self.filePathEdit = QTextEdit()
         layout.addWidget(self.filePathEdit)
-        self.takeExposureButton = QPushButton("Take Exposure")
-        self.takeExposureButton.clicked.connect(self.takeExposure)
+        self.takeExposureButton = QPushButton("Take Images")
+        self.takeExposureButton.clicked.connect(self.takeImages)
         layout.addWidget(self.takeExposureButton)
         self.controlsLayout.addLayout(layout)
         
@@ -118,82 +115,91 @@ class EUI(QDialog):
         self.setFixedSize(1000, 880)
 
     def updateDisplays(self):
-        if self.client is not None:
-            try:
-                exposure = self.client.receiveExposure()
-                img = Image.open(BytesIO(exposure.buffer))
-                width = img.size[0]
-                height = img.size[1]
-                ratio = width / height
-                deltaWidth = width - 760
-                deltaHeight = height - 760
-                if deltaWidth > 0 or deltaHeight > 0:
-                    newWidth = 760
-                    newHeight = 760
-                    if deltaWidth > deltaHeight:
-                        newWidth = newWidth
-                        newHeight = newHeight / ratio
-                    elif deltaHeight > deltaWidth:
-                        newWidth = newWidth / ratio
-                        newHeight = newHeight
-                    img = img.resize((int(newWidth), int(newHeight)))
-                self.pix = QPixmap.fromImage(ImageQt(img))
-                self.imageLabel.setPixmap(self.pix)
-            except ImageReceiveError:
-                pass
+        try:
+            if self.client is None:
+                try:
+                    self.client = LiveViewClient(self.ip, self.port)
+                except:
+                    self.client = None
+            exposure = self.client.receiveExposure()
+            img = Image.open(BytesIO(exposure.buffer))
+            width = img.size[0]
+            height = img.size[1]
+            ratio = width / height
+            deltaWidth = width - 760
+            deltaHeight = height - 760
+            if deltaWidth > 0 or deltaHeight > 0:
+                newWidth = 760
+                newHeight = 760
+                if deltaWidth > deltaHeight:
+                    newWidth = newWidth
+                    newHeight = newHeight / ratio
+                elif deltaHeight > deltaWidth:
+                    newWidth = newWidth / ratio
+                    newHeight = newHeight
+                img = img.resize((int(newWidth), int(newHeight)))
+            self.pix = QPixmap.fromImage(ImageQt(img))
+            self.imageLabel.setPixmap(self.pix)
+        except ImageReceiveError:
+            pass
 
     def startLiveView(self):
-        if self.client is None:
-            self.sal.cmd_startLiveView.start(self.sal.cmd_startLiveView.DataType(), timeout=1.0)
-            time.sleep(0.5)
-            self.client = LiveViewClient(self.ip, self.port)
-        pass
+        print("startLiveView - Start")
+        #data = self.sal.cmd_startLiveView.DataType()
+        #data.expTime = self.exposureTimeEdit.value()
+        #asyncio.get_event_loop().run_until_complete(self.sal.cmd_startLiveView.start(data, timeout=10.0))
+        self.sal.issueCommand_startLiveView(self.exposureTimeEdit.value())
+        print("startLiveView - End")
 
     def stopLiveView(self):
-        if self.client is not None:
-            self.sal.cmd_stopLiveView.start(self.sal.cmd_stopLiveView.DataType(), timeout=1.0)
-            self.client.close()
-            self.client = None
-
-    def resumeLiveView(self):
-        if self.client is None:
-            self.client = LiveViewClient(self.ip, self.port)
-
-    def setExposureTime(self):
-        if self.client is None:
-            data = self.sal.cmd_setExposureTime.DataType()
-            data.exposureTimeInSec = self.exposureTimeEdit.value()
-            self.sal.cmd_setExposureTime.start(data, timeout=1.0)
+        print("stopLiveView - Start")
+        #asyncio.get_event_loop().run_until_complete(self.sal.cmd_stopLiveView.start(self.sal.cmd_stopLiveView.DataType(), timeout=10.0))
+        self.sal.issueCommand_stopLiveView(True)
+        print("stopLiveView - End")
 
     def setROI(self):
-        if self.client is None:
-            data = self.sal.cmd_setROI.DataType()
-            data.topPixel = int(self.roiTopEdit.value())
-            data.leftPixel = int(self.roiLeftEdit.value())
-            data.width = int(self.roiWidthEdit.value())
-            data.height = int(self.roiHeightEdit.value())
-            self.sal.cmd_setROI.start(data, timeout=1.0)
+        print("setROI - Start")
+        #data = self.sal.cmd_setROI.DataType()
+        #data.topPixel = int(self.roiTopEdit.value())
+        #data.leftPixel = int(self.roiLeftEdit.value())
+        #data.width = int(self.roiWidthEdit.value())
+        #data.height = int(self.roiHeightEdit.value())
+        #asyncio.get_event_loop().run_until_complete(self.sal.cmd_setROI.start(data, timeout=5.0))
+        self.sal.issueCommand_setROI(int(self.roiTopEdit.value()), int(self.roiLeftEdit.value()),
+                                     int(self.roiWidthEdit.value()), int(self.roiHeightEdit.value()))
+        print("setROI - End")
 
     def setFullFrame(self):
-        if self.client is None:
-            self.sal.cmd_setFullFrame.start(self.sal.cmd_setFullFrame.DataType(), timeout=1.0)
+        print("setFullFrame - Start")
+        #asyncio.get_event_loop().run_until_complete(self.sal.cmd_setFullFrame.start(self.sal.cmd_setFullFrame.DataType(), timeout=5.0))
+        self.sal.issueCommand_setFullFrame(True)
+        print("setFullFrame - End")
 
-    def takeExposure(self):
-        if self.client is None:
-            data = self.sal.cmd_takeExposure.DataType()
-            data.filePath = self.filePathEdit.toPlainText()
-            self.sal.cmd_takeExposure.start(data, timeout=1.0)
+    def takeImages(self):
+        print("takeImages - Start")
+        #data = self.sal.cmd_takeImages.DataType()
+        #data.numImages = 1
+        #data.expTime = self.exposureTimeEdit.value()
+        #data.shutter = 1
+        #data.imageSequenceName = "Foo"
+        #asyncio.get_event_loop().run_until_complete(self.sal.cmd_takeImages.start(data, timeout=30.0))
+        self.sal.issueCommand_takeImages(1, self.exposureTimeEdit.value(), 1, "Foo")
+        print("takeImages - End")
 
 
 if __name__ == '__main__':
     # Create the Qt Application
+    sal = genericcameraremote.GenericCameraRemote()
     app = QApplication(sys.argv)
     # Create EUI
-    eui = EUI('127.0.0.1', 5005, 0)
+    eui = EUI('127.0.0.1', 5013, 0, sal)
     eui.show()
     updateTimer = QTimer()
     updateTimer.timeout.connect(eui.updateDisplays)
-    updateTimer.start(1)
+    updateTimer.start(100)
+    salTimer = QTimer()
+    salTimer.timeout.connect(sal.runSubscriberChecks())
+    salTimer.start(10)
     # Create MTM1M3 Telemetry & Event Loop & Display update
     # Run the main Qt loop
     app.exec_()

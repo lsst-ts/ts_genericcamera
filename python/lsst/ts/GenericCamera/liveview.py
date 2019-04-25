@@ -19,203 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import astropy.io
-import asyncio
-import ctypes
-import io
-import numpy as np
-from PIL import Image
 import socket
-import struct
 
-
-class Exposure():
-    """This class is used to define an exposure. It provides methods
-    for manipulating an exposure and saving it to the local disk.
-    """
-    def __init__(self, buffer, width, height, tags, isJPEG=False):
-        """Constructs an exposure object.
-
-        Exposures meant to be a JPEG image should have 8bit pixels.
-        Exposures meant to be a FITS image should have 16bit pixels.
-
-        Parameters
-        ----------
-        buffer : buffer
-            The buffer containing the image data.
-        width : int
-            The width of the image.
-        height : int
-            The height of the image.
-        tags : map
-            A list of tags that describe the image.
-        isJPEG : bool (optional)
-            True if the image described is a JPEG."""
-        self.buffer = buffer
-        self.width = width
-        self.height = height
-        self.tags = tags
-        self.isJPEG = isJPEG
-
-    def makeJPEG(self):
-        """Takes this exposure and converts it to a JPEG.
-        """
-        fileMemory = io.BytesIO()
-        img = Image.frombuffer('L', (self.width, self.height), self.buffer)
-        img.save(fileMemory, 'jpeg')
-        self.buffer = np.asarray(fileMemory.getbuffer())
-        self.isJPEG = True
-
-    def save(self, filePath):
-        """Saves this exposure to the local drive.
-        
-        Parameters
-        ----------
-        filePath : str
-            The path to the file to save the image to."""
-        if self.isJPEG:
-            img = Image.open(io.BytesIO(self.buffer))
-            img.save(filePath, 'jpeg')
-        else:
-            try:
-                count = int(self.width * self.height)
-                ints = struct.unpack('H'*count, self.buffer)
-                pixels = np.asarray(ints)
-                imgPix = np.reshape(pixels, (self.height, self.width))
-                imgPix = imgPix.astype(np.uint16)
-                img = astropy.io.fits.PrimaryHDU(imgPix)
-                hdul = astropy.io.fits.HDUList([img])
-                hdr = hdul[0].header
-                # for key in self.tags:
-                #     hdr[key] = self.tags[key]
-                hdul.writeto(filePath)
-            except e:
-                print(f"Failed to save image to file {filePath}.")
-
-
-class GenericCamera():
-    """This class describes the methods required by a generic camera.
-    """
-    def __init__(self):
-        pass
-
-    def initialise(self, config):
-        """Initialise the camera with the specified configuration file.
-
-        Parameters
-        ----------
-        config : str
-            The name of the configuration file to load."""
-        pass
-
-    def getMakeAndModel(self):
-        """Get the make and model of the camera.
-
-        Returns
-        -------
-        str
-            The make and model of the camera."""
-        return "GenericCamera"
-
-    def setValue(self, key, value):
-        """Set a unique property of the camera.
-
-        Parameters
-        ----------
-        key : str
-            The name of the property.
-        value : str
-            The value of the property."""
-        pass
-
-    def getValue(self, key):
-        """Gets the value of a unique property of the camera.
-
-        Parameters
-        ----------
-        key : str
-            The name of the property.
-
-        Returns
-        -------
-        str
-            The value of the property.
-            Returns 'UNDEFINED' if the property doesn't exist. """
-        return "UNDEFINED"
-
-    def setROI(self, top, left, width, height):
-        """Sets the region of interest.
-
-        Parameters
-        ----------
-        top : int
-            The top most pixel of the region.
-        left : int
-            The left most pixel of the region.
-        width : int
-            The width of the region in pixels.
-        height : int
-            The height of the region in pixels."""
-        pass
-
-    def getROI(self):
-        """Gets the region of interest.
-
-        Returns
-        -------
-        int
-            The top most pixel of the region.
-        int
-            The left most pixel of the region.
-        int
-            The width of the region in pixels.
-        int
-            The height of the region in pixels."""
-        return 0, 0, 0, 0
-
-    def setFullFrame(self):
-        """Sets the region of interest to the whole sensor.
-        """
-        pass
-
-    def setExposureTime(self, duration):
-        """Sets the exposure time.
-
-        Parameters
-        ----------
-        duration : float
-            The exposure time in seconds."""
-        pass
-
-    def configureForLiveView(self):
-        """Configure the camera for live view.
-
-        This should change the image format to 8bits per pixel so
-        the image can be encoded to JPEG."""
-        pass
-
-    def configureForExposure(self):
-        """Configure the camera for a standard exposure.
-        """
-        pass
-
-    async def takeExposure(self):
-        """Take an exposure with the currently configured settings.
-
-        The exposure should be the raw image data from the camera which
-        most likely means a buffer created by ctypes.create_string_buffer()
-
-        The Exposure class handles converting the image to the correct
-        format. If live view, the image data is converted into a JPEG
-        to be sent over a TCP socket. If a standard exposure then the
-        image data is converted into a FITS to be saved onto the local
-        machine.
-
-        Returns
-        -------
-        Exposure
-            The exposure captured by the camera."""
-        return Exposure(ctypes.create_string_buffer(size=1),1,1, {})
+import exposure
 
 
 class LiveViewServer():
@@ -243,7 +49,7 @@ class LiveViewServer():
             The port to listen to."""
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind(('0.0.0.0', port))
-        self.sock.settimeout(0.1)
+        self.sock.settimeout(0.02)
         self.sock.listen(5)
         self.clients = []
         self.isConnected = True
@@ -253,7 +59,9 @@ class LiveViewServer():
         """
         if self.isConnected:
             for client in self.clients:
+                # client.shutdown(socket.SHUT_RDWR)
                 client.close()
+            self.sock.shutdown(socket.SHUT_RDWR)
             self.sock.close()
             self.clients = []
             self.isConnected = False
@@ -318,13 +126,14 @@ class LiveViewClient():
             The port of the LiveViewServer to connect to."""
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((ip, port))
-        self.sock.settimeout(0.5)
+        self.sock.settimeout(0.02)
         self.isConnected = True
 
     def close(self):
         """Closes this connection to the LiveViewServer.
         """
         if self.isConnected:
+            # self.sock.shutdown(socket.SHUT_RD)
             self.sock.close()
             self.isConnected = False
 
@@ -358,7 +167,7 @@ class LiveViewClient():
                                 break
                             imgBuffer += packet
                         if len(imgBuffer) == length:
-                            return Exposure(imgBuffer, width, height, {}, isJPEG)
+                            return exposure.Exposure(imgBuffer, width, height, {}, isJPEG)
                 else:
                     value = int.from_bytes(self.sock.recv(1), byteorder='big')
                     sync = ((sync & 0x00FFFFFF) << 8) | value
