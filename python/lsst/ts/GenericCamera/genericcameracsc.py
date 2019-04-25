@@ -37,13 +37,13 @@ import simulatorcamera
 
 class GenericCameraCsc(salobj.BaseCsc):
     def __init__(self, publishIP, initial_state=salobj.State.STANDBY, initial_simulation_mode=0):
-        super().__init__(SALPY_GenericCamera, index=0, initial_state=initial_state,
+        super().__init__(SALPY_GenericCamera, index=1, initial_state=initial_state,
                          initial_simulation_mode=initial_simulation_mode)
         self.salinfo.manager.setDebugLevel(0)
         self.ip = publishIP
         self.port = 5013
-        # self.camera = zwocamera.ASICamera()
-        self.camera = simulatorcamera.SimulatorCamera()
+        self.camera = zwocamera.ASICamera()
+        #self.camera = simulatorcamera.SimulatorCamera()
         self.camera.initialise("")
         self.server = None
         self.directory = "/home/ccontaxis/"

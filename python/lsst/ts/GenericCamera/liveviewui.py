@@ -189,7 +189,7 @@ class EUI(QDialog):
 
 if __name__ == '__main__':
     # Create the Qt Application
-    sal = genericcameraremote.GenericCameraRemote()
+    sal = genericcameraremote.GenericCameraRemote(1)
     app = QApplication(sys.argv)
     # Create EUI
     eui = EUI('127.0.0.1', 5013, 0, sal)
