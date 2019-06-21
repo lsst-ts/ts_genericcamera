@@ -103,7 +103,7 @@ class EFW():
 
 
 class EFWError(Exception):
-    def __init__(self, result : Results):
+    def __init__(self, result: Results):
         super().__init__()
         self.result = result
 
@@ -128,7 +128,7 @@ class EFWBase(object):
         else:
             self.efw = efw
 
-    def _raiseIfBad(self, result : Results):
+    def _raiseIfBad(self, result: Results):
         if result != Results.Success:
             raise EFWError(result)
 
@@ -185,6 +185,7 @@ class EFWLibrary(EFWBase):
             raise EFWLibraryNotInitialised()
         device = EFWDevice(index, self.efw)
         return device
+
 
 class EFWDevice(EFWBase):
     def __init__(self, index, efw=None):

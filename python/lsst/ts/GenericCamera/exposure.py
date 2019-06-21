@@ -19,19 +19,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import astropy.io
-import ctypes
+__all__ = ["Exposure"]
+
+from astropy.io import fits
 import io
-import struct
 import numpy as np
-import time
 from PIL import Image
 
 
-class Exposure():
+class Exposure:
     """This class is used to define an exposure. It provides methods
     for manipulating an exposure and saving it to the local disk."""
-    def __init__(self, buffer, width, height, tags, isJPEG=False):
+    def __init__(self, buffer, width, height, tags, dtype=np.uint16, isJPEG=False):
         """Constructs an exposure object.
 
         Exposures meant to be a JPEG image should have 8bit pixels.
@@ -47,48 +46,51 @@ class Exposure():
             The height of the image.
         tags : map
             A list of tags that describe the image.
+        dtype : dtype (optional)
+            Type of image data.
         isJPEG : bool (optional)
-            True if the image described is a JPEG."""
-        self.buffer = buffer
+            True if the image described is a JPEG.
+        """
         self.width = width
         self.height = height
+        print(len(buffer))
+        self.buffer = buffer.reshape(height, width)
         self.tags = tags
         self.isJPEG = isJPEG
+        self.dtype = dtype
 
     def makeJPEG(self):
         """Takes this exposure and converts it to a JPEG.
         """
-        fileMemory = io.BytesIO()
-        img = Image.frombuffer('L', (self.width, self.height), self.buffer)
-        # The following call takes the most time
-        # If performing optimization, this is a good choice
-        img.save(fileMemory, 'jpeg')
-        self.buffer = np.array(fileMemory.getbuffer())
-        fileMemory.close()
+        # fileMemory = io.BytesIO()
+        # img = Image.frombuffer('L', (self.width, self.height), self.buffer)
+        # # The following call takes the most time
+        # # If performing optimization, this is a good choice
+        # img.save(fileMemory, 'jpeg')
+        #
+        # self.buffer = np.array(fileMemory.getbuffer())
+        # fileMemory.close()
+
+        self.buffer = self.buffer.astype(np.uint8)
+
         self.isJPEG = True
+        self.dtype = self.buffer.dtype
 
     def save(self, filePath):
         """Saves this exposure to the local drive.
-        
+
         Parameters
         ----------
         filePath : str
             The path to the file to save the image to."""
+
         if self.isJPEG:
             img = Image.open(io.BytesIO(self.buffer))
             img.save(filePath, 'jpeg')
         else:
-            try:
-                count = int(self.width * self.height)
-                ints = struct.unpack('H'*count, self.buffer)
-                pixels = np.asarray(ints)
-                imgPix = np.reshape(pixels, (self.height, self.width))
-                imgPix = imgPix.astype(np.uint16)
-                img = astropy.io.fits.PrimaryHDU(imgPix)
-                hdul = astropy.io.fits.HDUList([img])
-                hdr = hdul[0].header
-                # for key in self.tags:
-                #     hdr[key] = self.tags[key]
-                hdul.writeto(filePath)
-            except:
-                print(f"Failed to save image to file {filePath}.")
+            img = fits.PrimaryHDU(self.buffer)
+            hdul = fits.HDUList([img])
+            # hdr = hdul[0].header
+            # for key in self.tags:
+            #     hdr[key] = self.tags[key]
+            hdul.writeto(filePath)
