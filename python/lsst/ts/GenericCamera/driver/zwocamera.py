@@ -32,7 +32,7 @@ from . import genericcamera
 
 class ASICamera(genericcamera.GenericCamera):
     def __init__(self, log=None):
-        super.__init__(log=log)
+        super().__init__(log=log)
 
         self.lib = ASILibrary()
         self.lib.initialiseLibrary()
@@ -180,7 +180,7 @@ class ASICamera(genericcamera.GenericCamera):
             Should wave front sensor be used?
         """
         self.dev.setControlValue(ASIControlType.Exposure, int(expTime * 1000000), False)
-        await super().startTakeImage(expTime)
+        await super().startTakeImage(expTime, shutter, science, guide, wfs)
 
     async def startIntegration(self):
         """Start integrating.

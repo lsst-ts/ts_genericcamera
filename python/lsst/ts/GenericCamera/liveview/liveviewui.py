@@ -17,7 +17,7 @@ from PIL import Image
 
 import numpy as np
 
-import liveview
+from . import liveview
 
 from lsst.ts.salobj import Remote, Domain
 
@@ -219,10 +219,10 @@ def main(argv):
     parser.add_argument("--version", action="version", version=version.__version__)
     parser.add_argument("-p", "--port", type=int, default=5013,
                         help="TCP/IP port of live view server.")
-    parser.add_argument("-h", "--host", type=str, default='127.0.0.1',
+    parser.add_argument("--host", type=str, default='127.0.0.1',
                         help="TCP/IP host address of live view server.")
 
-    args = parser.parse_args(argv)
+    args = parser.parse_args(argv[1:])
 
     # Create the Qt Application
     domain = Domain()
