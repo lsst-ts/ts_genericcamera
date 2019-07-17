@@ -21,18 +21,29 @@
 
 import asyncio
 import enum
-from ctypes import CDLL, c_bool, c_char_p, c_double, c_byte, c_int, c_longlong, c_uint, c_wchar_p, POINTER, create_string_buffer, create_unicode_buffer, byref
+from ctypes import (CDLL, c_bool, c_char_p, c_double, c_int, c_longlong,
+                    c_uint, c_wchar_p, POINTER, create_string_buffer,
+                    create_unicode_buffer)
 from ctypes.util import find_library
 import struct
-from astropy.io import fits
 import numpy as np
 
+from .genericcamera import GenericCamera
+from ..exposure import Exposure
 
-class AndorCamera(GenericCameraInterface.GenericCamera):
-    def __init__(self):
+
+class AndorCamera(GenericCamera):
+    def __init__(self, log=None):
+        super.__init__(log=log)
         self.lib = ATLibrary()
         self.lib.initialiseLibrary()
         self.isLiveExposure = False
+
+    @staticmethod
+    def name():
+        """Set camera name.
+        """
+        return "Andor"
 
     def initialise(self, config):
         """Initialise the camera with the specified configuration file.
@@ -56,33 +67,6 @@ class AndorCamera(GenericCameraInterface.GenericCamera):
         str
             The make and model of the camera."""
         return self.dev.getCameraModel() + " " + self.dev.getCameraName()
-
-    def setValue(self, key, value):
-        """Set a unique property of the camera.
-
-        Parameters
-        ----------
-        key : str
-            The name of the property.
-        value : str
-            The value of the property."""
-        
-        super().setValue(key, value)
-
-    def getValue(self, key):
-        """Gets the value of a unique property of the camera.
-
-        Parameters
-        ----------
-        key : str
-            The name of the property.
-
-        Returns
-        -------
-        str
-            The value of the property.
-            Returns 'UNDEFINED' if the property doesn't exist. """
-        return super().getValue(key)
 
     def setROI(self, top, left, width, height):
         """Sets the region of interest.
@@ -173,7 +157,7 @@ class AndorCamera(GenericCameraInterface.GenericCamera):
             try:
                 bytesReceived = self.dev.waitBuffer(buffer, 0)
                 await asyncio.sleep(0.02)
-            except ATError e:
+            except ATError as e:
                 if e.result != Results.TimedOut:
                     raise e
         top = self.dev.getAOITop()
@@ -188,14 +172,14 @@ class AndorCamera(GenericCameraInterface.GenericCamera):
             pixels8 = (pixels16/256).astype(np.uint8)
             buffer = pixels8
         tags = {
-            'TOP':top,
-            'LEFT':left,
-            'WIDTH':width,
-            'HEIGHT':height,
-            'EXPOSURE':exposure,
-            'TEMPERATURE':temperature
+            'TOP': top,
+            'LEFT': left,
+            'WIDTH': width,
+            'HEIGHT': height,
+            'EXPOSURE': exposure,
+            'TEMPERATURE': temperature
         }
-        return GenericCameraInterface.Exposure(buffer, width, height, tags)
+        return Exposure(buffer, width, height, tags)
 
 
 class Results(enum.Enum):
@@ -257,7 +241,8 @@ class Features(enum.IntEnum):
     AOIVBin = 111                       # Int
     AOIWidth = 112                      # Int
     AuxiliaryOutSource = 313            # Enumerated (FireRow1, FireRowN, FireAll, FireAny)
-    AuxOutSourceTwo = 314               # Enumerated (ExternalShutterControl, FrameClock, RowClock, ExposedRowClow)
+    # Enumerated (ExternalShutterControl, FrameClock, RowClock, ExposedRowClow)
+    AuxOutSourceTwo = 314
     Baseline = 115                      # Int
     BitDepth = 316                      # Enumerated (11Bit or 12Bit, 16Bit)
     BufferOverflowEvent = 117           # Int
@@ -274,7 +259,9 @@ class Features(enum.IntEnum):
     ElectronicShutteringMode = 328      # Enumerated (Rolling, Global)
     EventEnable = 229                   # Bool
     EventsMissedEvent = 130             # Int
-    EventSelector = 331                 # Enumerated (ExposureEndEvent, ExposureStartEvent, RowNExposureEndEvent, RowNExposureStartEvent, EventsMissedEvent, BufferOverflowEvent)
+    # Enumerated (ExposureEndEvent, ExposureStartEvent, RowNExposureEndEvent,
+    # RowNExposureStartEvent, EventsMissedEvent, BufferOverflowEvent)
+    EventSelector = 331
     ExposedPixelHeight = 132            # Int
     ExposureTime = 433                  # Float
     ExposureEndEvent = 134              # Int
@@ -306,7 +293,10 @@ class Features(enum.IntEnum):
     PixelHeight = 460                   # Float
     PixelReadoutRate = 361              # Enumerated (280MHz, 200MHz, 100MHz)
     PixelWidth = 462                    # Float
-    PreAmpGainControl = 363             # Enumerated (Gain1 (11bit),Gain2 (11 bit), Gain3 (11bit), Gain4 (11bit), Gain1 Gain3 (16bit), Gain1 Gain4 (16bit), Gain2 Gain3 (16bit), Gain2, Gain4 (16bit))
+    # Enumerated (Gain1 (11bit),Gain2 (11 bit), Gain3 (11bit), Gain4 (11bit),
+    # Gain1 Gain3 (16bit), Gain1 Gain4 (16bit), Gain2 Gain3 (16bit), Gain2,
+    # Gain4 (16bit))
+    PreAmpGainControl = 363
     ReadoutTime = 464                   # Float
     RollingShutterGlobalClear = 265     # Bool
     RowNExposureEndEvent = 166          # Int
@@ -315,28 +305,38 @@ class Features(enum.IntEnum):
     ScanSpeedControlEnable = 269        # Bool
     SensorCooling = 270                 # Bool
     SensorHeight = 171                  # Int
-    SensorReadoutMode = 372             # Enumerated (Bottom Up Sequential, Bottom Up Simultaneous, Centre Out Simultaneous, Outside In Simultaneous, Top Down Sequential, Top Down Simultaneous)
+    # Enumerated (Bottom Up Sequential, Bottom Up Simultaneous, Centre Out
+    # Simultaneous, Outside In Simultaneous, Top Down Sequential, Top Down
+    # Simultaneous)
+    SensorReadoutMode = 372
     SensorTemperature = 473             # Float
     SensorWidth = 174                   # Int
     SerialNumber = 575                  # String
     ShutterOutputMode = 376             # Enumerated (Open, Closed)
-    SimplePreAmpGainControl = 377       # Enumerated (11-bit (high well capacity) or 12-bit (high well capacity), 11-bit (low noise) or 12-bit (low noise), 16-bit (low noise & high well capacity))
+    # Enumerated (11-bit (high well capacity) or 12-bit (high well capacity),
+    # 11-bit (low noise) or 12-bit (low noise), 16-bit (low noise & high well
+    # capacity))
+    SimplePreAmpGainControl = 377
     ShutterTransferTime = 478           # Float
     SoftwareTrigger = 79                # Command
     StaticBlemishCorrection = 280       # Bool
     SpuriousNoiseFilter = 281           # Bool
     TargetSensorTemperature = 482       # Float
     TemperatureControl = 383            # Enumerated
-    TemperatureStatus = 384             # Enumerated (Cooler Off, Stabilised, Cooling, Drift, Not Stabilised, Fault)
+    # Enumerated (Cooler Off, Stabilised, Cooling, Drift, Not Stabilised,
+    # Fault)
+    TemperatureStatus = 384
     TimestampClock = 185                # Int
     TimestampClockFrequency = 186       # Int
     TimestampClockReset = 87            # Command
-    TriggerMode = 388                   # Enumerated (Interal, Software, External, External Start, External Exposure)
+    # Enumerated (Interal, Software, External, External Start,
+    # External Exposure)
+    TriggerMode = 388
     VerticallyCentreAOI = 289           # Bool
 
 
 class AT():
-    def __init__(self):       
+    def __init__(self):
         lib = CDLL(find_library("atcore"))
 
         # int AT_EXP_CONV AT_InitialiseLibrary();
@@ -353,9 +353,12 @@ class AT():
         lib.AT_Close.argtypes = [c_int]
         lib.AT_Close.restype = c_int
 
-        # typedef int (AT_EXP_CONV *FeatureCallback)(AT_H Hndl, const AT_WC* Feature, void* Context);
-        # int AT_EXP_CONV AT_RegisterFeatureCallback(AT_H Hndl, const AT_WC* Feature, FeatureCallback EvCallback, void* Context);
-        # int AT_EXP_CONV AT_UnregisterFeatureCallback(AT_H Hndl, const AT_WC* Feature, FeatureCallback EvCallback, void* Context);
+        # typedef int (AT_EXP_CONV *FeatureCallback)(AT_H Hndl, const AT_WC*
+        # Feature, void* Context);
+        # int AT_EXP_CONV AT_RegisterFeatureCallback(AT_H Hndl, const AT_WC* Feature,
+        # FeatureCallback EvCallback, void* Context);
+        # int AT_EXP_CONV AT_UnregisterFeatureCallback(AT_H Hndl, const AT_WC* Feature,
+        # FeatureCallback EvCallback, void* Context);
 
         # int AT_EXP_CONV AT_IsImplemented(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Implemented);
         lib.AT_IsImplemented.argtypes = [c_int, c_wchar_p, POINTER(c_bool)]
@@ -429,15 +432,18 @@ class AT():
         lib.AT_GetEnumCount.argtypes = [c_int, c_wchar_p, POINTER(c_int)]
         lib.AT_GetEnumCount.restype = c_int
 
-        # int AT_EXP_CONV AT_IsEnumeratedIndexAvailable(AT_H Hndl, const AT_WC* Feature, int Index, AT_BOOL* Available);
+        # int AT_EXP_CONV AT_IsEnumeratedIndexAvailable(AT_H Hndl, const AT_WC* Feature, int Index,
+        # AT_BOOL* Available);
         lib.AT_IsEnumeratedIndexAvailable.argtypes = [c_int, c_wchar_p, c_int, POINTER(c_bool)]
         lib.AT_IsEnumIndexAvailable.restype = c_int
 
-        # int AT_EXP_CONV AT_IsEnumeratedIndexImplemented(AT_H Hndl, const AT_WC* Feature, int Index, AT_BOOL* Implemented);
+        # int AT_EXP_CONV AT_IsEnumeratedIndexImplemented(AT_H Hndl, const AT_WC* Feature,
+        # int Index, AT_BOOL* Implemented);
         lib.AT_IsEnumeratedIndexImplemented.argtypes = [c_int, c_wchar_p, c_int, POINTER(c_bool)]
         lib.AT_IsEnumeratedIndexImplemented.restype = c_int
 
-        # int AT_EXP_CONV AT_GetEnumeratedString(AT_H Hndl, const AT_WC* Feature, int Index, AT_WC* String, int StringLength);
+        # int AT_EXP_CONV AT_GetEnumeratedString(AT_H Hndl, const AT_WC* Feature, int Index,
+        # AT_WC* String, int StringLength);
         lib.AT_GetEnumeratedString.argtypes = [c_int, c_wchar_p, c_int, c_wchar_p, c_int]
         lib.AT_GetEnumeratedString.restype = c_int
 
@@ -457,15 +463,18 @@ class AT():
         lib.AT_GetEnumCount.argtypes = [c_int, c_wchar_p, POINTER(c_int)]
         lib.AT_GetEnumCount.restype = c_int
 
-        # int AT_EXP_CONV AT_IsEnumIndexAvailable(AT_H Hndl, const AT_WC* Feature, int Index, AT_BOOL* Available);
+        # int AT_EXP_CONV AT_IsEnumIndexAvailable(AT_H Hndl, const AT_WC* Feature, int Index,
+        # AT_BOOL* Available);
         lib.AT_IsEnumIndexAvailable.argtypes = [c_int, c_wchar_p, c_int, POINTER(c_bool)]
         lib.AT_IsEnumIndexAvailable.restype = c_int
 
-        # int AT_EXP_CONV AT_IsEnumIndexImplemented(AT_H Hndl, const AT_WC* Feature, int Index, AT_BOOL* Implemented);
+        # int AT_EXP_CONV AT_IsEnumIndexImplemented(AT_H Hndl, const AT_WC* Feature, int Index,
+        # AT_BOOL* Implemented);
         lib.AT_IsEnumIndexImplemented.argtypes = [c_int, c_wchar_p, c_int, POINTER(c_bool)]
         lib.AT_IsEnumIndexImplemented.restype = c_int
 
-        # int AT_EXP_CONV AT_GetEnumStringByIndex(AT_H Hndl, const AT_WC* Feature, int Index, AT_WC* String, int StringLength);
+        # int AT_EXP_CONV AT_GetEnumStringByIndex(AT_H Hndl, const AT_WC* Feature, int Index,
+        # AT_WC* String, int StringLength);
         lib.AT_GetEnumStringByIndex.argtypes = [c_int, c_wchar_p, c_int, c_wchar_p, c_int]
         lib.AT_GetEnumStringByIndex.restype = c_int
 
@@ -473,15 +482,18 @@ class AT():
         lib.AT_Command.argtypes = [c_int, c_wchar_p]
         lib.AT_Command.restype = c_int
 
-        # int AT_EXP_CONV AT_SetString(AT_H Hndl, const AT_WC* Feature, const AT_WC* String);
+        # int AT_EXP_CONV AT_SetString(AT_H Hndl, const AT_WC* Feature,
+        # const AT_WC* String);
         lib.AT_SetString.argtypes = [c_int, c_wchar_p, c_wchar_p]
         lib.AT_SetString.restype = c_int
 
-        # int AT_EXP_CONV AT_GetString(AT_H Hndl, const AT_WC* Feature, AT_WC* String, int StringLength);
+        # int AT_EXP_CONV AT_GetString(AT_H Hndl, const AT_WC* Feature,
+        # AT_WC* String, int StringLength);
         lib.AT_GetString.argtypes = [c_int, c_wchar_p, c_wchar_p, c_int]
         lib.AT_GetString.restype = c_int
 
-        # int AT_EXP_CONV AT_GetStringMaxLength(AT_H Hndl, const AT_WC* Feature, int* MaxStringLength);
+        # int AT_EXP_CONV AT_GetStringMaxLength(AT_H Hndl,
+        # const AT_WC* Feature, int* MaxStringLength);
         lib.AT_GetStringMaxLength.argtypes = [c_int, c_wchar_p, POINTER(c_int)]
         lib.AT_GetStringMaxLength.restype = c_int
 
@@ -489,7 +501,8 @@ class AT():
         lib.AT_QueueBuffer.argtypes = [c_int, c_char_p, c_int]
         lib.AT_QueueBuffer.restype = c_int
 
-        # int AT_EXP_CONV AT_WaitBuffer(AT_H Hndl, AT_U8** Ptr, int* PtrSize, unsigned int Timeout);
+        # int AT_EXP_CONV AT_WaitBuffer(AT_H Hndl, AT_U8** Ptr, int* PtrSize,
+        # unsigned int Timeout);
         lib.AT_WaitBuffer.argtypes = [c_int, POINTER(c_char_p), POINTER(c_int), c_uint]
         lib.AT_WaitBuffer.restype = c_int
 
@@ -522,30 +535,37 @@ class AT():
         # int AT_EXP_CONV AT_Close(AT_H Hndl);
         return self._toResultEnum(self.lib.AT_Close(handle))
 
-    # typedef int (AT_EXP_CONV *FeatureCallback)(AT_H Hndl, const AT_WC* Feature, void* Context);
-    # int AT_EXP_CONV AT_RegisterFeatureCallback(AT_H Hndl, const AT_WC* Feature, FeatureCallback EvCallback, void* Context);
-    # int AT_EXP_CONV AT_UnregisterFeatureCallback(AT_H Hndl, const AT_WC* Feature, FeatureCallback EvCallback, void* Context);
+    # typedef int (AT_EXP_CONV *FeatureCallback)(AT_H Hndl,
+    # const AT_WC* Feature, void* Context);
+    # int AT_EXP_CONV AT_RegisterFeatureCallback(AT_H Hndl,
+    # const AT_WC* Feature, FeatureCallback EvCallback, void* Context);
+    # int AT_EXP_CONV AT_UnregisterFeatureCallback(AT_H Hndl,
+    # const AT_WC* Feature, FeatureCallback EvCallback, void* Context);
 
     def isImplemented(self, handle, feature):
-        # int AT_EXP_CONV AT_IsImplemented(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Implemented);
+        # int AT_EXP_CONV AT_IsImplemented(AT_H Hndl, const AT_WC* Feature,
+        # AT_BOOL* Implemented);
         implemented = self._getBoolPtr()
         result = self.lib.AT_IsImplemented(handle, feature.name, implemented)
         return self._toResultEnum(result), implemented[0]
 
     def isReadable(self, handle, feature):
-        # int AT_EXP_CONV AT_IsReadable(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Readable);
+        # int AT_EXP_CONV AT_IsReadable(AT_H Hndl, const AT_WC* Feature,
+        # AT_BOOL* Readable);
         readable = self._getBoolPtr()
         result = self.lib.AT_IsReadable(handle, feature.name, readable)
         return self._toResultEnum(result), readable[0]
 
     def isWritable(self, handle, feature):
-        # int AT_EXP_CONV AT_IsWritable(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Writable);
+        # int AT_EXP_CONV AT_IsWritable(AT_H Hndl, const AT_WC* Feature,
+        # AT_BOOL* Writable);
         writable = self._getBoolPtr()
         result = self.lib.AT_IsWritable(handle, feature.name, writable)
         return self._toResultEnum(result), writable[0]
 
     def isReadOnly(self, handle, feature):
-        # int AT_EXP_CONV AT_IsReadOnly(AT_H Hndl, const AT_WC* Feature, AT_BOOL* ReadOnly);
+        # int AT_EXP_CONV AT_IsReadOnly(AT_H Hndl, const AT_WC* Feature,
+        # AT_BOOL* ReadOnly);
         readOnly = self._getBoolPtr()
         result = self.lib.AT_IsReadOnly(handle, feature.name, readOnly)
         return self._toResultEnum(result), readOnly[0]
@@ -609,7 +629,8 @@ class AT():
         return self._toResultEnum(self.lib.AT_SetEnumerated(handle, feature.name, value))
 
     def setEnumeratedString(self, handle, feature, string):
-        # int AT_EXP_CONV AT_SetEnumeratedString(AT_H Hndl, const AT_WC* Feature, const AT_WC* String);
+        # int AT_EXP_CONV AT_SetEnumeratedString(AT_H Hndl,
+        # const AT_WC* Feature, const AT_WC* String);
         return self._toResultEnum(self.lib.AT_SetEnumeratedString(handle, feature.name, string))
 
     def getEnumerated(self, handle, feature):
@@ -625,19 +646,22 @@ class AT():
         return self._toResultEnum(result), count[0]
 
     def isEnumeratedIndexAvailabe(self, handle, feature, index):
-        # int AT_EXP_CONV AT_IsEnumeratedIndexAvailable(AT_H Hndl, const AT_WC* Feature, int Index, AT_BOOL* Available);
+        # int AT_EXP_CONV AT_IsEnumeratedIndexAvailable(AT_H Hndl,
+        # const AT_WC* Feature, int Index, AT_BOOL* Available);
         available = self._getBoolPtr()
         result = self.lib.AT_IsEnumeratedIndexAvailable(handle, feature.name, index, available)
         return self._toResultEnum(result), available[0]
 
     def isEnumeratedIndexImplemented(self, handle, feature, index):
-        # int AT_EXP_CONV AT_IsEnumeratedIndexImplemented(AT_H Hndl, const AT_WC* Feature, int Index, AT_BOOL* Implemented);
+        # int AT_EXP_CONV AT_IsEnumeratedIndexImplemented(AT_H Hndl,
+        #  const AT_WC* Feature, int Index, AT_BOOL* Implemented);
         implemented = self._getBoolPtr()
         result = self.lib.AT_IsEnumeratedIndexImplemented(handle, feature.name, index, implemented)
         return self._toResultEnum(result), implemented[0]
 
     def getEnumeratedString(self, handle, feature, index):
-        # int AT_EXP_CONV AT_GetEnumeratedString(AT_H Hndl, const AT_WC* Feature, int Index, AT_WC* String, int StringLength);
+        # int AT_EXP_CONV AT_GetEnumeratedString(AT_H Hndl,
+        # const AT_WC* Feature, int Index, AT_WC* String, int StringLength);
         string = self._getUnicodeBuffer()
         result = self.lib.AT_GetEnumeratedString(handle, feature.name, index, string, len(string))
         return self._toResultEnum(result), string.value
@@ -663,19 +687,22 @@ class AT():
         return self._toResultEnum(result), count[0]
 
     def isEnumIndexAvailable(self, handle, feature, index):
-        # int AT_EXP_CONV AT_IsEnumIndexAvailable(AT_H Hndl, const AT_WC* Feature, int Index, AT_BOOL* Available);
+        # int AT_EXP_CONV AT_IsEnumIndexAvailable(AT_H Hndl,
+        # const AT_WC* Feature, int Index, AT_BOOL* Available);
         available = self._getBoolPtr()
         result = self.lib.AT_IsEnumIndexAvailable(handle, feature.name, index, available)
         return self._toResultEnum(result), available[0]
 
     def isEnumIndexImplemented(self, handle, feature, index):
-        # int AT_EXP_CONV AT_IsEnumIndexImplemented(AT_H Hndl, const AT_WC* Feature, int Index, AT_BOOL* Implemented);
+        # int AT_EXP_CONV AT_IsEnumIndexImplemented(AT_H Hndl,
+        # const AT_WC* Feature, int Index, AT_BOOL* Implemented);
         implemented = self._getBoolPtr()
         result = self.lib.AT_IsEnumIndexImplemented(handle, feature.name, index, implemented)
         return self._toResultEnum(result), implemented[0]
 
     def getEnumStringByIndex(self, handle, feature, index):
-        # int AT_EXP_CONV AT_GetEnumStringByIndex(AT_H Hndl, const AT_WC* Feature, int Index, AT_WC* String, int StringLength);
+        # int AT_EXP_CONV AT_GetEnumStringByIndex(AT_H Hndl,
+        # const AT_WC* Feature, int Index, AT_WC* String, int StringLength);
         string = self._getUnicodeBuffer()
         result = self.lib.AT_GetEnumStringByIndex(handle, feature.name, index, string, len(string))
         return self._toResultEnum(result), string.value
@@ -689,13 +716,15 @@ class AT():
         return self._toResultEnum(self.lib.AT_SetString(handle, feature.name, string))
 
     def getString(self, handle, feature):
-        # int AT_EXP_CONV AT_GetString(AT_H Hndl, const AT_WC* Feature, AT_WC* String, int StringLength);
+        # int AT_EXP_CONV AT_GetString(AT_H Hndl, const AT_WC* Feature,
+        # AT_WC* String, int StringLength);
         string = self._getUnicodeBuffer()
         result = self.lib.AT_GetString(handle, feature.name, string, len(string))
         return self._toResultEnum(result), string.value
 
     def getStringMaxLength(self, handle, feature):
-        # int AT_EXP_CONV AT_GetStringMaxLength(AT_H Hndl, const AT_WC* Feature, int* MaxStringLength);
+        # int AT_EXP_CONV AT_GetStringMaxLength(AT_H Hndl,
+        # const AT_WC* Feature, int* MaxStringLength);
         maxStringLength = self._getIntPtr()
         result = self.lib.AT_GetStringMaxLength(handle, feature.name, maxStringLength)
         return self._toResultEnum(result), maxStringLength[0]
@@ -707,7 +736,8 @@ class AT():
         return self._toResultEnum(result), buffer
 
     def waitBuffer(self, handle, buffer, timeout=60):
-        # int AT_EXP_CONV AT_WaitBuffer(AT_H Hndl, AT_U8** Ptr, int* PtrSize, unsigned int Timeout);
+        # int AT_EXP_CONV AT_WaitBuffer(AT_H Hndl, AT_U8** Ptr,
+        # int* PtrSize, unsigned int Timeout);
         pointerSize = self._getIntPtr()
         bufferPtr = self._getBufferPtr(buffer)
         result = self.lib.AT_WaitBuffer(handle, bufferPtr, pointerSize, timeout)
@@ -740,10 +770,10 @@ class AT():
 
     def _getStringBuffer(self, size=128):
         return create_string_buffer(size)
-    
+
 
 class ATError(Exception):
-    def __init__(self, result : Results):
+    def __init__(self, result: Results):
         super().__init__()
         self.result = result
 
@@ -768,7 +798,7 @@ class ATBase(object):
         else:
             self.at = at
 
-    def _raiseIfBad(self, result : Results):
+    def _raiseIfBad(self, result: Results):
         if result != Results.Success:
             raise ATError(result)
 
@@ -840,7 +870,8 @@ class ATZylaDevice(ATBase):
         result, minValue = self.at.getIntMin(self.handle, Features.AccumulateCount)
         result, maxValue = self.at.getIntMax(self.handle, Features.AccumulateCount)
         if value < minValue or value > maxValue:
-            raise ValueError(f"Value ({value}) for AccumulateCount must be between {minValue} and {maxValue}.")
+            raise ValueError(f"Value ({value}) for AccumulateCount must be "
+                             f"between {minValue} and {maxValue}.")
         self._setSomethingSimple(self.at.setInt, Features.AccumulateCount, value)
 
     def cmdAcquisitionStart(self):
@@ -862,7 +893,8 @@ class ATZylaDevice(ATBase):
             The current value of AOIBinning.
         """
         index = self._getSomethingSimple(self.at.getEnumerated, Features.AOIBinning)
-        return self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.AOIBinning, index)
+        return self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                           Features.AOIBinning, index)
 
     def getAOIBinningValues(self):
         """Gets the possible values of AOIBinning.
@@ -875,7 +907,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.AOIBinning)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.AOIBinning, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.AOIBinning, i))
         return values
 
     def setAOIBinning(self, value):
@@ -890,7 +923,8 @@ class ATZylaDevice(ATBase):
         """
         validValues = self.getAOIBinningValues()
         if value not in validValues:
-            raise ValueError(f"The value {value} is not a valid value for AOIBinning. Valid values are {validValues}.")
+            raise ValueError(f"The value {value} is not a valid value for AOIBinning. "
+                             f"Valid values are {validValues}.")
         self._setSomethingSimple(self.at.setEnumeratedString, Features.AOIBinning, value)
 
     def getAOIHBin(self):
@@ -917,7 +951,8 @@ class ATZylaDevice(ATBase):
         result, minValue = self.at.getIntMin(self.handle, Features.AOIHBin)
         result, maxValue = self.at.getIntMax(self.handle, Features.AOIHBin)
         if value < minValue or value > maxValue:
-            raise ValueError(f"Value ({value}) for AOIHBin must be between {minValue} and {maxValue}.")
+            raise ValueError(f"Value ({value}) for AOIHBin must be between "
+                             f"{minValue} and {maxValue}.")
         self._setSomethingSimple(self.at.setInt, Features.AOIHBin, value)
 
     def getAOIHeight(self):
@@ -944,7 +979,8 @@ class ATZylaDevice(ATBase):
         result, minValue = self.at.getIntMin(self.handle, Features.AOIHeight)
         result, maxValue = self.at.getIntMax(self.handle, Features.AOIHeight)
         if value < minValue or value > maxValue:
-            raise ValueError(f"Value ({value}) for AOIHeight must be between {minValue} and {maxValue}.")
+            raise ValueError(f"Value ({value}) for AOIHeight must be between "
+                             f"{minValue} and {maxValue}.")
         self._setSomethingSimple(self.at.setInt, Features.AOIHeight, value)
 
     def getAOILeft(self):
@@ -971,7 +1007,8 @@ class ATZylaDevice(ATBase):
         result, minValue = self.at.getIntMin(self.handle, Features.AOILeft)
         result, maxValue = self.at.getIntMax(self.handle, Features.AOILeft)
         if value < minValue or value > maxValue:
-            raise ValueError(f"Value ({value}) for AOILeft must be between {minValue} and {maxValue}.")
+            raise ValueError(f"Value ({value}) for AOILeft must be between "
+                             f"{minValue} and {maxValue}.")
         self._setSomethingSimple(self.at.setInt, Features.AOILeft, value)
 
     def getAOIStride(self):
@@ -1008,7 +1045,8 @@ class ATZylaDevice(ATBase):
         result, minValue = self.at.getIntMin(self.handle, Features.AOITop)
         result, maxValue = self.at.getIntMax(self.handle, Features.AOITop)
         if value < minValue or value > maxValue:
-            raise ValueError(f"Value ({value}) for AOITop must be between {minValue} and {maxValue}.")
+            raise ValueError(f"Value ({value}) for AOITop must be between "
+                             f"{minValue} and {maxValue}.")
         self._setSomethingSimple(self.at.setInt, Features.AOITop, value)
 
     def getAOIVBin(self):
@@ -1035,7 +1073,8 @@ class ATZylaDevice(ATBase):
         result, minValue = self.at.getIntMin(self.handle, Features.AOIVBin)
         result, maxValue = self.at.getIntMax(self.handle, Features.AOIVBin)
         if value < minValue or value > maxValue:
-            raise ValueError(f"Value ({value}) for AOIVBin must be between {minValue} and {maxValue}.")
+            raise ValueError(f"Value ({value}) for AOIVBin must be between "
+                             f"{minValue} and {maxValue}.")
         self._setSomethingSimple(self.at.setInt, Features.AOIVBin, value)
 
     def getAOIWidth(self):
@@ -1062,7 +1101,8 @@ class ATZylaDevice(ATBase):
         result, minValue = self.at.getIntMin(self.handle, Features.AOIWidth)
         result, maxValue = self.at.getIntMax(self.handle, Features.AOIWidth)
         if value < minValue or value > maxValue:
-            raise ValueError(f"Value ({value}) for AOIWidth must be between {minValue} and {maxValue}.")
+            raise ValueError(f"Value ({value}) for AOIWidth must be between "
+                             f"{minValue} and {maxValue}.")
         self._setSomethingSimple(self.at.setInt, Features.AOIWidth, value)
 
     def getAuxiliaryOutSource(self):
@@ -1074,7 +1114,8 @@ class ATZylaDevice(ATBase):
             The current value of AuxiliaryOutSource.
         """
         index = self._getSomethingSimple(self.at.getEnumerated, Features.AuxiliaryOutSource)
-        return self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.AuxiliaryOutSource, index)
+        return self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                           Features.AuxiliaryOutSource, index)
 
     def getAuxiliaryOutSourceValues(self):
         """Gets the possible values of AuxiliaryOutSource.
@@ -1087,7 +1128,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.AuxiliaryOutSource)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.AuxiliaryOutSource, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.AuxiliaryOutSource, i))
         return values
 
     def setAuxiliaryOutSource(self, value):
@@ -1102,7 +1144,8 @@ class ATZylaDevice(ATBase):
         """
         validValues = self.getAuxiliaryOutSourceValues()
         if value not in validValues:
-            raise ValueError(f"The value {value} is not a valid value for AuxiliaryOutSource. Valid values are {validValues}.")
+            raise ValueError(f"The value {value} is not a valid value for "
+                             f"AuxiliaryOutSource. Valid values are {validValues}.")
         self._setSomethingSimple(self.at.setEnumeratedString, Features.AuxiliaryOutSource, value)
 
     def getAuxOutSourceTwo(self):
@@ -1114,7 +1157,8 @@ class ATZylaDevice(ATBase):
             The current value of AuxOutSourceTwo.
         """
         index = self._getSomethingSimple(self.at.getEnumerated, Features.AuxOutSourceTwo)
-        return self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.AuxOutSourceTwo, index)
+        return self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                           Features.AuxOutSourceTwo, index)
 
     def getAuxOutSourceTwoValues(self):
         """Gets the possible values of AuxOutSourceTwo.
@@ -1127,7 +1171,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.AuxOutSourceTwo)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.AuxOutSourceTwo, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.AuxOutSourceTwo, i))
         return values
 
     def setAuxOutSourceTwo(self, value):
@@ -1142,7 +1187,8 @@ class ATZylaDevice(ATBase):
         """
         validValues = self.getAuxOutSourceTwoValues()
         if value not in validValues:
-            raise ValueError(f"The value {value} is not a valid value for AuxOutSourceTwo. Valid values are {validValues}.")
+            raise ValueError(f"The value {value} is not a valid value for "
+                             f"AuxOutSourceTwo. Valid values are {validValues}.")
         self._setSomethingSimple(self.at.setEnumeratedString, Features.AuxOutSourceTwo, value)
 
     def getBaseline(self):
@@ -1177,7 +1223,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.BitDepth)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.BitDepth, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.BitDepth, i))
         return values
 
     def getBytesPerPixel(self):
@@ -1264,7 +1311,8 @@ class ATZylaDevice(ATBase):
         result, minValue = self.at.getIntMin(self.handle, Features.FrameCount)
         result, maxValue = self.at.getIntMax(self.handle, Features.FrameCount)
         if value < minValue or value > maxValue:
-            raise ValueError(f"Value ({value}) for FrameCount must be between {minValue} and {maxValue}.")
+            raise ValueError(f"Value ({value}) for FrameCount must be between "
+                             f"{minValue} and {maxValue}.")
         self._setSomethingSimple(self.at.setInt, Features.FrameCount, value)
 
     def getCycleMode(self):
@@ -1289,7 +1337,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.CycleMode)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.CycleMode, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.CycleMode, i))
         return values
 
     def setCycleMode(self, value):
@@ -1304,7 +1353,8 @@ class ATZylaDevice(ATBase):
         """
         validValues = self.getCycleModeValues()
         if value not in validValues:
-            raise ValueError(f"The value {value} is not a valid value for CycleMode. Valid values are {validValues}.")
+            raise ValueError(f"The value {value} is not a valid value for CycleMode. "
+                             f"Valid values are {validValues}.")
         self._setSomethingSimple(self.at.setEnumeratedString, Features.CycleMode, value)
 
     def getElectronicShutteringMode(self):
@@ -1316,7 +1366,8 @@ class ATZylaDevice(ATBase):
             The current value of ElectronicShutteringMode.
         """
         index = self._getSomethingSimple(self.at.getEnumerated, Features.ElectronicShutteringMode)
-        return self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.ElectronicShutteringMode, index)
+        return self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                           Features.ElectronicShutteringMode, index)
 
     def getElectronicShutteringModeValues(self):
         """Gets the possible values of ElectronicShutteringMode.
@@ -1329,7 +1380,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.ElectronicShutteringMode)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.ElectronicShutteringMode, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.ElectronicShutteringMode, i))
         return values
 
     def setElectronicShutteringMode(self, value):
@@ -1344,8 +1396,10 @@ class ATZylaDevice(ATBase):
         """
         validValues = self.getElectronicShutteringModeValues()
         if value not in validValues:
-            raise ValueError(f"The value {value} is not a valid value for ElectronicShutteringMode. Valid values are {validValues}.")
-        self._setSomethingSimple(self.at.setEnumeratedString, Features.ElectronicShutteringMode, value)
+            raise ValueError(f"The value {value} is not a valid value for "
+                             f"ElectronicShutteringMode. Valid values are {validValues}.")
+        self._setSomethingSimple(self.at.setEnumeratedString,
+                                 Features.ElectronicShutteringMode, value)
 
     def getExposedPixelHeight(self):
         """Gets the current value of ExposedPixelHeight.
@@ -1371,7 +1425,8 @@ class ATZylaDevice(ATBase):
         result, minValue = self.at.getIntMin(self.handle, Features.ExposedPixelHeight)
         result, maxValue = self.at.getIntMax(self.handle, Features.ExposedPixelHeight)
         if value < minValue or value > maxValue:
-            raise ValueError(f"Value ({value}) for ExposedPixelHeight must be between {minValue} and {maxValue}.")
+            raise ValueError(f"Value ({value}) for ExposedPixelHeight must be "
+                             f"between {minValue} and {maxValue}.")
         self._setSomethingSimple(self.at.setInt, Features.ExposedPixelHeight, value)
 
     def getExposureTime(self):
@@ -1398,7 +1453,8 @@ class ATZylaDevice(ATBase):
         result, minValue = self.at.getFloatMin(self.handle, Features.ExposureTime)
         result, maxValue = self.at.getFloatMax(self.handle, Features.ExposureTime)
         if value < minValue or value > maxValue:
-            raise ValueError(f"Value ({value}) for ExposureTime must be between {minValue} and {maxValue}.")
+            raise ValueError(f"Value ({value}) for ExposureTime must be between "
+                             f"{minValue} and {maxValue}.")
         self._setSomethingSimple(self.at.setFloat, Features.ExposureTime, value)
 
     def getExternalTriggerDelay(self):
@@ -1433,7 +1489,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.FanSpeed)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.FanSpeed, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.FanSpeed, i))
         return values
 
     def setFanSpeed(self, value):
@@ -1448,7 +1505,8 @@ class ATZylaDevice(ATBase):
         """
         validValues = self.getFanSpeedValues()
         if value not in validValues:
-            raise ValueError(f"The value {value} is not a valid value for FanSpeed. Valid values are {validValues}.")
+            raise ValueError(f"The value {value} is not a valid value for FanSpeed. "
+                             f"Valid values are {validValues}.")
         self._setSomethingSimple(self.at.setEnumeratedString, Features.FanSpeed, value)
 
     def getFirmwareVersion(self):
@@ -1485,7 +1543,8 @@ class ATZylaDevice(ATBase):
         result, minValue = self.at.getFloatMin(self.handle, Features.FrameRate)
         result, maxValue = self.at.getFloatMax(self.handle, Features.FrameRate)
         if value < minValue or value > maxValue:
-            raise ValueError(f"Value ({value}) for FrameRate must be between {minValue} and {maxValue}.")
+            raise ValueError(f"Value ({value}) for FrameRate must be between "
+                             f"{minValue} and {maxValue}.")
         self._setSomethingSimple(self.at.setFloat, Features.FrameRate, value)
 
     def getFullAOIControl(self):
@@ -1547,7 +1606,8 @@ class ATZylaDevice(ATBase):
             The current value of IOSelector.
         """
         index = self._getSomethingSimple(self.at.getEnumerated, Features.IOSelector)
-        return self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.IOSelector, index)
+        return self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                           Features.IOSelector, index)
 
     def getIOSelectorValues(self):
         """Gets the possible values of IOSelector.
@@ -1560,7 +1620,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.IOSelector)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.IOSelector, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.IOSelector, i))
         return values
 
     def setIOSelector(self, value):
@@ -1575,7 +1636,8 @@ class ATZylaDevice(ATBase):
         """
         validValues = self.getIOSelectorValues()
         if value not in validValues:
-            raise ValueError(f"The value {value} is not a valid value for IOSelector. Valid values are {validValues}.")
+            raise ValueError(f"The value {value} is not a valid value for IOSelector. "
+                             f"Valid values are {validValues}.")
         self._setSomethingSimple(self.at.setEnumeratedString, Features.IOSelector, value)
 
     def getLineScanSpeed(self):
@@ -1677,7 +1739,8 @@ class ATZylaDevice(ATBase):
             The current value of PixelEncoding.
         """
         index = self._getSomethingSimple(self.at.getEnumerated, Features.PixelEncoding)
-        return self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.PixelEncoding, index)
+        return self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                           Features.PixelEncoding, index)
 
     def getPixelEncodingValues(self):
         """Gets the possible values of PixelEncoding.
@@ -1690,7 +1753,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.PixelEncoding)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.PixelEncoding, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.PixelEncoding, i))
         return values
 
     def setPixelEncoding(self, value):
@@ -1705,7 +1769,8 @@ class ATZylaDevice(ATBase):
         """
         validValues = self.getPixelEncodingValues()
         if value not in validValues:
-            raise ValueError(f"The value {value} is not a valid value for PixelEncoding. Valid values are {validValues}.")
+            raise ValueError(f"The value {value} is not a valid value for "
+                             f"PixelEncoding. Valid values are {validValues}.")
         self._setSomethingSimple(self.at.setEnumeratedString, Features.PixelEncoding, value)
 
     def getPixelHeight(self):
@@ -1727,7 +1792,8 @@ class ATZylaDevice(ATBase):
             The current value of PixelReadoutRate.
         """
         index = self._getSomethingSimple(self.at.getEnumerated, Features.PixelReadoutRate)
-        return self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.PixelReadoutRate, index)
+        return self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                           Features.PixelReadoutRate, index)
 
     def getPixelReadoutRateValues(self):
         """Gets the possible values of PixelReadoutRate.
@@ -1740,7 +1806,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.PixelReadoutRate)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.PixelReadoutRate, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.PixelReadoutRate, i))
         return values
 
     def setPixelReadoutRate(self, value):
@@ -1755,7 +1822,8 @@ class ATZylaDevice(ATBase):
         """
         validValues = self.getPixelReadoutRateValues()
         if value not in validValues:
-            raise ValueError(f"The value {value} is not a valid value for PixelReadoutRate. Valid values are {validValues}.")
+            raise ValueError(f"The value {value} is not a valid value for "
+                             f"PixelReadoutRate. Valid values are {validValues}.")
         self._setSomethingSimple(self.at.setEnumeratedString, Features.PixelReadoutRate, value)
 
     def getPixelWidth(self):
@@ -1857,7 +1925,8 @@ class ATZylaDevice(ATBase):
             The current value of ShutterOutputMode.
         """
         index = self._getSomethingSimple(self.at.getEnumerated, Features.ShutterOutputMode)
-        return self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.ShutterOutputMode, index)
+        return self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                           Features.ShutterOutputMode, index)
 
     def getShutterOutputModeValues(self):
         """Gets the possible values of ShutterOutputMode.
@@ -1870,7 +1939,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.ShutterOutputMode)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.ShutterOutputMode, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.ShutterOutputMode, i))
         return values
 
     def setShutterOutputMode(self, value):
@@ -1885,7 +1955,8 @@ class ATZylaDevice(ATBase):
         """
         validValues = self.getShutterOutputModeValues()
         if value not in validValues:
-            raise ValueError(f"The value {value} is not a valid value for ShutterOutputMode. Valid values are {validValues}.")
+            raise ValueError(f"The value {value} is not a valid value for ShutterOutputMode. Valid "
+                             f"values are {validValues}.")
         self._setSomethingSimple(self.at.setEnumeratedString, Features.ShutterOutputMode, value)
 
     def getSimplePreAmpGainControl(self):
@@ -1897,7 +1968,8 @@ class ATZylaDevice(ATBase):
             The current value of SimplePreAmpGainControl.
         """
         index = self._getSomethingSimple(self.at.getEnumerated, Features.SimplePreAmpGainControl)
-        return self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.SimplePreAmpGainControl, index)
+        return self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                           Features.SimplePreAmpGainControl, index)
 
     def getSimplePreAmpGainControlValues(self):
         """Gets the possible values of SimplePreAmpGainControl.
@@ -1910,7 +1982,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.SimplePreAmpGainControl)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.SimplePreAmpGainControl, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.SimplePreAmpGainControl, i))
         return values
 
     def setSimplePreAmpGainControl(self, value):
@@ -1925,8 +1998,10 @@ class ATZylaDevice(ATBase):
         """
         validValues = self.getSimplePreAmpGainControlValues()
         if value not in validValues:
-            raise ValueError(f"The value {value} is not a valid value for SimplePreAmpGainControl. Valid values are {validValues}.")
-        self._setSomethingSimple(self.at.setEnumeratedString, Features.SimplePreAmpGainControl, value)
+            raise ValueError(f"The value {value} is not a valid value for "
+                             f"SimplePreAmpGainControl. Valid values are {validValues}.")
+        self._setSomethingSimple(self.at.setEnumeratedString,
+                                 Features.SimplePreAmpGainControl, value)
 
     def getShutterTransferTime(self):
         """Gets the current value of ShutterTransferTime.
@@ -1936,7 +2011,8 @@ class ATZylaDevice(ATBase):
         float
             The current value of ShutterTransferTime.
         """
-        return self._getSomethingSimple(self.at.getFloat, Features.ShutterTransferTime)
+        return self._getSomethingSimple(self.at.getFloat,
+                                        Features.ShutterTransferTime)
 
     def setShutterTransferTime(self, value):
         """Sets ShutterTransferTime to the specified value.
@@ -1952,7 +2028,8 @@ class ATZylaDevice(ATBase):
         result, minValue = self.at.getFloatMin(self.handle, Features.ShutterTransferTime)
         result, maxValue = self.at.getFloatMax(self.handle, Features.ShutterTransferTime)
         if value < minValue or value > maxValue:
-            raise ValueError(f"Value ({value}) for ShutterTransferTime must be between {minValue} and {maxValue}.")
+            raise ValueError(f"Value ({value}) for ShutterTransferTime must be"
+                             f" between {minValue} and {maxValue}.")
         self._setSomethingSimple(self.at.setFloat, Features.ShutterTransferTime, value)
 
     def cmdSoftwareTrigger(self):
@@ -2019,7 +2096,8 @@ class ATZylaDevice(ATBase):
             The current value of TemperatureControl.
         """
         index = self._getSomethingSimple(self.at.getEnumerated, Features.TemperatureControl)
-        return self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.TemperatureControl, index)
+        return self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                           Features.TemperatureControl, index)
 
     def getTemperatureControlValues(self):
         """Gets the possible values of TemperatureControl.
@@ -2032,7 +2110,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.TemperatureControl)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.TemperatureControl, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.TemperatureControl, i))
         return values
 
     def getTemperatureStatus(self):
@@ -2044,7 +2123,8 @@ class ATZylaDevice(ATBase):
             The current value of TemperatureStatus.
         """
         index = self._getSomethingSimple(self.at.getEnumerated, Features.TemperatureStatus)
-        return self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.TemperatureStatus, index)
+        return self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                           Features.TemperatureStatus, index)
 
     def getTemperatureStatusValues(self):
         """Gets the possible values of TemperatureStatus.
@@ -2057,7 +2137,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.TemperatureStatus)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.TemperatureStatus, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.TemperatureStatus, i))
         return values
 
     def getTimestampClock(self):
@@ -2089,7 +2170,8 @@ class ATZylaDevice(ATBase):
             The current value of TriggerMode.
         """
         index = self._getSomethingSimple(self.at.getEnumerated, Features.TriggerMode)
-        return self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.TriggerMode, index)
+        return self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                           Features.TriggerMode, index)
 
     def getTriggerModeValues(self):
         """Gets the possible values of TriggerMode.
@@ -2102,7 +2184,8 @@ class ATZylaDevice(ATBase):
         count = self._getSomethingSimple(self.at.getEnumCount, Features.TriggerMode)
         values = []
         for i in range(count):
-            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex, Features.TriggerMode, i))
+            values.append(self._getSomethingWithIndex(self.at.getEnumStringByIndex,
+                                                      Features.TriggerMode, i))
         return values
 
     def setTriggerMode(self, value):
@@ -2117,7 +2200,8 @@ class ATZylaDevice(ATBase):
         """
         validValues = self.getTriggerModeValues()
         if value not in validValues:
-            raise ValueError(f"The value {value} is not a valid value for TriggerMode. Valid values are {validValues}.")
+            raise ValueError(f"The value {value} is not a valid value for TriggerMode. "
+                             f"Valid values are {validValues}.")
         self._setSomethingSimple(self.at.setEnumeratedString, Features.TriggerMode, value)
 
     def getVerticallyCentreAOI(self):

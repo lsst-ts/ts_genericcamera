@@ -19,25 +19,28 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
-import numpy as np
+import abc
+import ctypes
+import logging
 
-import exposure
-import genericcamera
+from .. import exposure
 
 
-class SimulatorCamera(genericcamera.GenericCamera):
-    def __init__(self):
-        self.isLiveExposure = False
-        self.maxWidth = 1024
-        self.maxHeight = 1024
-        self.topPixel = 0
-        self.leftPixel = 0
-        self.width = self.maxWidth
-        self.height = self.maxHeight
-        self.bytesPerPixel = 2
-        self.exposureTime = 0.001
-        self.imageBuffer = None
+class GenericCamera(abc.ABC):
+    """This class describes the methods required by a generic camera.
+    """
+    def __init__(self, log=None):
+        if log is None:
+            self.log = logging.getLogger(__name__)
+        else:
+            self.log = log
+
+    @staticmethod
+    @abc.abstractmethod
+    def name():
+        """Set camera name.
+        """
+        raise NotImplementedError()
 
     def initialise(self, config):
         """Initialise the camera with the specified configuration file.
@@ -48,6 +51,11 @@ class SimulatorCamera(genericcamera.GenericCamera):
             The name of the configuration file to load."""
         pass
 
+    def stop(self):
+        """Stop and close camera.
+        """
+        pass
+
     def getMakeAndModel(self):
         """Get the make and model of the camera.
 
@@ -55,21 +63,22 @@ class SimulatorCamera(genericcamera.GenericCamera):
         -------
         str
             The make and model of the camera."""
-        info = self.dev.getCameraInfo()
-        return "Simulator"
+        return "GenericCamera"
 
     def getValue(self, key):
         """Gets the value of a unique property of the camera.
+
         Parameters
         ----------
         key : str
             The name of the property.
+
         Returns
         -------
         str
             The value of the property.
             Returns 'UNDEFINED' if the property doesn't exist. """
-        return super().getValue(key)
+        return "UNDEFINED"
 
     async def setValue(self, key, value):
         """Set a unique property of the camera.
@@ -80,11 +89,11 @@ class SimulatorCamera(genericcamera.GenericCamera):
             The name of the property.
         value : str
             The value of the property."""
-        key = key.lower()
-        await super().setValue(key, value)
+        pass
 
     def getROI(self):
         """Gets the region of interest.
+
         Returns
         -------
         int
@@ -95,7 +104,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
             The width of the region in pixels.
         int
             The height of the region in pixels."""
-        return self.topPixel, self.leftPixel, self.width, self.height
+        return 0, 0, 0, 0
 
     def setROI(self, top, left, width, height):
         """Sets the region of interest.
@@ -110,67 +119,103 @@ class SimulatorCamera(genericcamera.GenericCamera):
             The width of the region in pixels.
         height : int
             The height of the region in pixels."""
-        self.topPixel = top
-        self.leftPixel = left
-        self.width = width
-        self.height = height
+        pass
 
     def setFullFrame(self):
         """Sets the region of interest to the whole sensor.
         """
-        self.setROI(0, 0, self.maxWidth, self.maxHeight)
+        pass
 
     def startLiveView(self):
-        """Configure the camera for live view.
+        """Starts a live view data stream from the camera.
 
         This should change the image format to 8bits per pixel so
         the image can be encoded to JPEG."""
-        self.bytesPerPixel = 1
-        self.isLiveExposure = True
-        super().startLiveView()
+        pass
 
     def stopLiveView(self):
-        """Configure the camera for a standard exposure.
-        """
-        self.bytesPerPixel = 2
-        self.isLiveExposure = False
-        super().stopLiveView()
+        """Stops an active live view data stream from the camera.
 
-    async def startTakeImage(self, expTime):
-        """Start take image.
+        This should review the image format back to 16bits per pixel."""
+        pass
+
+    async def startTakeImage(self, expTime, shutter, science, guide, wfs):
+        """Start taking an image or a set of images.
 
         Parameters
         ----------
         expTime : float
-            The exposure time in seconds."""
-        self.exposureTime = expTime
-        imageByteCount = self.width * self.height * self.bytesPerPixel
-        buffer = np.zeros(imageByteCount, dtype=np.uint8)
-        index = 0
-        for y in range(self.height):
-            yPixel = y + self.topPixel
-            for x in range(self.width):
-                xPixel = x + self.leftPixel
-                pixelValue = yPixel + int(xPixel * self.exposureTime)
-                if self.bytesPerPixel == 1:
-                    buffer[index + 0] = pixelValue & 0xFF
-                elif self.bytesPerPixel == 2:
-                    buffer[index + 0] = pixelValue & 0xFF
-                    buffer[index + 1] = (pixelValue << 8) & 0xFF
-                index = index + self.bytesPerPixel
-        self.imageBuffer = buffer
-        await super().startTakeImage(expTime)
+            The exposure time in seconds.
+        shutter : bool
+            Should the shutter be opened?
+        science : bool
+            Should the science/main sensor be used?
+        guide : bool
+            Should guider sensor be used?
+        wfs : bool
+            Should wave front sensor be used?
+        """
+        return True
+
+    async def startShutterOpen(self):
+        """Start opening the shutter.
+
+        If the camera doesn't have a shutter then don't do anything."""
+        pass
+
+    async def endShutterOpen(self):
+        """End opening the shutter.
+
+        If the camera does have a shutter then this should wait for the
+        shutter to finish opening.
+
+        If the camera doesn't have a shutter then don't do anything."""
+        pass
+
+    async def startIntegration(self):
+        """Start integrating.
+        """
+        pass
 
     async def endIntegration(self):
         """End integration.
 
         This should wait for the integration period to complete."""
-        await asyncio.sleep(self.exposureTime)
-        await super().endIntegration()
+        pass
 
-    async def endReadout(self):
+    async def startShutterClose(self):
+        """Start closing the shutter.
+
+        If the camera does have a shutter then start closing the
+        shutter.
+
+        If the camera doesn't have a shutter then don't do anything."""
+        pass
+
+    async def endShutterClose(self):
+        """End closing the shutter.
+
+        If the camera does have a shutter then this should wait for
+        the shutter to finishing closing.
+
+        If the camera doesn't have a shutter then don't do anything."""
+        pass
+
+    async def startReadout(self):
         """Start reading out the image.
         """
-        image = await super().startReadout()
-        image = exposure.Exposure(self.imageBuffer, self.width, self.height, {})
-        return image
+        pass
+
+    async def endReadout(self):
+        """End reading out the image.
+
+        Returns
+        -------
+        exposure.Exposure
+            The exposure."""
+        return exposure.Exposure(ctypes.create_string_buffer(size=1), 1, 1, {})
+
+    async def endTakeImage(self):
+        """End take image or images.
+        """
+        pass

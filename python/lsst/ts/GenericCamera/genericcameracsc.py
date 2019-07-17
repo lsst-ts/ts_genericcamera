@@ -22,42 +22,139 @@
 __all__ = ["GenericCameraCsc"]
 
 import asyncio
-import datetime
-import logging
+import pathlib
 import time
 import traceback
+import inspect
 import os
+import logging
 
 from lsst.ts import salobj
-import SALPY_GenericCamera
-import liveview
-import zwocamera
-import simulatorcamera
+
+from .liveview import liveview
+from . import driver
 
 
-class GenericCameraCsc(salobj.BaseCsc):
-    def __init__(self, publishIP, initial_state=salobj.State.STANDBY, initial_simulation_mode=0):
-        super().__init__(SALPY_GenericCamera, index=1, initial_state=initial_state,
+LV_ERROR = 1000
+"""Error code for when the live view loop dies and the CSC is in enable
+state.
+"""
+
+
+class GenericCameraCsc(salobj.ConfigurableCsc):
+    def __init__(self, index, config_dir=None,
+                 initial_state=salobj.State.STANDBY, initial_simulation_mode=0):
+
+        schema_path = pathlib.Path(__file__).resolve().parents[4].joinpath("schema",
+                                                                           "GenericCamera.yaml")
+
+        super().__init__("GenericCamera", index=index,
+                         schema_path=schema_path,
+                         config_dir=config_dir,
+                         initial_state=initial_state,
                          initial_simulation_mode=initial_simulation_mode)
-        self.salinfo.manager.setDebugLevel(0)
-        self.ip = publishIP
-        self.port = 5013
-        self.camera = zwocamera.ASICamera()
-        #self.camera = simulatorcamera.SimulatorCamera()
-        self.camera.initialise("")
-        self.server = None
-        self.directory = "/home/ccontaxis/"
+
+        ch = logging.StreamHandler()
+        console_format = "%(asctime)s - %(levelname)s - %(name)s [%(filename)s:%(lineno)d]: " \
+                         "%(message)s"
+        ch.setFormatter(logging.Formatter(console_format))
+        self.log.addHandler(ch)
+
+        # Create dictionary of camera options.
+        self.drivers = {}
+        for member in inspect.getmembers(driver):
+            is_class = inspect.isclass(member[1])
+            is_subclass = False if not is_class else issubclass(member[1], driver.GenericCamera)
+            not_gencam = member[1] is not driver.GenericCamera
+            if is_class and is_subclass and not_gencam:
+                self.drivers[member[1].name()] = member[1]
+
+        # Make sure all options in schema are valid
+        for camera in self.config_validator.final_validator.schema['properties']['camera']['enum']:
+            assert camera in self.drivers.keys(), f"{camera} is not a valid option, " \
+                                                  f"must one of {self.drivers.keys()}"
+
+        self.ip = None
+        self.port = None
+        self.directory = os.path.expanduser('~/')
         self.fileNameFormat = "{timestamp}-{name}-{index}-{total}"
-        self.server = liveview.LiveViewServer(self.port)
+        self.config = None
+
+        self.camera = None
+        self.server = None
+
         self.isLive = False
+        self.isExposing = False
         self.runLiveTask = False
         self.liveTask = None
-        self._info("Generic Camera CSC Ready")
+        self.log.debug("Generic Camera CSC Ready")
 
-    def __del__(self):
+    async def begin_enable(self, id_data):
+        """Begin do_enable; called before state changes.
+
+        This method will start the liveview server and initialize the camera
+        with the configuration sent during start.
+
+        Parameters
+        ----------
+        id_data : `CommandIdData`
+            Command ID and data
+        """
+        self.server = liveview.LiveViewServer(self.config.port, log=self.log)
+        self.camera.initialise(config=self.config)
+
+    async def begin_disable(self, id_data):
+        """Begin do_disable; called before state changes.
+
+        The method will check if the camera is exposing and reject the command
+        in case an exposure is in course.
+
+        Parameters
+        ----------
+        id_data : `CommandIdData`
+            Command ID and data
+        """
+        if self.isExposing:
+            raise RuntimeError("Camera is exposing, cannot disable.")
+
+    async def end_disable(self, id_data):
+        """End do_disable; called after state changes but before command
+        acknowledged.
+
+        The method will stop any live view, close live view server and
+        stop the camera.
+
+        Parameters
+        ----------
+        id_data : `CommandIdData`
+            Command ID and data
+        """
+        if self.isLive:
+            try:
+                self.runLiveTask = False
+                await self.liveTask
+                self.camera.stopLiveView()
+            except Exception as e:
+                self.log.error("Exception while stopping live task.")
+                self.log.exception(e)
+
         if self.server is not None:
-            self.server.close()
-            self.server = None
+            try:
+                await self.server.stop()
+            except Exception as e:
+                self.log.error("Exception while closing live view image server.")
+                self.log.exception(e)
+            finally:
+                self.server = None
+
+        if self.camera is not None:
+            try:
+                self.camera.stop()
+            except Exception as e:
+                self.log.error("Exception while stopping camera.")
+                self.log.exception(e)
+            finally:
+                self.camera = None
 
     async def do_setValue(self, id_data):
         """Sets a parameter/value pair.
@@ -69,11 +166,15 @@ class GenericCameraCsc(salobj.BaseCsc):
                 The command id.
             data : GenericCamera_command_setValueC
                 parametersAndValues : str
-                    A comma deliminated pair key,value."""
-        self._info("setValue - Start")
-        tokens = id_data.data.parametersAndValues.split(",")
+                    A comma deliminated pair key,value.
+        """
+        self.assert_enabled("setValue")
+        self._assert_notlive()
+
+        self.log.info("setValue - Start")
+        tokens = id_data.parametersAndValues.split(",")
         await self.camera.setValue(tokens[0], tokens[1])
-        self._info("setValue - End")
+        self.log.info("setValue - End")
 
     def do_setROI(self, id_data):
         """Sets the region of interest.
@@ -92,17 +193,22 @@ class GenericCameraCsc(salobj.BaseCsc):
                     The width of the ROI in binned pixels.
                 height : int
                     The height of the ROI in binned pixels."""
-        self._info("setROI - Start")
-        self._assertNotLive()
-        self.camera.setROI(id_data.data.topPixel,
-                           id_data.data.leftPixel,
-                           id_data.data.width,
-                           id_data.data.height)
-        self._logevent_roi(id_data.data.topPixel,
-                           id_data.data.leftPixel,
-                           id_data.data.width,
-                           id_data.data.height)
-        self._info("setROI - End")
+        self.assert_enabled('setROI')
+        self._assert_notlive()
+
+        if self.evt_roi.set(topPixel=id_data.topPixel,
+                            leftPixel=id_data.leftPixel,
+                            width=id_data.width,
+                            height=id_data.height):
+            self.log.debug("setROI - Start")
+            self.camera.setROI(id_data.topPixel,
+                               id_data.leftPixel,
+                               id_data.width,
+                               id_data.height)
+            self.evt_roi.put()
+            self.log.debug("setROI - End")
+        else:
+            self.log.warning("ROI already set with same parameters.")
 
     def do_setFullFrame(self, id_data):
         """Sets the region of interest to full frame.
@@ -115,12 +221,13 @@ class GenericCameraCsc(salobj.BaseCsc):
             data : GenericCamera_command_setFullFrameC
                 ignored : bool
                     This is ignored."""
-        self._info("setFullFrame - Start")
-        self._assertNotLive()
+        self.log.info("setFullFrame - Start")
+        self.assert_enabled('setFullFrame')
+        self._assert_notlive()
         self.camera.setFullFrame()
-        self._info("setFullFrame - End")
+        self.log.info("setFullFrame - End")
 
-    def do_startLiveView(self, id_data):
+    async def do_startLiveView(self, id_data):
         """Starts the live view display.
 
         Parameters
@@ -131,13 +238,17 @@ class GenericCameraCsc(salobj.BaseCsc):
             data : GenericCamera_command_startLiveViewC
                 expTime : float
                     The exposure time for the live view."""
-        self._info("startLiveView - Start")
-        self._assertNotLive()
+        self.assert_enabled('startLiveView')
+        self.log.info("startLiveView - Start")
+        self._assert_notlive()
+        if id_data.expTime == 0.:
+            raise RuntimeError("LiveView exposure time must be greater than zero.")
         self.camera.startLiveView()
         self.runLiveTask = True
-        self.liveTask = asyncio.ensure_future(self.liveView_loop(id_data.data.expTime))
-        self._logevent_startLiveView(self.ip, self.port)
-        self._info("startLiveView - End")
+        await asyncio.wait_for(self.server.start(), timeout=2)
+        self.liveTask = asyncio.ensure_future(self.liveView_loop(id_data.expTime))
+        self.evt_startLiveView.set_put(ip=self.ip, port=self.port)
+        self.log.info("startLiveView - End")
 
     async def do_stopLiveView(self, id_data):
         """Stops the live view display.
@@ -150,13 +261,16 @@ class GenericCameraCsc(salobj.BaseCsc):
             data : GenericCamera_command_stopLiveViewC
                 ignored : bool
                     This is ignored."""
-        self._info("stopLiveView - Start")
-        self._assertLive()
+        self.assert_enabled('stopLiveView')
+        self._assert_live()
+
+        self.log.info("stopLiveView - Start")
         self.runLiveTask = False
         await self.liveTask
+        await self.server.stop()
         self.camera.stopLiveView()
-        self._logevent_endLiveView()
-        self._info("stopLiveView - End")
+        self.evt_endLiveView.put()
+        self.log.info("stopLiveView - End")
 
     async def do_takeImages(self, id_data):
         """Starts taking images.
@@ -175,39 +289,78 @@ class GenericCameraCsc(salobj.BaseCsc):
                     True if the shutter should be utilized.
                 imageSequenceName : str
                     The name of the image sequence."""
-        self._info("takeImages - Start")
-        self._assertNotLive()
-        imageSequenceName = id_data.data.imageSequenceName
-        imagesInSequence = id_data.data.numImages
-        exposureTime = id_data.data.expTime
-        timeStamp = time.time()
-        await self.camera.startTakeImage(exposureTime)
-        self._logevent_startTakeImage()
-        for imageIndex in range(imagesInSequence):
-            timestamp = time.time()
-            imageName = self.fileNameFormat.format(timestamp = int(timestamp), name = imageSequenceName, index = imageIndex, total = imagesInSequence)
-            if id_data.data.shutter:
-                await self.camera.startShutterOpen()
-                self._logevent_startShutterOpen()
-                await self.camera.endShutterOpen()
-                self._logevent_endShutterOpen()
-            await self.camera.startIntegration()
-            self._logevent_startIntegration(imageSequenceName, imagesInSequence, imageName, imageIndex, timeStamp, exposureTime)
-            await self.camera.endIntegration()
-            self._logevent_endIntegration()
-            if id_data.data.shutter:
-                await self.camera.startShutterClose()
-                self._logevent_startShutterClose()
-                await self.camera.endShutterClose()
-                self._logevent_endShutterClose()
-            await self.camera.startReadout()
-            self._logevent_startReadout(imageSequenceName, imagesInSequence, imageName, imageIndex, timeStamp, exposureTime)
-            exposure = await self.camera.endReadout()
-            self._logevent_endReadout(imageSequenceName, imagesInSequence, imageName, imageIndex, timeStamp, exposureTime)
-            exposure.save(os.path.join(self.directory, imageName + ".fits"))
-        await self.camera.endTakeImage()
-        self._logevent_endTakeImage()
-        self._info("takeImages - End")
+        self.assert_enabled("takeImages")
+        self._assert_notlive()
+        self.isExposing = True
+
+        try:
+            self.log.info("takeImages - Start")
+
+            imageSequenceName = id_data.imageSequenceName
+            imagesInSequence = id_data.numImages
+            exposureTime = id_data.expTime
+            timeStamp = time.time()
+
+            self.evt_startTakeImage.put()
+            await self.camera.startTakeImage(exposureTime,
+                                             id_data.shutter,
+                                             id_data.science,
+                                             id_data.guide,
+                                             id_data.wfs)
+
+            for imageIndex in range(imagesInSequence):
+                timestamp = time.time()
+                imageName = self.fileNameFormat.format(timestamp=int(timestamp),
+                                                       name=imageSequenceName,
+                                                       index=imageIndex,
+                                                       total=imagesInSequence)
+                if id_data.shutter:
+                    self.evt_startShutterOpen.put()
+                    await self.camera.startShutterOpen()
+
+                    await self.camera.endShutterOpen()
+                    self.evt_endShutterOpen.put()
+
+                self.evt_startIntegration.set_put(imageSequenceName=imageSequenceName,
+                                                  imagesInSequence=imagesInSequence,
+                                                  imageName=imageName,
+                                                  imageIndex=imageIndex,
+                                                  timeStamp=timeStamp,
+                                                  exposureTime=exposureTime)
+                await self.camera.startIntegration()
+                await self.camera.endIntegration()
+                self.evt_endIntegration.put()
+
+                if id_data.shutter:
+                    self.evt_startShutterClose.put()
+                    await self.camera.startShutterClose()
+
+                    await self.camera.endShutterClose()
+                    self.evt_endShutterClose.put()
+                self.evt_startReadout.set_put(imageSequenceName=imageSequenceName,
+                                              imagesInSequence=imagesInSequence,
+                                              imageName=imageName,
+                                              imageIndex=imageIndex,
+                                              timeStamp=timeStamp,
+                                              exposureTime=exposureTime)
+                await self.camera.startReadout()
+
+                exposure = await self.camera.endReadout()
+                self.evt_endReadout.set_put(imageSequenceName=imageSequenceName,
+                                            imagesInSequence=imagesInSequence,
+                                            imageName=imageName,
+                                            imageIndex=imageIndex,
+                                            timeStamp=timeStamp,
+                                            exposureTime=exposureTime)
+                exposure.save(os.path.join(self.directory, imageName + ".fits"))
+            await self.camera.endTakeImage()
+            self.evt_endTakeImage.put()
+        except Exception as e:
+            self.log.exception(e)
+            raise e
+        finally:
+            self.isExposing = False
+        self.log.info("takeImages - End")
 
     async def liveView_loop(self, exposureTime):
         """Run the live view capture loop.
@@ -215,275 +368,95 @@ class GenericCameraCsc(salobj.BaseCsc):
         Parameters
         ----------
         exposureTime : float
-            The exposure time of the image."""
-        self._info("liveView_loop - Start")
+            The exposure time of the image (in seconds).
+        """
+        self.log.debug("liveView_loop - Start")
         self.isLive = True
         try:
-            await self.camera.startTakeImage(exposureTime)
             while self.runLiveTask:
+                await self.camera.startTakeImage(exposureTime,
+                                                 True,
+                                                 True,
+                                                 True,
+                                                 True)
+
                 startFrameTime = time.time()
-                self.server.checkForClients()
+
+                self.log.debug("start shutter open")
                 await self.camera.startShutterOpen()
+                self.log.debug("end shutter open")
                 await self.camera.endShutterOpen()
+                self.log.debug("start integration")
                 await self.camera.startIntegration()
+                self.log.debug("end integration")
                 await self.camera.endIntegration()
+                self.log.debug("startShutterClose")
                 await self.camera.startShutterClose()
+                self.log.debug("endShutterClose")
                 await self.camera.endShutterClose()
+                self.log.debug("startReadout")
                 await self.camera.startReadout()
+                self.log.debug("endReadout")
                 exposure = await self.camera.endReadout()
+                self.log.debug("endTakeImage")
+                await self.camera.endTakeImage()
                 exposure.makeJPEG()
-                self.server.sendExposure(exposure)
+                self.log.debug(f"{exposure.buffer}")
+                await self.server.send_exposure(exposure)
                 stopFrameTime = time.time()
                 frameTime = round(stopFrameTime - startFrameTime, 3)
-                self._debug(f"liveView_loop - {frameTime}")
-            await self.camera.endTakeImage()
+                self.log.debug(f"liveView_loop - {frameTime}")
         except Exception as e:
-            traceback.print_exc()
+            self.log.error("Error in live view loop.")
+            self.log.exception(e)
+            self.evt_errorCode.set_put(errorCode=LV_ERROR,
+                                       errorReport="Error in live view loop.",
+                                       traceback=traceback.format_exc())
+            self.fault()
+
         self.isLive = False
-        self._info("liveView_loop - End")
+        self.log.info("liveView_loop - End")
 
-    def _logevent_roi(self, top, left, width, height):
-        """Publish the roi event.
-        
-        Parameters
-        ----------
-        top : int
-            The top most pixel of the region.
-        left : int
-            The left most pixel of the region.
-        width : int
-            The width of the region in pixels.
-        height : int
-            The height of the region in pixels."""
-        data = self.evt_roi.DataType()
-        data.topPixel = top
-        data.leftPixel = left
-        data.width = width
-        data.height = height
-        self.evt_roi.put(data)
+    @staticmethod
+    def get_config_pkg():
+        return "ts_config_ocs"
 
-    def _logevent_startLiveView(self, ip, port):
-        """Publish the startLiveView event.
+    async def configure(self, config):
+        """Implement method to configure the CSC.
 
         Parameters
         ----------
-        ip : str
-            The IP address of the live view server.
-        port : int
-            The port of the live view server."""
-        data = self.evt_startLiveView.DataType()
-        data.ip = ip
-        data.port = port
-        self.evt_startLiveView.put(data)
+        config : `object`
+            The configuration as described by the schema at ``schema_path``,
+            as a struct-like object.
+        Notes
+        -----
+        Called when running the ``start`` command, just before changing
+        summary state from `State.STANDBY` to `State.DISABLED`.
 
-    def _logevent_endLiveView(self):
-        """Publish the endLiveView event.
         """
-        data = self.evt_endLiveView.DataType()
-        self.evt_endLiveView.put(data)
 
-    def _logevent_startTakeImage(self):
-        """Publish the startTakeImage event.
-        """
-        data = self.evt_startTakeImage.DataType()
-        self.evt_startTakeImage.put(data)
+        self.ip = config.ip
+        self.port = config.port
 
-    def _logevent_startShutterOpen(self):
-        """Publish the startShutterOpen event.
-        """
-        data = self.evt_startShutterOpen.DataType()
-        self.evt_startShutterOpen.put(data)
+        if os.path.exists(os.path.expanduser(config.directory)):
+            self.directory = os.path.expanduser(config.directory)
+        else:
+            raise RuntimeError(f"Directory {config.directory} does not exists.")
 
-    def _logevent_endShutterOpen(self):
-        """Publish the endShutterOpen event.
-        """
-        data = self.evt_endShutterOpen.DataType()
-        self.evt_endShutterOpen.put(data)
+        self.fileNameFormat = config.fileNameFormat
 
-    def _logevent_startIntegration(self, imageSequenceName, imagesInSequence, imageName, imageIndex,
-                                   timeStamp, exposureTime):
-        """Publish the startIntegration event.
+        self.camera = self.drivers[config.camera](log=self.log)
+        self.config = config
 
-        Parameters
-        ----------
-        imageSequenceName : str
-            The name of the image sequence.
-        imagesInSequence : int
-            The number of images in this sequence.
-        imageName : int
-            The name of the image being integrated.
-        imageIndex : int
-            The index of the image (0 based).
-        timeStamp : float
-            The time stamp of the image.
-        exposureTime : float
-            The exposure time of the image."""
-        data = self.evt_startIntegration.DataType()
-        data.imageSequenceName = imageSequenceName
-        data.imagesInSequence = imagesInSequence
-        data.imageName = imageName
-        data.imageIndex = imageIndex
-        data.timeStamp = timeStamp
-        data.exposureTime = exposureTime
-        self.evt_startIntegration.put(data)
-
-    def _logevent_endIntegration(self):
-        """Publish the endIntegration event.
-        """
-        data = self.evt_endIntegration.DataType()
-        self.evt_endIntegration.put(data)
-
-    def _logevent_startShutterClose(self):
-        """Publish the startShutterClose event.
-        """
-        data = self.evt_startShutterClose.DataType()
-        self.evt_startShutterClose.put(data)
-
-    def _logevent_endShutterClose(self):
-        """Publish the endShutterClose event.
-        """
-        data = self.evt_endShutterClose.DataType()
-        self.evt_endShutterClose.put(data)
-
-    def _logevent_startReadout(self, imageSequenceName, imagesInSequence, imageName, imageIndex,
-                               timeStamp, exposureTime):
-        """Publish the startReadout event.
-
-        Parameters
-        ----------
-        imageSequenceName : str
-            The name of the image sequence.
-        imagesInSequence : int
-            The number of images in this sequence.
-        imageName : int
-            The name of the image being integrated.
-        imageIndex : int
-            The index of the image (0 based).
-        timeStamp : float
-            The time stamp of the image.
-        exposureTime : float
-            The exposure time of the image."""
-        data = self.evt_startReadout.DataType()
-        data.imageSequenceName = imageSequenceName
-        data.imagesInSequence = imagesInSequence
-        data.imageName = imageName
-        data.imageIndex = imageIndex
-        data.timeStamp = timeStamp
-        data.exposureTime = exposureTime
-        self.evt_startReadout.put(data)
-
-    def _logevent_endReadout(self, imageSequenceName, imagesInSequence, imageName, imageIndex,
-                             timeStamp, exposureTime):
-        """Publish the endReadout event.
-
-        Parameters
-        ----------
-        imageSequenceName : str
-            The name of the image sequence.
-        imagesInSequence : int
-            The number of images in this sequence.
-        imageName : int
-            The name of the image being integrated.
-        imageIndex : int
-            The index of the image (0 based).
-        timeStamp : float
-            The time stamp of the image.
-        exposureTime : float
-            The exposure time of the image."""
-        data = self.evt_endReadout.DataType()
-        data.imageSequenceName = imageSequenceName
-        data.imagesInSequence = imagesInSequence
-        data.imageName = imageName
-        data.imageIndex = imageIndex
-        data.timeStamp = timeStamp
-        data.exposureTime = exposureTime
-        self.evt_endReadout.put(data)
-
-    def _logevent_endTakeImage(self):
-        """Publish the endTakeImage event.
-        """
-        data = self.evt_endTakeImage.DataType()
-        self.evt_endTakeImage.put(data)
-
-    def _debug(self, message):
-        """Write a debug message.
-
-        Parameters
-        ----------
-        message : str
-            The message."""
-        self._logMessage(logging.DEBUG, message)
-
-    def _info(self, message):
-        """Write an info message.
-
-        Parameters
-        ----------
-        message : str
-            The message."""
-        self._logMessage(logging.INFO, message)
-
-    def _warn(self, message):
-        """Write a warning message.
-
-        Parameters
-        ----------
-        message : str
-            The message."""
-        self._logMessage(logging.WARNING, message)
-
-    def _error(self, message):
-        """Write an error message.
-
-        Parameters
-        ----------
-        message : str
-            The message."""
-        self._logMessage(logging.ERROR, message)
-    
-    def _critical(self, message):
-        """Write a critical message.
-
-        Parameters
-        ----------
-        message : str
-            The message."""
-        self._logMessage(logging.CRITICAL, message)
-
-    def _logMessage(self, level, message):
-        """Write a log message.
-
-        Parameters
-        ----------
-        level : logging.LEVEL
-            The logging level.
-        message : str
-            The message."""
-        date = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
-        print(f"{date}\t{level} - {message}")
-        if level == logging.DEBUG:
-            self.log.debug(message)
-        elif level == logging.INFO:
-            self.log.info(message)
-        elif level == logging.WARNING:
-            self.log.warn(message)
-        elif level == logging.ERROR:
-            self.log.error(message)
-        elif level == logging.CRITICAL:
-            self.log.critical(message)
-
-    def _assertNotLive(self):
+    def _assert_notlive(self):
         """Raise an exception if live view is active.
         """
         if self.isLive:
             raise Exception()
 
-    def _assertLive(self):
+    def _assert_live(self):
         """Raise an exception if live view is not active.
         """
         if not self.isLive:
             raise Exception()
-
-if __name__ == '__main__':
-    csc = GenericCameraCsc("127.0.0.1", initial_state=salobj.State.ENABLED)
-    asyncio.get_event_loop().run_until_complete(csc.done_task)
