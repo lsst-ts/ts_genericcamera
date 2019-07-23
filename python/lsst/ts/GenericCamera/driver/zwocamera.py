@@ -21,6 +21,7 @@
 
 import asyncio
 import enum
+import pathlib
 import ctypes
 from ctypes import c_char_p, c_int, c_long, POINTER, create_string_buffer
 from ctypes.util import find_library
@@ -34,7 +35,7 @@ class ASICamera(genericcamera.GenericCamera):
     def __init__(self, log=None):
         super().__init__(log=log)
 
-        self.lib = ASILibrary()
+        self.lib = ASILibrary(pathlib.Path(__file__).resolve().parent.joinpath("libASICamera2.so"))
         self.lib.initialiseLibrary()
         self.isLiveExposure = False
 
@@ -51,20 +52,24 @@ class ASICamera(genericcamera.GenericCamera):
         ----------
         config : str
             The name of the configuration file to load."""
-        self.id = 0
-        self.binValue = 1
-        self.normalImageType = ASIImageType.Raw16
+        self.id = config.id
+        self.binValue = config.binValue
+        self.normalImageType = ASIImageType(config.currentImageType)
         self.currentImageType = self.normalImageType
-        self.useZWOFilterWheel = True
-        self.filterId = 0
-        self.filterNumber = 0
         self.dev = self.lib.openASI(self.id)
         self.setFullFrame()
+
+        self.useZWOFilterWheel = config.useZWOFilterWheel
+
+        self.filterId = config.filterId  # ID of the filter wheel not the filter
+        self.filterNumber = None
+
         if self.useZWOFilterWheel:
             self.zwoLib = zwofilterwheel.EFWLibrary()
             self.zwoLib.initialiseLibrary()
             self.zwoDev = self.zwoLib.openEFW(self.filterId)
-            self.zwoDev.setPosition(self.filterNumber)
+            # self.zwoDev.setPosition(self.filterNumber)
+            self.filterNumber = self.zwoLib.getPosition(self.filterId)
 
     def getMakeAndModel(self):
         """Get the make and model of the camera.
@@ -101,6 +106,7 @@ class ASICamera(genericcamera.GenericCamera):
         key = key.lower()
         if key == "filter" and self.useZWOFilterWheel:
             self.zwoDev.setPosition(int(value))
+            self.filterNumber = int(value)
             while not self.zwoDev.isInPosition():
                 await asyncio.sleep(0.02)
         await super().setValue(key, value)
@@ -419,9 +425,13 @@ class ASISupportedModeCtypes(ctypes.Structure):
     ]
 
 
-class ASI():
-    def __init__(self):
-        lib = ctypes.CDLL(find_library("ASICamera2"))
+class ASI:
+    def __init__(self, library_path=None):
+
+        lib_path = library_path if library_path is not None else find_library("ASICamera2")
+        if lib_path is None:
+            raise RuntimeError("Could not load ASICamera library.")
+        lib = ctypes.CDLL(lib_path)
 
         # ASICAMERA_API  int ASIGetNumOfConnectedCameras();
         lib.ASIGetNumOfConnectedCameras.restype = c_int
@@ -851,9 +861,9 @@ class ASIImageFailed(Exception):
 
 
 class ASIBase(object):
-    def __init__(self, asi=None):
+    def __init__(self, library_path, asi=None):
         if asi is None:
-            self.asi = ASI()
+            self.asi = ASI(library_path)
         else:
             self.asi = asi
 
