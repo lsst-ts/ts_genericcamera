@@ -1,0 +1,52 @@
+<!doctype html>
+<head>
+<style>
+    html {
+        height: 600px;
+    }
+
+    body {
+        font-family: "PT Sans";
+        padding-left: 1rem;
+        padding-right: 1rem;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        height: 100%;
+        background: black;
+    }
+
+    div {
+        max-width: 100%;
+        max-height: {{ maxheight }}px;
+        text-align: center;
+    }
+
+    div > img {
+        max-height: {{ maxheight }}px;
+        max-width: 100%;
+    }
+
+    a {
+        color: white;
+    }
+</style>
+<!-- Refresh page w/ interval of the content attribute value -->
+<meta http-equiv="refresh" content=".5">
+</head>
+
+<body>
+    <div>
+        <a href="{{ url_for('close', win=win) }}">[CLOSE]</a>
+    </div>
+    <div>
+        {% if image %}
+          <img src="{{ url_for('random_image', imgname=image) }}"></img>
+        {% endif %}
+
+        {% if error %}
+          <p style="color:white">
+              {{ error }}
+          </p>
+        {% endif %}
+    </div>
+</body>
