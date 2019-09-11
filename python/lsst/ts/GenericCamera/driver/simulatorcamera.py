@@ -44,7 +44,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         self.bytesPerPixel = 2
         self.imageBuffer = None
 
-        self.shutter_time = 0.5  # Time to open/close shutter
+        self.shutter_time = 0.05  # Time to open/close shutter
         self.shutter_steps = 10  # steps on opening shutter
         self.use_shutter = False
         self.shutter_state = 0  # State of the shutter 0 = Closed, self.shutter_steps = Open
@@ -53,7 +53,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         self.exposure_steps = 10  # steps on exposing
         self.exposure_state = 0  # State of the exposure
 
-        self.readout_time = 0.5  # Time to readout
+        self.readout_time = 0.05  # Time to readout
         self.readout_steps = 10  # steps on reading out
         self.readout_state = 0  # State of the reading out
 

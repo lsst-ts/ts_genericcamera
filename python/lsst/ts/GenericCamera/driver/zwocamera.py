@@ -23,6 +23,7 @@ import asyncio
 import enum
 import pathlib
 import ctypes
+import numpy as np
 from ctypes import c_char_p, c_int, c_long, POINTER, create_string_buffer
 from ctypes.util import find_library
 
@@ -35,7 +36,7 @@ class ASICamera(genericcamera.GenericCamera):
     def __init__(self, log=None):
         super().__init__(log=log)
 
-        self.lib = ASILibrary(pathlib.Path(__file__).resolve().parent.joinpath("libASICamera2.so"))
+        self.lib = ASILibrary()
         self.lib.initialiseLibrary()
         self.isLiveExposure = False
 
@@ -54,7 +55,7 @@ class ASICamera(genericcamera.GenericCamera):
             The name of the configuration file to load."""
         self.id = config.id
         self.binValue = config.binValue
-        self.normalImageType = ASIImageType(config.currentImageType)
+        self.normalImageType = getattr(ASIImageType, config.currentImageType)
         self.currentImageType = self.normalImageType
         self.dev = self.lib.openASI(self.id)
         self.setFullFrame()
@@ -125,6 +126,7 @@ class ASICamera(genericcamera.GenericCamera):
             The height of the region in pixels."""
         left, top = self.dev.getStartPosition()
         width, height, bin, imgType = self.dev.getROI()
+        print(f"getROI: {width} {height} {bin} {imgType}")
         return top, left, width, height
 
     def setROI(self, top, left, width, height):
@@ -210,6 +212,7 @@ class ASICamera(genericcamera.GenericCamera):
         """Start reading out the image.
         """
         buffer = self.dev.getExposureData()
+        buffer_array = np.frombuffer(buffer, dtype=np.uint16)
         exposureTime, auto = self.dev.getControlValue(ASIControlType.Exposure)
         offset, auto = self.dev.getControlValue(ASIControlType.Offset)
         temperature, auto = self.dev.getControlValue(ASIControlType.Temperature)
@@ -425,13 +428,9 @@ class ASISupportedModeCtypes(ctypes.Structure):
     ]
 
 
-class ASI:
-    def __init__(self, library_path=None):
-
-        lib_path = library_path if library_path is not None else find_library("ASICamera2")
-        if lib_path is None:
-            raise RuntimeError("Could not load ASICamera library.")
-        lib = ctypes.CDLL(lib_path)
+class ASI():
+    def __init__(self):
+        lib = ctypes.CDLL(pathlib.Path(__file__).resolve().parent.joinpath("libASICamera2.so"))
 
         # ASICAMERA_API  int ASIGetNumOfConnectedCameras();
         lib.ASIGetNumOfConnectedCameras.restype = c_int
@@ -861,9 +860,9 @@ class ASIImageFailed(Exception):
 
 
 class ASIBase(object):
-    def __init__(self, library_path, asi=None):
+    def __init__(self, asi=None):
         if asi is None:
-            self.asi = ASI(library_path)
+            self.asi = ASI()
         else:
             self.asi = asi
 
@@ -1348,9 +1347,9 @@ class ASIDevice(ASIBase):
             bytesPerPixel = 2
         elif imgType == ASIImageType.Y8:
             bytesPerPixel = 1
-        binWidth = int(width / bin)
-        binHeight = int(height / bin)
-        return binWidth * binHeight * bytesPerPixel
+        # binWidth = int(width / bin)
+        # binHeight = int(height / bin)
+        return width * height * bytesPerPixel
 
     def boolToInt(self, value):
         if value:

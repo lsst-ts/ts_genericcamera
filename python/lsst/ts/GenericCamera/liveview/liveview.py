@@ -151,10 +151,20 @@ class LiveViewClient:
         ip : str
             The ip of the LiveViewServer to connect to.
         port : int
-            The port of the LiveViewServer to connect to."""
+            The port of the LiveViewServer to connect to.
+        """
+        self.log = logging.getLogger(__name__)
+        self.ip = ip
+        self.port = port
+        self.sock = None
+        self.reader = None
+        self.isConnected = False
+
+    def open(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((ip, port))
-        self.sock.settimeout(0.02)
+        self.sock.connect((self.ip, self.port))
+        self.sock.settimeout(30.)
+        self.reader = self.sock.makefile(mode="rb")
         self.isConnected = True
 
     def close(self):
@@ -179,34 +189,62 @@ class LiveViewClient:
         Exposure
             The exposure received from the LiveViewServer."""
         self._assertConnected()
-        try:
-            sync = int.from_bytes(self.sock.recv(4), byteorder='big')
-            while True:
-                if sync == 0xCAFEF00D:
-                    width = int.from_bytes(self.sock.recv(4), byteorder='big')
-                    height = int.from_bytes(self.sock.recv(4), byteorder='big')
-                    isJPEG = bool(int.from_bytes(self.sock.recv(4), byteorder='big'))
-                    length = int.from_bytes(self.sock.recv(4), byteorder='big')
-                    if length > 0:
-                        imgBuffer = b''
-                        while len(imgBuffer) < length:
-                            packet = self.sock.recv(length - len(imgBuffer))
-                            if not packet:
-                                break
-                            imgBuffer += packet
-                        if len(imgBuffer) == length:
-                            print("receiveExposure - return")
-                            return exposure.Exposure(imgBuffer, width, height, {}, isJPEG)
+
+        while True:
+            try:
+                read_bytes = self.reader.readline()
+
+                if read_bytes.rstrip().endswith(b'[START]'):
+
+                    self.log.debug(f"Image started... Got {read_bytes}")
+
+                    read_bytes = self.reader.readline()
+                    width = int(read_bytes.decode().rstrip())
+
+                    read_bytes = self.reader.readline()
+                    height = int(read_bytes.decode().rstrip())
+
+                    read_bytes = self.reader.readline()
+                    isJPEG = bool(int(read_bytes.decode().rstrip()))
+
+                    read_bytes = self.reader.readline()
+                    length = int(read_bytes.decode().rstrip())
+
+                    self.log.debug(f"width: {width}, height: {height}, "
+                                   f"isJpeg: {isJPEG}, length: {length}")
+
+                    read_bytes = self.reader.readline()
+                    buffer = read_bytes
+
+                    while len(buffer) < length:
+                        read_bytes = self.reader.readline()
+                        buffer += read_bytes
+
+                    dtype = np.uint8 if isJPEG else np.uint16
+
+                    self.log.debug(f"Buffer size: {len(buffer)}")
+
+                    return exposure.Exposure(np.frombuffer(buffer.rstrip()[:-5], dtype=dtype),
+                                             width, height, {}, isJPEG)
                 else:
-                    value = int.from_bytes(self.sock.recv(1), byteorder='big')
-                    sync = ((sync & 0x00FFFFFF) << 8) | value
-        except Exception as e:
-            self.isConnected = False
-            raise e
+                    self.log.debug(f"Got {read_bytes}. Expecting '>'.")
+
+            except Exception as e:
+                self.log.exception(e)
+                self.log.warning("Reconnecting...")
+                self.close()
+                self.open()
 
     def _assertConnected(self):
         if not self.isConnected:
             raise ConnectionError()
+
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
 
 class AsyncLiveViewClient:
