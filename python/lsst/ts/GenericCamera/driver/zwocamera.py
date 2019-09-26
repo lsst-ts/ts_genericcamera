@@ -22,6 +22,7 @@
 import asyncio
 import enum
 import pathlib
+import numpy as np
 import ctypes
 from ctypes import c_char_p, c_int, c_long, POINTER, create_string_buffer
 from ctypes.util import find_library
@@ -35,7 +36,7 @@ class ASICamera(genericcamera.GenericCamera):
     def __init__(self, log=None):
         super().__init__(log=log)
 
-        self.lib = ASILibrary(pathlib.Path(__file__).resolve().parent.joinpath("libASICamera2.so"))
+        self.lib = ASILibrary()
         self.lib.initialiseLibrary()
         self.isLiveExposure = False
 
@@ -54,7 +55,7 @@ class ASICamera(genericcamera.GenericCamera):
             The name of the configuration file to load."""
         self.id = config.id
         self.binValue = config.binValue
-        self.normalImageType = ASIImageType(config.currentImageType)
+        self.normalImageType = getattr(ASIImageType, config.currentImageType)
         self.currentImageType = self.normalImageType
         self.dev = self.lib.openASI(self.id)
         self.setFullFrame()
@@ -140,6 +141,7 @@ class ASICamera(genericcamera.GenericCamera):
             The width of the region in pixels.
         height : int
             The height of the region in pixels."""
+        print(width, height, self.binValue, self.currentImageType)
         self.dev.setROI(width, height, self.binValue, self.currentImageType)
         self.dev.setStartPosition(left, top)
 
@@ -147,14 +149,14 @@ class ASICamera(genericcamera.GenericCamera):
         """Sets the region of interest to the whole sensor.
         """
         info = self.dev.getCameraInfo()
-        self.setROI(0, 0, info.MaxWidth, info.MaxHeight)
+        self.setROI(0, 0, int(info.MaxWidth/self.binValue), int(info.MaxHeight/self.binValue))
 
     def startLiveView(self):
         """Configure the camera for live view.
 
         This should change the image format to 8bits per pixel so
         the image can be encoded to JPEG."""
-        self.currentImageType = ASIImageType.Raw8
+        # self.currentImageType = ASIImageType.Raw8
         top, left, width, height = self.getROI()
         self.setROI(top, left, width, height)
         self.isLiveExposure = True
@@ -210,6 +212,7 @@ class ASICamera(genericcamera.GenericCamera):
         """Start reading out the image.
         """
         buffer = self.dev.getExposureData()
+        buffer_array = np.frombuffer(buffer, dtype=np.uint16)
         exposureTime, auto = self.dev.getControlValue(ASIControlType.Exposure)
         offset, auto = self.dev.getControlValue(ASIControlType.Offset)
         temperature, auto = self.dev.getControlValue(ASIControlType.Temperature)
@@ -230,7 +233,7 @@ class ASICamera(genericcamera.GenericCamera):
             'COOLER_ON': coolerOn
         }
         await super().startReadout()
-        image = exposure.Exposure(buffer, width, height, tags)
+        image = exposure.Exposure(buffer_array, width, height, tags)
         return image
 
 
@@ -425,13 +428,9 @@ class ASISupportedModeCtypes(ctypes.Structure):
     ]
 
 
-class ASI:
-    def __init__(self, library_path=None):
-
-        lib_path = library_path if library_path is not None else find_library("ASICamera2")
-        if lib_path is None:
-            raise RuntimeError("Could not load ASICamera library.")
-        lib = ctypes.CDLL(lib_path)
+class ASI():
+    def __init__(self):
+        lib = ctypes.CDLL(pathlib.Path(__file__).resolve().parent.joinpath("libASICamera2.so"))
 
         # ASICAMERA_API  int ASIGetNumOfConnectedCameras();
         lib.ASIGetNumOfConnectedCameras.restype = c_int
@@ -861,9 +860,9 @@ class ASIImageFailed(Exception):
 
 
 class ASIBase(object):
-    def __init__(self, library_path, asi=None):
+    def __init__(self, asi=None):
         if asi is None:
-            self.asi = ASI(library_path)
+            self.asi = ASI()
         else:
             self.asi = asi
 
@@ -1350,7 +1349,7 @@ class ASIDevice(ASIBase):
             bytesPerPixel = 1
         binWidth = int(width / bin)
         binHeight = int(height / bin)
-        return binWidth * binHeight * bytesPerPixel
+        return width * height * bytesPerPixel
 
     def boolToInt(self, value):
         if value:
