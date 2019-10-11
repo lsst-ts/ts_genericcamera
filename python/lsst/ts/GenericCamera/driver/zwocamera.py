@@ -21,6 +21,8 @@
 
 import asyncio
 import enum
+import pathlib
+import numpy as np
 import ctypes
 from ctypes import c_char_p, c_int, c_long, POINTER, create_string_buffer
 from ctypes.util import find_library
@@ -51,20 +53,24 @@ class ASICamera(genericcamera.GenericCamera):
         ----------
         config : str
             The name of the configuration file to load."""
-        self.id = 0
-        self.binValue = 1
-        self.normalImageType = ASIImageType.Raw16
+        self.id = config.id
+        self.binValue = config.binValue
+        self.normalImageType = getattr(ASIImageType, config.currentImageType)
         self.currentImageType = self.normalImageType
-        self.useZWOFilterWheel = True
-        self.filterId = 0
-        self.filterNumber = 0
         self.dev = self.lib.openASI(self.id)
         self.setFullFrame()
+
+        self.useZWOFilterWheel = config.useZWOFilterWheel
+
+        self.filterId = config.filterId  # ID of the filter wheel not the filter
+        self.filterNumber = None
+
         if self.useZWOFilterWheel:
             self.zwoLib = zwofilterwheel.EFWLibrary()
             self.zwoLib.initialiseLibrary()
             self.zwoDev = self.zwoLib.openEFW(self.filterId)
-            self.zwoDev.setPosition(self.filterNumber)
+            # self.zwoDev.setPosition(self.filterNumber)
+            self.filterNumber = self.zwoLib.getPosition(self.filterId)
 
     def getMakeAndModel(self):
         """Get the make and model of the camera.
@@ -101,6 +107,7 @@ class ASICamera(genericcamera.GenericCamera):
         key = key.lower()
         if key == "filter" and self.useZWOFilterWheel:
             self.zwoDev.setPosition(int(value))
+            self.filterNumber = int(value)
             while not self.zwoDev.isInPosition():
                 await asyncio.sleep(0.02)
         await super().setValue(key, value)
@@ -134,6 +141,7 @@ class ASICamera(genericcamera.GenericCamera):
             The width of the region in pixels.
         height : int
             The height of the region in pixels."""
+        print(width, height, self.binValue, self.currentImageType)
         self.dev.setROI(width, height, self.binValue, self.currentImageType)
         self.dev.setStartPosition(left, top)
 
@@ -141,14 +149,14 @@ class ASICamera(genericcamera.GenericCamera):
         """Sets the region of interest to the whole sensor.
         """
         info = self.dev.getCameraInfo()
-        self.setROI(0, 0, info.MaxWidth, info.MaxHeight)
+        self.setROI(0, 0, int(info.MaxWidth/self.binValue), int(info.MaxHeight/self.binValue))
 
     def startLiveView(self):
         """Configure the camera for live view.
 
         This should change the image format to 8bits per pixel so
         the image can be encoded to JPEG."""
-        self.currentImageType = ASIImageType.Raw8
+        # self.currentImageType = ASIImageType.Raw8
         top, left, width, height = self.getROI()
         self.setROI(top, left, width, height)
         self.isLiveExposure = True
@@ -204,6 +212,7 @@ class ASICamera(genericcamera.GenericCamera):
         """Start reading out the image.
         """
         buffer = self.dev.getExposureData()
+        buffer_array = np.frombuffer(buffer, dtype=np.uint16)
         exposureTime, auto = self.dev.getControlValue(ASIControlType.Exposure)
         offset, auto = self.dev.getControlValue(ASIControlType.Offset)
         temperature, auto = self.dev.getControlValue(ASIControlType.Temperature)
@@ -224,7 +233,7 @@ class ASICamera(genericcamera.GenericCamera):
             'COOLER_ON': coolerOn
         }
         await super().startReadout()
-        image = exposure.Exposure(buffer, width, height, tags)
+        image = exposure.Exposure(buffer_array, width, height, tags)
         return image
 
 
@@ -421,7 +430,7 @@ class ASISupportedModeCtypes(ctypes.Structure):
 
 class ASI():
     def __init__(self):
-        lib = ctypes.CDLL(find_library("ASICamera2"))
+        lib = ctypes.CDLL(pathlib.Path(__file__).resolve().parent.joinpath("libASICamera2.so"))
 
         # ASICAMERA_API  int ASIGetNumOfConnectedCameras();
         lib.ASIGetNumOfConnectedCameras.restype = c_int
@@ -1340,7 +1349,7 @@ class ASIDevice(ASIBase):
             bytesPerPixel = 1
         binWidth = int(width / bin)
         binHeight = int(height / bin)
-        return binWidth * binHeight * bytesPerPixel
+        return width * height * bytesPerPixel
 
     def boolToInt(self, value):
         if value:
