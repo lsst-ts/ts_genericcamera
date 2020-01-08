@@ -265,12 +265,30 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self._assert_live()
 
         self.log.info("stopLiveView - Start")
+
         self.runLiveTask = False
         await self.liveTask
-        await self.server.stop()
-        self.camera.stopLiveView()
-        self.evt_endLiveView.put()
+
+        await self.stop_liveview()
+
         self.log.info("stopLiveView - End")
+
+    async def stop_liveview(self):
+        """Stop live view."""
+
+        try:
+            await self.server.stop()
+        except Exception as e:
+            self.log.error("Exception trying to stop liveview.")
+            self.log.exception(e)
+
+        try:
+            self.camera.stopLiveView()
+        except Exception as e:
+            self.log.error("Exception trying to stop liveview.")
+            self.log.exception(e)
+
+        self.evt_endLiveView.put()
 
     async def do_takeImages(self, id_data):
         """Starts taking images.
@@ -409,10 +427,11 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         except Exception as e:
             self.log.error("Error in live view loop.")
             self.log.exception(e)
-            self.evt_errorCode.set_put(errorCode=LV_ERROR,
-                                       errorReport="Error in live view loop.",
-                                       traceback=traceback.format_exc())
-            self.fault()
+            await self.stop_liveview()
+
+            self.fault(code=LV_ERROR,
+                       report="Error in live view loop.",
+                       traceback=traceback.format_exc())
 
         self.isLive = False
         self.log.info("liveView_loop - End")
