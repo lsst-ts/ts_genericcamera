@@ -1,8 +1,8 @@
-
 import enum
 import ctypes
+import pathlib
 from ctypes import c_int, POINTER
-from ctypes.util import find_library
+# from ctypes.util import find_library
 
 
 class Results(enum.Enum):
@@ -23,8 +23,8 @@ class EFW():
     def __init__(self):
         # The udev library must be loaded first before the EFWFilter library
         # can be loaded otherwise an OSError is generated
-        udev = ctypes.CDLL(find_library("udev"), mode=ctypes.RTLD_GLOBAL)
-        lib = ctypes.CDLL(find_library("EFWFilter"), mode=ctypes.RTLD_GLOBAL)
+        udev = ctypes.CDLL("/usr/lib64/libudev.so.1", mode=ctypes.RTLD_GLOBAL)
+        lib = ctypes.CDLL(pathlib.Path(__file__).resolve().parent.joinpath("libEFWFilter.so"), mode=ctypes.RTLD_GLOBAL)
 
         # EFW_API int EFWGetNum();
         lib.EFWGetNum.restype = c_int
