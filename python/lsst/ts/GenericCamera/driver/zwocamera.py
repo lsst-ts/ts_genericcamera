@@ -25,7 +25,6 @@ import pathlib
 import numpy as np
 import ctypes
 from ctypes import c_char_p, c_int, c_long, POINTER, create_string_buffer
-from ctypes.util import find_library
 
 from . import zwofilterwheel
 from .. import exposure
@@ -149,7 +148,7 @@ class ASICamera(genericcamera.GenericCamera):
         """Sets the region of interest to the whole sensor.
         """
         info = self.dev.getCameraInfo()
-        self.setROI(0, 0, int(info.MaxWidth/self.binValue), int(info.MaxHeight/self.binValue))
+        self.setROI(0, 0, int(info.MaxWidth / self.binValue), int(info.MaxHeight / self.binValue))
 
     def startLiveView(self):
         """Configure the camera for live view.
@@ -221,16 +220,16 @@ class ASICamera(genericcamera.GenericCamera):
         coolerOn, auto = self.dev.getControlValue(ASIControlType.CoolerOn)
         top, left, width, height = self.getROI()
         tags = {
-            'TOP': top,
-            'LEFT': left,
-            'WIDTH': width,
-            'HEIGHT': height,
-            'EXPOSURE': (exposureTime / 1000000.0),
-            'OFFSET': offset,
-            'TEMPERATURE': (temperature / 10.0),
-            'COOLER_POWER_PERCENTAGE': coolerPowerPercentage,
-            'TARGET_TEMPERATURE': targetTemperature,
-            'COOLER_ON': coolerOn
+            "TOP": top,
+            "LEFT": left,
+            "WIDTH": width,
+            "HEIGHT": height,
+            "EXPOSURE": (exposureTime / 1000000.0),
+            "OFFSET": offset,
+            "TEMPERATURE": (temperature / 10.0),
+            "COOLER_POWER_PERCENTAGE": coolerPowerPercentage,
+            "TARGET_TEMPERATURE": targetTemperature,
+            "COOLER_ON": coolerOn,
         }
         await super().startReadout()
         image = exposure.Exposure(buffer_array, width, height, tags)
@@ -299,9 +298,9 @@ class Results(enum.Enum):
     End = 18
 
 
-class ASICameraInfo():
+class ASICameraInfo:
     def __init__(self, info):
-        self.Name = info.Name.decode('ascii')
+        self.Name = info.Name.decode("ascii")
         self.CameraID = int(info.CameraID)
         self.MaxHeight = int(info.MaxHeight)
         self.MaxWidth = int(info.MaxWidth)
@@ -328,24 +327,24 @@ class ASICameraInfo():
 # This class was taken from https://github.com/stevemarple/python-zwoasi
 class ASICameraInfoCtypes(ctypes.Structure):
     _fields_ = [
-        ('Name', ctypes.c_char * 64),
-        ('CameraID', ctypes.c_int),
-        ('MaxHeight', ctypes.c_long),
-        ('MaxWidth', ctypes.c_long),
-        ('IsColorCam', ctypes.c_int),
-        ('BayerPattern', ctypes.c_int),
-        ('SupportedBins', ctypes.c_int * 16),
-        ('SupportedVideoFormat', ctypes.c_int * 8),
-        ('PixelSize', ctypes.c_double),  # in um
-        ('MechanicalShutter', ctypes.c_int),
-        ('ST4Port', ctypes.c_int),
-        ('IsCoolerCam', ctypes.c_int),
-        ('IsUSB3Host', ctypes.c_int),
-        ('IsUSB3Camera', ctypes.c_int),
-        ('ElecPerADU', ctypes.c_float),
-        ('BitDepth', ctypes.c_int),
-        ('IsTriggerCam', ctypes.c_int),
-        ('Unused', ctypes.c_char * 16),
+        ("Name", ctypes.c_char * 64),
+        ("CameraID", ctypes.c_int),
+        ("MaxHeight", ctypes.c_long),
+        ("MaxWidth", ctypes.c_long),
+        ("IsColorCam", ctypes.c_int),
+        ("BayerPattern", ctypes.c_int),
+        ("SupportedBins", ctypes.c_int * 16),
+        ("SupportedVideoFormat", ctypes.c_int * 8),
+        ("PixelSize", ctypes.c_double),  # in um
+        ("MechanicalShutter", ctypes.c_int),
+        ("ST4Port", ctypes.c_int),
+        ("IsCoolerCam", ctypes.c_int),
+        ("IsUSB3Host", ctypes.c_int),
+        ("IsUSB3Camera", ctypes.c_int),
+        ("ElecPerADU", ctypes.c_float),
+        ("BitDepth", ctypes.c_int),
+        ("IsTriggerCam", ctypes.c_int),
+        ("Unused", ctypes.c_char * 16),
     ]
 
 
@@ -374,10 +373,10 @@ class ASIControlType(enum.Enum):
     AntiDewHeater = 21
 
 
-class ASIControlCaps():
+class ASIControlCaps:
     def __init__(self, caps):
-        self.Name = caps.Name.decode('ascii')
-        self.Description = caps.Description.decode('ascii')
+        self.Name = caps.Name.decode("ascii")
+        self.Description = caps.Description.decode("ascii")
         self.MaxValue = int(caps.MaxValue)
         self.MinValue = int(caps.MinValue)
         self.DefaultValue = int(caps.DefaultValue)
@@ -389,15 +388,16 @@ class ASIControlCaps():
 # This class was taken from https://github.com/stevemarple/python-zwoasi
 class ASIControlCapsCtypes(ctypes.Structure):
     _fields_ = [
-        ('Name', ctypes.c_char * 64),
-        ('Description', ctypes.c_char * 128),
-        ('MaxValue', ctypes.c_long),
-        ('MinValue', ctypes.c_long),
-        ('DefaultValue', ctypes.c_long),
-        ('IsAutoSupported', ctypes.c_int),
-        ('IsWritable', ctypes.c_int),
-        ('ControlType', ctypes.c_int),
-        ('Unused', ctypes.c_char * 32), ]
+        ("Name", ctypes.c_char * 64),
+        ("Description", ctypes.c_char * 128),
+        ("MaxValue", ctypes.c_long),
+        ("MinValue", ctypes.c_long),
+        ("DefaultValue", ctypes.c_long),
+        ("IsAutoSupported", ctypes.c_int),
+        ("IsWritable", ctypes.c_int),
+        ("ControlType", ctypes.c_int),
+        ("Unused", ctypes.c_char * 32),
+    ]
 
 
 class ASIExposureStatus(enum.Enum):
@@ -407,28 +407,26 @@ class ASIExposureStatus(enum.Enum):
     Failed = 3
 
 
-class ASIID():
+class ASIID:
     def __init__(self, id):
-        self.ID = id.id.decode('ascii')
+        self.ID = id.id.decode("ascii")
 
 
 # This class was taken from https://github.com/stevemarple/python-zwoasi
 class ASIIDCtypes(ctypes.Structure):
-    _fields_ = [('id', ctypes.c_char * 8)]
+    _fields_ = [("id", ctypes.c_char * 8)]
 
 
-class ASISupportedMode():
+class ASISupportedMode:
     def __init__(self, mode):
         self.SupportedCameraMode = [ASICameraMode(mode.SupportedCameraMode[i]) for i in range(16)]
 
 
 class ASISupportedModeCtypes(ctypes.Structure):
-    _fields_ = [
-        ('SupportedCameraMode', ctypes.c_int * 16)
-    ]
+    _fields_ = [("SupportedCameraMode", ctypes.c_int * 16)]
 
 
-class ASI():
+class ASI:
     def __init__(self):
         lib = ctypes.CDLL(pathlib.Path(__file__).resolve().parent.joinpath("libASICamera2.so"))
 
@@ -488,8 +486,7 @@ class ASI():
 
         # ASICAMERA_API  ASI_ERROR_CODE ASIGetROIFormat(int iCameraID,
         # int *piWidth, int *piHeight,  int *piBin, ASI_IMG_TYPE *pImg_type);
-        lib.ASIGetROIFormat.argtypes = [c_int, POINTER(c_int), POINTER(c_int),
-                                        POINTER(c_int), POINTER(c_int)]
+        lib.ASIGetROIFormat.argtypes = [c_int, POINTER(c_int), POINTER(c_int), POINTER(c_int), POINTER(c_int)]
         lib.ASIGetROIFormat.restype = c_int
 
         # ASICAMERA_API  ASI_ERROR_CODE ASISetStartPos(int iCameraID,
@@ -569,8 +566,13 @@ class ASI():
         # ASICAMERA_API ASI_ERROR_CODE ASIGetGainOffset(int iCameraID,
         # int *pOffset_HighestDR, int *pOffset_UnityGain, int *pGain_LowestRN,
         # int *pOffset_LowestRN);
-        lib.ASIGetGainOffset.argtypes = [c_int, POINTER(c_int), POINTER(c_int), POINTER(c_int),
-                                         POINTER(c_int)]
+        lib.ASIGetGainOffset.argtypes = [
+            c_int,
+            POINTER(c_int),
+            POINTER(c_int),
+            POINTER(c_int),
+            POINTER(c_int),
+        ]
         lib.ASIGetGainOffset.restype = c_int
 
         # ASICAMERA_API char* ASIGetSDKVersion();
@@ -706,7 +708,7 @@ class ASI():
 
     def enableDarkSubtract(self, id, bmpFile):
         # ASICAMERA_API ASI_ERROR_CODE ASIEnableDarkSubtract(int iCameraID, char *pcBMPPath);
-        bmpFilePath = self.getStringBuffer(bmpFile.encode('ascii'))
+        bmpFilePath = self.getStringBuffer(bmpFile.encode("ascii"))
         result = self.lib.ASIEnableDarkSubtract(id, bmpFilePath)
         return self._toResultEnum(result)
 
@@ -784,14 +786,18 @@ class ASI():
         offsetUnityGain = self._getIntPtr()
         gainLowestRN = self._getIntPtr()
         offsetLowestRN = self._getIntPtr()
-        result = self.lib.ASIGetGainOffset(id, offsetHighestDR, offsetUnityGain,
-                                           gainLowestRN, offsetLowestRN)
-        return (self._toResultEnum(result), offsetHighestDR[0], offsetUnityGain[0],
-                gainLowestRN[0], offsetLowestRN[0])
+        result = self.lib.ASIGetGainOffset(id, offsetHighestDR, offsetUnityGain, gainLowestRN, offsetLowestRN)
+        return (
+            self._toResultEnum(result),
+            offsetHighestDR[0],
+            offsetUnityGain[0],
+            gainLowestRN[0],
+            offsetLowestRN[0],
+        )
 
     def getSDKVersion(self):
         # ASICAMERA_API char* ASIGetSDKVersion();
-        return self.lib.ASIGetSDKVersion().decode('ascii')
+        return self.lib.ASIGetSDKVersion().decode("ascii")
 
     def getCameraSupportMode(self, id):
         # ASICAMERA_API ASI_ERROR_CODE  ASIGetCameraSupportMode(int iCameraID,
@@ -1042,8 +1048,7 @@ class ASIDevice(ASIBase):
         auto : bool
             True if the control should be set automatically."""
         self._assertHandle()
-        result = self.asi.setControlValue(self.handle, controlType.value, value,
-                                          self.boolToInt(auto))
+        result = self.asi.setControlValue(self.handle, controlType.value, value, self.boolToInt(auto))
         self._raiseIfBad(result)
 
     def setROI(self, width, height, bin, imgType: ASIImageType):
@@ -1274,8 +1279,9 @@ class ASIDevice(ASIBase):
         int
             The offset for the lowest read noise."""
         self._assertHandle()
-        result, highestDROffset, unityGainOffset, lowestRNGain, \
-            lowestRNOffset = self.asi.getGainOffset(self.handle)
+        result, highestDROffset, unityGainOffset, lowestRNGain, lowestRNOffset = self.asi.getGainOffset(
+            self.handle
+        )
         self._raiseIfBad(result)
         return highestDROffset, unityGainOffset, lowestRNGain, lowestRNOffset
 
@@ -1349,7 +1355,7 @@ class ASIDevice(ASIBase):
             bytesPerPixel = 1
         binWidth = int(width / bin)
         binHeight = int(height / bin)
-        return width * height * bytesPerPixel
+        return binWidth * binHeight * bytesPerPixel
 
     def boolToInt(self, value):
         if value:
