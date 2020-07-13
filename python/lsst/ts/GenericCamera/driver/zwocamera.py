@@ -1336,8 +1336,8 @@ class ASIDevice(ASIBase):
         return serialNumber
 
     def getImageSize(self):
-        """Gets the full size of the image based on the current camera bit
-        depth but ignoring binning.
+        """Gets the size of the image based off the
+        current camera configuration.
 
         Returns
         -------
@@ -1353,7 +1353,9 @@ class ASIDevice(ASIBase):
             bytesPerPixel = 2
         elif imgType == ASIImageType.Y8:
             bytesPerPixel = 1
-        return width * height * bytesPerPixel
+        binWidth = int(width / bin)
+        binHeight = int(height / bin)
+        return binWidth * binHeight * bytesPerPixel
 
     def boolToInt(self, value):
         if value:
