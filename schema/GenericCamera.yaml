@@ -28,6 +28,7 @@ properties:
     - Simulator
     - Andor
     - Zwo
+    - Canon
     default: Simulator
 allOf:
 # For each supported camera add a new if/then case below.
@@ -102,4 +103,20 @@ allOf:
       filterNumber:
         default: 2
         type: number
-
+- if:
+    properties:
+      camera:
+        const: Canon
+  then:
+    properties:
+      id:
+        default: 0
+        type: number
+      binValue:
+        default: 1
+        type: number
+      ImageType:
+        default: RAW
+        type: string
+        enum:
+          - RAW
