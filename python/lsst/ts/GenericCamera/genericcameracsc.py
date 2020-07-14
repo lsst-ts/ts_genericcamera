@@ -42,21 +42,21 @@ state.
 
 
 class GenericCameraCsc(salobj.ConfigurableCsc):
-    def __init__(self, index, config_dir=None,
-                 initial_state=salobj.State.STANDBY, initial_simulation_mode=0):
+    def __init__(self, index, config_dir=None, initial_state=salobj.State.STANDBY, simulation_mode=0):
 
-        schema_path = pathlib.Path(__file__).resolve().parents[4].joinpath("schema",
-                                                                           "GenericCamera.yaml")
+        schema_path = pathlib.Path(__file__).resolve().parents[4].joinpath("schema", "GenericCamera.yaml")
 
-        super().__init__("GenericCamera", index=index,
-                         schema_path=schema_path,
-                         config_dir=config_dir,
-                         initial_state=initial_state,
-                         initial_simulation_mode=initial_simulation_mode)
+        super().__init__(
+            "GenericCamera",
+            index=index,
+            schema_path=schema_path,
+            config_dir=config_dir,
+            initial_state=initial_state,
+            simulation_mode=simulation_mode,
+        )
 
         ch = logging.StreamHandler()
-        console_format = "%(asctime)s - %(levelname)s - %(name)s [%(filename)s:%(lineno)d]: " \
-                         "%(message)s"
+        console_format = "%(asctime)s - %(levelname)s - %(name)s [%(filename)s:%(lineno)d]: " "%(message)s"
         ch.setFormatter(logging.Formatter(console_format))
         self.log.addHandler(ch)
 
@@ -70,13 +70,14 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 self.drivers[member[1].name()] = member[1]
 
         # Make sure all options in schema are valid
-        for camera in self.config_validator.final_validator.schema['properties']['camera']['enum']:
-            assert camera in self.drivers.keys(), f"{camera} is not a valid option, " \
-                                                  f"must one of {self.drivers.keys()}"
+        for camera in self.config_validator.final_validator.schema["properties"]["camera"]["enum"]:
+            assert camera in self.drivers.keys(), (
+                f"{camera} is not a valid option, " f"must one of {self.drivers.keys()}"
+            )
 
         self.ip = None
         self.port = None
-        self.directory = os.path.expanduser('~/')
+        self.directory = os.path.expanduser("~/")
         self.fileNameFormat = "{timestamp}-{name}-{index}-{total}"
         self.config = None
 
@@ -193,18 +194,14 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     The width of the ROI in binned pixels.
                 height : int
                     The height of the ROI in binned pixels."""
-        self.assert_enabled('setROI')
+        self.assert_enabled("setROI")
         self._assert_notlive()
 
-        if self.evt_roi.set(topPixel=id_data.topPixel,
-                            leftPixel=id_data.leftPixel,
-                            width=id_data.width,
-                            height=id_data.height):
+        if self.evt_roi.set(
+            topPixel=id_data.topPixel, leftPixel=id_data.leftPixel, width=id_data.width, height=id_data.height
+        ):
             self.log.debug("setROI - Start")
-            self.camera.setROI(id_data.topPixel,
-                               id_data.leftPixel,
-                               id_data.width,
-                               id_data.height)
+            self.camera.setROI(id_data.topPixel, id_data.leftPixel, id_data.width, id_data.height)
             self.evt_roi.put()
             self.log.debug("setROI - End")
         else:
@@ -222,7 +219,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 ignored : bool
                     This is ignored."""
         self.log.info("setFullFrame - Start")
-        self.assert_enabled('setFullFrame')
+        self.assert_enabled("setFullFrame")
         self._assert_notlive()
         self.camera.setFullFrame()
         self.log.info("setFullFrame - End")
@@ -238,10 +235,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             data : GenericCamera_command_startLiveViewC
                 expTime : float
                     The exposure time for the live view."""
-        self.assert_enabled('startLiveView')
+        self.assert_enabled("startLiveView")
         self.log.info("startLiveView - Start")
         self._assert_notlive()
-        if id_data.expTime == 0.:
+        if id_data.expTime == 0.0:
             raise RuntimeError("LiveView exposure time must be greater than zero.")
         self.camera.startLiveView()
         self.runLiveTask = True
@@ -261,7 +258,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             data : GenericCamera_command_stopLiveViewC
                 ignored : bool
                     This is ignored."""
-        self.assert_enabled('stopLiveView')
+        self.assert_enabled("stopLiveView")
         self._assert_live()
 
         self.log.info("stopLiveView - Start")
@@ -320,18 +317,15 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             timeStamp = time.time()
 
             self.evt_startTakeImage.put()
-            await self.camera.startTakeImage(exposureTime,
-                                             id_data.shutter,
-                                             id_data.science,
-                                             id_data.guide,
-                                             id_data.wfs)
+            await self.camera.startTakeImage(
+                exposureTime, id_data.shutter, id_data.science, id_data.guide, id_data.wfs
+            )
 
             for imageIndex in range(imagesInSequence):
                 timestamp = time.time()
-                imageName = self.fileNameFormat.format(timestamp=int(timestamp),
-                                                       name=imageSequenceName,
-                                                       index=imageIndex,
-                                                       total=imagesInSequence)
+                imageName = self.fileNameFormat.format(
+                    timestamp=int(timestamp), name=imageSequenceName, index=imageIndex, total=imagesInSequence
+                )
                 if id_data.shutter:
                     self.evt_startShutterOpen.put()
                     await self.camera.startShutterOpen()
@@ -339,12 +333,14 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     await self.camera.endShutterOpen()
                     self.evt_endShutterOpen.put()
 
-                self.evt_startIntegration.set_put(imageSequenceName=imageSequenceName,
-                                                  imagesInSequence=imagesInSequence,
-                                                  imageName=imageName,
-                                                  imageIndex=imageIndex,
-                                                  timeStamp=timeStamp,
-                                                  exposureTime=exposureTime)
+                self.evt_startIntegration.set_put(
+                    imageSequenceName=imageSequenceName,
+                    imagesInSequence=imagesInSequence,
+                    imageName=imageName,
+                    imageIndex=imageIndex,
+                    timeStamp=timeStamp,
+                    exposureTime=exposureTime,
+                )
                 await self.camera.startIntegration()
                 await self.camera.endIntegration()
                 self.evt_endIntegration.put()
@@ -355,21 +351,25 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
                     await self.camera.endShutterClose()
                     self.evt_endShutterClose.put()
-                self.evt_startReadout.set_put(imageSequenceName=imageSequenceName,
-                                              imagesInSequence=imagesInSequence,
-                                              imageName=imageName,
-                                              imageIndex=imageIndex,
-                                              timeStamp=timeStamp,
-                                              exposureTime=exposureTime)
+                self.evt_startReadout.set_put(
+                    imageSequenceName=imageSequenceName,
+                    imagesInSequence=imagesInSequence,
+                    imageName=imageName,
+                    imageIndex=imageIndex,
+                    timeStamp=timeStamp,
+                    exposureTime=exposureTime,
+                )
                 await self.camera.startReadout()
 
                 exposure = await self.camera.endReadout()
-                self.evt_endReadout.set_put(imageSequenceName=imageSequenceName,
-                                            imagesInSequence=imagesInSequence,
-                                            imageName=imageName,
-                                            imageIndex=imageIndex,
-                                            timeStamp=timeStamp,
-                                            exposureTime=exposureTime)
+                self.evt_endReadout.set_put(
+                    imageSequenceName=imageSequenceName,
+                    imagesInSequence=imagesInSequence,
+                    imageName=imageName,
+                    imageIndex=imageIndex,
+                    timeStamp=timeStamp,
+                    exposureTime=exposureTime,
+                )
                 exposure.save(os.path.join(self.directory, imageName + ".fits"))
             await self.camera.endTakeImage()
             self.evt_endTakeImage.put()
@@ -392,11 +392,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.isLive = True
         try:
             while self.runLiveTask:
-                await self.camera.startTakeImage(exposureTime,
-                                                 True,
-                                                 True,
-                                                 True,
-                                                 True)
+                await self.camera.startTakeImage(exposureTime, True, True, True, True)
 
                 startFrameTime = time.time()
 
@@ -429,9 +425,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             self.log.exception(e)
             await self.stop_liveview()
 
-            self.fault(code=LV_ERROR,
-                       report="Error in live view loop.",
-                       traceback=traceback.format_exc())
+            self.fault(code=LV_ERROR, report="Error in live view loop.", traceback=traceback.format_exc())
 
         self.isLive = False
         self.log.info("liveView_loop - End")
