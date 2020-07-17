@@ -70,6 +70,15 @@ pipeline {
                 }
             }
         }
+        stage("Install Python requirements") {
+            steps {
+                script {
+                    sh """
+                    pip install -r requirements.txt
+                    """
+                }
+            }
+        }
         stage("Running tests") {
             steps {
                 script {

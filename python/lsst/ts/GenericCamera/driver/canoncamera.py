@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import io
+
 from .. import exposure
 from . import genericcamera
 
@@ -136,11 +138,9 @@ class CanonCamera(genericcamera.GenericCamera):
         """
         # The image can be obtained by reading out the file_path variable in
         # which the path to the file on the camera was stored.
-        target = os.path.join("/tmp", self.file_path.name)
         camera_file = self.camera.file_get(self.file_path.folder, self.file_path.name, gp.GP_FILE_TYPE_NORMAL)
         # Load the image data
         file_data = camera_file.get_data_and_size()
-        data = memoryview(file_data).tobytes()
         # Convert to a numpy array
         image = Image.open(io.BytesIO(file_data))
         buffer = image.tobytes()
