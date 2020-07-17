@@ -74,7 +74,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    pip install -r requirements.txt
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd repo && pip install -r requirements.txt \"
                     """
                 }
             }
