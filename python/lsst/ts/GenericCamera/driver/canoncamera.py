@@ -19,12 +19,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import os
-
+from .. import exposure
 from . import genericcamera
 
 import gphoto2 as gp
-import rawpy
+import numpy as np
+from PIL import Image
 
 
 class CanonCamera(genericcamera.GenericCamera):
@@ -34,7 +34,10 @@ class CanonCamera(genericcamera.GenericCamera):
         self.binValue = None
         self.normalImageType = None
         self.currentImageType = None
+        self.width = None
+        self.height = None
         self.camera = None
+        self.exposure_time = None
 
         # The path to the image in the camera
         self.file_path = None
@@ -56,6 +59,8 @@ class CanonCamera(genericcamera.GenericCamera):
         self.binValue = config.binValue
         self.normalImageType = config.ImageType
         self.currentImageType = self.normalImageType
+        self.width = config.width
+        self.height = config.height
 
         # Initialize the camera. If not camera is detected then an Exception
         # will be raised.
@@ -85,7 +90,7 @@ class CanonCamera(genericcamera.GenericCamera):
             The width of the region in pixels.
         int
             The height of the region in pixels."""
-        return 0, 0, 6720, 4480
+        return 0, 0, self.width, self.height
 
     async def startTakeImage(self, expTime, shutter, science, guide, wfs):
         """Start taking an image or a set of images.
@@ -103,6 +108,8 @@ class CanonCamera(genericcamera.GenericCamera):
         wfs : bool
             Should wave front sensor be used?
         """
+        # Store the exposure time for later use
+        self.exposure_time = expTime
         # In order to be able to update the cameraq config via GPhoto, the
         # config object needs to be obtained ...
         cfg = self.camera.get_config()
@@ -131,15 +138,26 @@ class CanonCamera(genericcamera.GenericCamera):
         # which the path to the file on the camera was stored.
         target = os.path.join("/tmp", self.file_path.name)
         camera_file = self.camera.file_get(self.file_path.folder, self.file_path.name, gp.GP_FILE_TYPE_NORMAL)
-        camera_file.save(target)
-        # Then the image can be read...
-        image = rawpy.imread(target)
-        # ... and the visible part can be obtained. Canon cameras have
-        # additional rows and columns used by the camera to set the black point
-        # of the image and we don't need those for our purposes.
-        raw_image = image.raw_image_visible.copy()
-        # When using rawpy (which uses libraw under the hood), the image need
-        # to be actively closed.
-        image.close()
-        # This is a numpy array containing the raw image data.
-        return raw_image
+        # Load the image data
+        file_data = camera_file.get_data_and_size()
+        data = memoryview(file_data).tobytes()
+        # Convert to a numpy array
+        image = Image.open(io.BytesIO(file_data))
+        buffer = image.tobytes()
+        buffer_array = np.frombuffer(buffer, dtype=np.uint16)
+        # Set up the tags for the exposure. The temperature can be read from
+        # the exif data but I don't have that working yet because it involves
+        # more native libraries to be installed.
+        tags = {
+            "TOP": 0,
+            "LEFT": 0,
+            "WIDTH": self.width,
+            "HEIGHT": self.height,
+            "EXPOSURE": (self.exposure_time / 1000000.0),
+            "OFFSET": 0,
+            "TEMPERATURE": -99,
+            "COOLER_POWER_PERCENTAGE": 0,
+            "TARGET_TEMPERATURE": -99,
+            "COOLER_ON": False,
+        }
+        image = exposure.Exposure(buffer_array, self.width, self.height, tags)

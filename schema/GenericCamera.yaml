@@ -115,6 +115,12 @@ allOf:
       binValue:
         default: 1
         type: number
+      width:
+        type: number
+        default: 6720
+      height:
+        type: number
+        default: 4480
       ImageType:
         default: RAW
         type: string
