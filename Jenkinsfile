@@ -65,7 +65,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && setup ts_sal -t current && make_idl_files.py Dome\"
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && setup ts_sal -t current && make_idl_files.py GenericCamera\"
                     """
                 }
             }
@@ -74,7 +74,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd repo && export LD_LIBRARY_PATH=/lib64:${LD_LIBRARY_PATH} && pip install -r requirements.txt \"
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd repo && export LD_LIBRARY_PATH=/lib64:\$LD_LIBRARY_PATH && pip install -r requirements.txt \"
                     """
                 }
             }
