@@ -74,7 +74,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker exec -u root \${container_name} sh -c \"source /home/saluser/.setup.sh && cd repo && pip install -r requirements.txt \"
+                    docker exec -u root \${container_name} sh -c \"source /home/saluser/.setup.sh && yum install -y libgphoto2-devel && cd repo && pip install -r requirements.txt \"
                     """
                 }
             }
