@@ -74,7 +74,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker exec -u root \${container_name} sh -c \"/opt/lsst/software/stack/python/miniconda3-4.7.12/envs/lsst-scipipe-448abc6/bin/pip install -r /home/saluser/develop/ts_GenericCamera/requirements.txt \"
+                    docker exec -u root \${container_name} sh -c \"source /home/saluser/.setup.sh && pip install -r /home/saluser/develop/ts_GenericCamera/requirements.txt \"
                     """
                 }
             }
