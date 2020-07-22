@@ -10,7 +10,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker pull lsstts/salobj:develop
+                    docker pull lsstts/ts_genericcamera:latest
                     """
                 }
             }
@@ -66,15 +66,6 @@ pipeline {
                 script {
                     sh """
                     docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && setup ts_sal -t current && make_idl_files.py Dome\"
-                    """
-                }
-            }
-        }
-        stage("Install Python requirements") {
-            steps {
-                script {
-                    sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd repo && pip install -r requirements.txt \"
                     """
                 }
             }
