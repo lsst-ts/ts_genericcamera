@@ -74,7 +74,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker exec -u root \${container_name} sh -c \"source /home/saluser/.setup.sh && pip install -r /home/saluser/develop/ts_GenericCamera/requirements.txt \"
+                    docker exec -u root \${container_name} sh -c \"source /home/saluser/.setup.sh && cd repo && pip install -r requirements.txt \"
                     """
                 }
             }
