@@ -65,7 +65,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && setup ts_sal -t current && make_idl_files.py GenericCamera\"
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && setup ts_sal -t current && make_idl_files.py Dome\"
                     """
                 }
             }
@@ -74,7 +74,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker exec -u root \${container_name} sh -c \"source /home/saluser/.setup.sh && yum install -y libgphoto2-devel && cd repo && pip install -r requirements.txt \"
+                    docker exec -u saluser \${container_name} sh -c \"ldd /lib64/libgphoto2.so && source ~/.setup.sh && ldd /lib64/libgphoto2.so && cd repo && pip install -r requirements.txt \"
                     """
                 }
             }
