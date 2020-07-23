@@ -70,15 +70,6 @@ pipeline {
                 }
             }
         }
-        stage("Install Python requirements") {
-            steps {
-                script {
-                    sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd repo && export LD_LIBRARY_PATH=/lib64:\$LD_LIBRARY_PATH && pip install -r requirements.txt \"
-                    """
-                }
-            }
-        }
         stage("Running tests") {
             steps {
                 script {
