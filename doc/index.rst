@@ -37,6 +37,6 @@ You can find Jira issues for this module under the `ts_GenericCamera <https://ji
 Python API reference
 ====================
 
-.. .. automodapi:: lsst.ts.GenericCamera
-..    :no-main-docstr:
-..    :no-inheritance-diagram:
+.. automodapi:: lsst.ts.GenericCamera
+   :no-main-docstr:
+   :no-inheritance-diagram:

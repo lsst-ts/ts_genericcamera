@@ -29,7 +29,6 @@ from . import genericcamera
 
 
 class SimulatorCamera(genericcamera.GenericCamera):
-
     def __init__(self, log=None):
 
         super().__init__(log=log)
@@ -99,6 +98,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
 
     def getValue(self, key):
         """Gets the value of a unique property of the camera.
+
         Parameters
         ----------
         key : str
@@ -124,6 +124,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
 
     def getROI(self):
         """Gets the region of interest.
+
         Returns
         -------
         int
@@ -181,8 +182,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         Check that shutter_task is not running and schedule open_shutter task
         to the event loop.
         """
-        tasks = [self.exposure_task,
-                 self.shutter_open_start_event.wait()]
+        tasks = [self.exposure_task, self.shutter_open_start_event.wait()]
 
         for f in asyncio.as_completed(tasks):
             await f
@@ -193,8 +193,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
 
         Check that shutter_task is running and await for it to finish.
         """
-        tasks = [self.shutter_open_finish_event.wait(),
-                 self.exposure_task]
+        tasks = [self.shutter_open_finish_event.wait(), self.exposure_task]
 
         for f in asyncio.as_completed(tasks):
             await f
@@ -206,8 +205,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         Check that shutter_task is not running and schedule close_shutter task
         to the event loop.
         """
-        tasks = [self.exposure_task,
-                 self.shutter_close_start_event.wait()]
+        tasks = [self.exposure_task, self.shutter_close_start_event.wait()]
 
         for f in asyncio.as_completed(tasks):
             await f
@@ -221,8 +219,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
 
         If the camera doesn't have a shutter then don't do anything.
         """
-        tasks = [self.exposure_task,
-                 self.shutter_close_finish_event.wait()]
+        tasks = [self.exposure_task, self.shutter_close_finish_event.wait()]
 
         for f in asyncio.as_completed(tasks):
             await f
@@ -263,11 +260,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         async with self.isbusy_lock:
             self.exposure_task = asyncio.ensure_future(self.simulate_exposure())
 
-        await super().startTakeImage(expTime=expTime,
-                                     shutter=shutter,
-                                     science=science,
-                                     guide=guide,
-                                     wfs=wfs)
+        await super().startTakeImage(expTime=expTime, shutter=shutter, science=science, guide=guide, wfs=wfs)
 
     async def endTakeImage(self):
         """End take image or images.
@@ -279,8 +272,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
     async def startIntegration(self):
         """Start integrating.
         """
-        tasks = [self.exposure_task,
-                 self.exposure_start_event.wait()]
+        tasks = [self.exposure_task, self.exposure_start_event.wait()]
 
         for f in asyncio.as_completed(tasks):
             await f
@@ -292,8 +284,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         """End integration.
 
         This should wait for the integration period to complete."""
-        tasks = [self.exposure_task,
-                 self.exposure_finish_event.wait()]
+        tasks = [self.exposure_task, self.exposure_finish_event.wait()]
 
         for f in asyncio.as_completed(tasks):
             await f
@@ -304,8 +295,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
     async def startReadout(self):
         """Start reading out the image.
         """
-        tasks = [self.exposure_task,
-                 self.readout_start_event.wait()]
+        tasks = [self.exposure_task, self.readout_start_event.wait()]
 
         for f in asyncio.as_completed(tasks):
             await f
@@ -316,8 +306,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
     async def endReadout(self):
         """Start reading out the image.
         """
-        tasks = [self.exposure_task,
-                 self.readout_finish_event.wait()]
+        tasks = [self.exposure_task, self.readout_finish_event.wait()]
 
         for f in asyncio.as_completed(tasks):
             await f
@@ -360,14 +349,13 @@ class SimulatorCamera(genericcamera.GenericCamera):
         if self.shutter_state == self.shutter_steps:
             raise RuntimeError("Shutter already open.")
         elif self.shutter_state != 0:
-            raise RuntimeError(f"Shutter state is {self.shutter_state}. "
-                               f"Expected 0.")
+            raise RuntimeError(f"Shutter state is {self.shutter_state}. " f"Expected 0.")
 
         self.shutter_open_start_event.set()
 
         while self.shutter_state < self.shutter_steps:
             self.shutter_state += 1
-            await asyncio.sleep(self.shutter_time/self.shutter_steps)
+            await asyncio.sleep(self.shutter_time / self.shutter_steps)
 
         self.shutter_open_finish_event.set()
 
@@ -392,15 +380,17 @@ class SimulatorCamera(genericcamera.GenericCamera):
         if self.exposure_state != 0:
             raise RuntimeError("Ongoing exposure.")
 
-        if self.exposure_time > 0.:
+        if self.exposure_time > 0.0:
 
             self.exposure_start_event.set()
 
             # imageByteCount = self.width * self.height * self.bytesPerPixel
-            buffer = np.random.randint(low=np.iinfo(np.uint16).min,
-                                       high=np.iinfo(np.uint16).max,
-                                       size=self.width * self.height,
-                                       dtype=np.uint16)
+            buffer = np.random.randint(
+                low=np.iinfo(np.uint16).min,
+                high=np.iinfo(np.uint16).max,
+                size=self.width * self.height,
+                dtype=np.uint16,
+            )
             self.log.debug(f"expose: {self.exposure_time}s.")
 
             self.imageBuffer = buffer
@@ -416,8 +406,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
             self.log.debug(f"Taking zero second exposure.")
             self.exposure_start_event.set()
             # imageByteCount = self.width * self.height * self.bytesPerPixel
-            self.imageBuffer = np.zeros(self.width * self.height,
-                                        dtype=np.uint16)
+            self.imageBuffer = np.zeros(self.width * self.height, dtype=np.uint16)
             self.exposure_state = self.exposure_steps
             self.exposure_finish_event.set()
 
@@ -428,8 +417,9 @@ class SimulatorCamera(genericcamera.GenericCamera):
         if self.readout_state != 0:
             raise RuntimeError("Ongoing readout!")
         elif not self.exposure_state == self.exposure_steps:
-            raise RuntimeError(f"Exposure not completed! State {self.exposure_state}, "
-                               f"expected {self.exposure_steps}.")
+            raise RuntimeError(
+                f"Exposure not completed! State {self.exposure_state}, " f"expected {self.exposure_steps}."
+            )
 
         self.readout_start_event.set()
 
