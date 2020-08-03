@@ -21,19 +21,7 @@
 
 import asyncio
 import enum
-from ctypes import (
-    CDLL,
-    c_bool,
-    c_char_p,
-    c_double,
-    c_int,
-    c_longlong,
-    c_uint,
-    c_wchar_p,
-    POINTER,
-    create_string_buffer,
-    create_unicode_buffer,
-)
+import ctypes
 from ctypes.util import find_library
 import struct
 import numpy as np
@@ -147,7 +135,7 @@ class AndorCamera(GenericCamera):
         """Take an exposure with the currently configured settings.
 
         The exposure should be the raw image data from the camera which
-        most likely means a buffer created by ctypes.create_string_buffer()
+        most likely means a buffer created by ctypes.ctypes.create_string_buffer()
 
         The Exposure class handles converting the image to the correct
         format. If live view, the image data is converted into a JPEG
@@ -347,21 +335,21 @@ class Features(enum.IntEnum):
 
 class AT:
     def __init__(self):
-        lib = CDLL(find_library("atcore"))
+        lib = ctypes.CDLL(find_library("atcore"))
 
         # int AT_EXP_CONV AT_InitialiseLibrary();
-        lib.AT_InitialiseLibrary.restype = c_int
+        lib.AT_InitialiseLibrary.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_FinaliseLibrary();
-        lib.AT_FinaliseLibrary.restype = c_int
+        lib.AT_FinaliseLibrary.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_Open(int CameraIndex, AT_H *Hndl);
-        lib.AT_Open.argtypes = [c_int, POINTER(c_int)]
-        lib.AT_Open.restype = c_int
+        lib.AT_Open.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
+        lib.AT_Open.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_Close(AT_H Hndl);
-        lib.AT_Close.argtypes = [c_int]
-        lib.AT_Close.restype = c_int
+        lib.AT_Close.argtypes = [ctypes.c_int]
+        lib.AT_Close.restype = ctypes.c_int
 
         # typedef int (AT_EXP_CONV *FeatureCallback)(AT_H Hndl, const AT_WC*
         # Feature, void* Context);
@@ -371,161 +359,198 @@ class AT:
         # FeatureCallback EvCallback, void* Context);
 
         # int AT_EXP_CONV AT_IsImplemented(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Implemented);
-        lib.AT_IsImplemented.argtypes = [c_int, c_wchar_p, POINTER(c_bool)]
-        lib.AT_IsImplemented.restype = c_int
+        lib.AT_IsImplemented.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_bool)]
+        lib.AT_IsImplemented.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_IsReadable(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Readable);
-        lib.AT_IsReadable.argtypes = [c_int, c_wchar_p, POINTER(c_bool)]
-        lib.AT_IsReadOnly.restype = c_int
+        lib.AT_IsReadable.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_bool)]
+        lib.AT_IsReadOnly.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_IsWritable(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Writable);
-        lib.AT_IsWritable.argtypes = [c_int, c_wchar_p, POINTER(c_bool)]
-        lib.AT_IsWritable.restype = c_int
+        lib.AT_IsWritable.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_bool)]
+        lib.AT_IsWritable.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_IsReadOnly(AT_H Hndl, const AT_WC* Feature, AT_BOOL* ReadOnly);
-        lib.AT_IsReadOnly.argtypes = [c_int, c_wchar_p, POINTER(c_bool)]
-        lib.AT_IsReadOnly.restype = c_int
+        lib.AT_IsReadOnly.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_bool)]
+        lib.AT_IsReadOnly.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_SetInt(AT_H Hndl, const AT_WC* Feature, AT_64 Value);
-        lib.AT_SetInt.argtypes = [c_int, c_wchar_p, c_longlong]
-        lib.AT_SetInt.restype = c_int
+        lib.AT_SetInt.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_longlong]
+        lib.AT_SetInt.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetInt(AT_H Hndl, const AT_WC* Feature, AT_64* Value);
-        lib.AT_GetInt.argtypes = [c_int, c_wchar_p, POINTER(c_longlong)]
-        lib.AT_GetInt.restype = c_int
+        lib.AT_GetInt.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_longlong)]
+        lib.AT_GetInt.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetIntMax(AT_H Hndl, const AT_WC* Feature, AT_64* MaxValue);
-        lib.AT_GetIntMax.argtypes = [c_int, c_wchar_p, POINTER(c_longlong)]
-        lib.AT_GetIntMax.restype = c_int
+        lib.AT_GetIntMax.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_longlong)]
+        lib.AT_GetIntMax.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetIntMin(AT_H Hndl, const AT_WC* Feature, AT_64* MinValue);
-        lib.AT_GetIntMin.argtypes = [c_int, c_wchar_p, POINTER(c_longlong)]
-        lib.AT_GetIntMin.restype = c_int
+        lib.AT_GetIntMin.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_longlong)]
+        lib.AT_GetIntMin.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_SetFloat(AT_H Hndl, const AT_WC* Feature, double Value);
-        lib.AT_SetFloat.argtypes = [c_int, c_wchar_p, c_double]
-        lib.AT_SetFloat.restype = c_int
+        lib.AT_SetFloat.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_double]
+        lib.AT_SetFloat.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetFloat(AT_H Hndl, const AT_WC* Feature, double* Value);
-        lib.AT_GetFloat.argtypes = [c_int, c_wchar_p, POINTER(c_double)]
-        lib.AT_GetFloat.restype = c_int
+        lib.AT_GetFloat.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_double)]
+        lib.AT_GetFloat.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetFloatMax(AT_H Hndl, const AT_WC* Feature, double* MaxValue);
-        lib.AT_GetFloatMax.argtypes = [c_int, c_wchar_p, POINTER(c_double)]
-        lib.AT_GetFloatMax.restype = c_int
+        lib.AT_GetFloatMax.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_double)]
+        lib.AT_GetFloatMax.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetFloatMin(AT_H Hndl, const AT_WC* Feature, double* MinValue);
-        lib.AT_GetFloatMin.argtypes = [c_int, c_wchar_p, POINTER(c_double)]
-        lib.AT_GetFloatMin.restype = c_int
+        lib.AT_GetFloatMin.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_double)]
+        lib.AT_GetFloatMin.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_SetBool(AT_H Hndl, const AT_WC* Feature, AT_BOOL Value);
-        lib.AT_SetBool.argtypes = [c_int, c_wchar_p, c_bool]
-        lib.AT_SetBool.restype = c_int
+        lib.AT_SetBool.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_bool]
+        lib.AT_SetBool.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetBool(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Value);
-        lib.AT_GetBool.argtypes = [c_int, c_wchar_p, POINTER(c_bool)]
-        lib.AT_GetBool.restype = c_int
+        lib.AT_GetBool.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_bool)]
+        lib.AT_GetBool.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_SetEnumerated(AT_H Hndl, const AT_WC* Feature, int Value);
-        lib.AT_SetEnumerated.argtypes = [c_int, c_wchar_p, c_int]
-        lib.AT_SetEnumerated.restype = c_int
+        lib.AT_SetEnumerated.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_int]
+        lib.AT_SetEnumerated.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_SetEnumeratedString(AT_H Hndl, const AT_WC* Feature, const AT_WC* String);
-        lib.AT_SetEnumeratedString.argtypes = [c_int, c_wchar_p, c_wchar_p]
-        lib.AT_SetEnumeratedString.restype = c_int
+        lib.AT_SetEnumeratedString.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_wchar_p]
+        lib.AT_SetEnumeratedString.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetEnumerated(AT_H Hndl, const AT_WC* Feature, int* Value);
-        lib.AT_GetEnumerated.argtypes = [c_int, c_wchar_p, POINTER(c_int)]
-        lib.AT_GetEnumerated.restype = c_int
+        lib.AT_GetEnumerated.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_int)]
+        lib.AT_GetEnumerated.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetEnumeratedCount(AT_H Hndl,const  AT_WC* Feature, int* Count);
-        lib.AT_GetEnumCount.argtypes = [c_int, c_wchar_p, POINTER(c_int)]
-        lib.AT_GetEnumCount.restype = c_int
+        lib.AT_GetEnumCount.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_int)]
+        lib.AT_GetEnumCount.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_IsEnumeratedIndexAvailable(AT_H Hndl, const AT_WC* Feature, int Index,
         # AT_BOOL* Available);
-        lib.AT_IsEnumeratedIndexAvailable.argtypes = [c_int, c_wchar_p, c_int, POINTER(c_bool)]
-        lib.AT_IsEnumIndexAvailable.restype = c_int
+        lib.AT_IsEnumeratedIndexAvailable.argtypes = [
+            ctypes.c_int,
+            ctypes.c_wchar_p,
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_bool),
+        ]
+        lib.AT_IsEnumIndexAvailable.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_IsEnumeratedIndexImplemented(AT_H Hndl, const AT_WC* Feature,
         # int Index, AT_BOOL* Implemented);
-        lib.AT_IsEnumeratedIndexImplemented.argtypes = [c_int, c_wchar_p, c_int, POINTER(c_bool)]
-        lib.AT_IsEnumeratedIndexImplemented.restype = c_int
+        lib.AT_IsEnumeratedIndexImplemented.argtypes = [
+            ctypes.c_int,
+            ctypes.c_wchar_p,
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_bool),
+        ]
+        lib.AT_IsEnumeratedIndexImplemented.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetEnumeratedString(AT_H Hndl, const AT_WC* Feature, int Index,
         # AT_WC* String, int StringLength);
-        lib.AT_GetEnumeratedString.argtypes = [c_int, c_wchar_p, c_int, c_wchar_p, c_int]
-        lib.AT_GetEnumeratedString.restype = c_int
+        lib.AT_GetEnumeratedString.argtypes = [
+            ctypes.c_int,
+            ctypes.c_wchar_p,
+            ctypes.c_int,
+            ctypes.c_wchar_p,
+            ctypes.c_int,
+        ]
+        lib.AT_GetEnumeratedString.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_SetEnumIndex(AT_H Hndl, const AT_WC* Feature, int Value);
-        lib.AT_SetEnumIndex.argtypes = [c_int, c_wchar_p, c_int]
-        lib.AT_SetEnumIndex.restype = c_int
+        lib.AT_SetEnumIndex.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_int]
+        lib.AT_SetEnumIndex.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_SetEnumString(AT_H Hndl, const AT_WC* Feature, const AT_WC* String);
-        lib.AT_SetEnumString.argtypes = [c_int, c_wchar_p, c_wchar_p]
-        lib.AT_SetEnumString.restype = c_int
+        lib.AT_SetEnumString.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_wchar_p]
+        lib.AT_SetEnumString.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetEnumIndex(AT_H Hndl, const AT_WC* Feature, int* Value);
-        lib.AT_GetEnumIndex.argtypes = [c_int, c_wchar_p, POINTER(c_int)]
-        lib.AT_GetEnumIndex.restype = c_int
+        lib.AT_GetEnumIndex.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_int)]
+        lib.AT_GetEnumIndex.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetEnumCount(AT_H Hndl,const  AT_WC* Feature, int* Count);
-        lib.AT_GetEnumCount.argtypes = [c_int, c_wchar_p, POINTER(c_int)]
-        lib.AT_GetEnumCount.restype = c_int
+        lib.AT_GetEnumCount.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_int)]
+        lib.AT_GetEnumCount.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_IsEnumIndexAvailable(AT_H Hndl, const AT_WC* Feature, int Index,
         # AT_BOOL* Available);
-        lib.AT_IsEnumIndexAvailable.argtypes = [c_int, c_wchar_p, c_int, POINTER(c_bool)]
-        lib.AT_IsEnumIndexAvailable.restype = c_int
+        lib.AT_IsEnumIndexAvailable.argtypes = [
+            ctypes.c_int,
+            ctypes.c_wchar_p,
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_bool),
+        ]
+        lib.AT_IsEnumIndexAvailable.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_IsEnumIndexImplemented(AT_H Hndl, const AT_WC* Feature, int Index,
         # AT_BOOL* Implemented);
-        lib.AT_IsEnumIndexImplemented.argtypes = [c_int, c_wchar_p, c_int, POINTER(c_bool)]
-        lib.AT_IsEnumIndexImplemented.restype = c_int
+        lib.AT_IsEnumIndexImplemented.argtypes = [
+            ctypes.c_int,
+            ctypes.c_wchar_p,
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_bool),
+        ]
+        lib.AT_IsEnumIndexImplemented.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetEnumStringByIndex(AT_H Hndl, const AT_WC* Feature, int Index,
         # AT_WC* String, int StringLength);
-        lib.AT_GetEnumStringByIndex.argtypes = [c_int, c_wchar_p, c_int, c_wchar_p, c_int]
-        lib.AT_GetEnumStringByIndex.restype = c_int
+        lib.AT_GetEnumStringByIndex.argtypes = [
+            ctypes.c_int,
+            ctypes.c_wchar_p,
+            ctypes.c_int,
+            ctypes.c_wchar_p,
+            ctypes.c_int,
+        ]
+        lib.AT_GetEnumStringByIndex.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_Command(AT_H Hndl, const AT_WC* Feature);
-        lib.AT_Command.argtypes = [c_int, c_wchar_p]
-        lib.AT_Command.restype = c_int
+        lib.AT_Command.argtypes = [ctypes.c_int, ctypes.c_wchar_p]
+        lib.AT_Command.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_SetString(AT_H Hndl, const AT_WC* Feature,
         # const AT_WC* String);
-        lib.AT_SetString.argtypes = [c_int, c_wchar_p, c_wchar_p]
-        lib.AT_SetString.restype = c_int
+        lib.AT_SetString.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_wchar_p]
+        lib.AT_SetString.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetString(AT_H Hndl, const AT_WC* Feature,
         # AT_WC* String, int StringLength);
-        lib.AT_GetString.argtypes = [c_int, c_wchar_p, c_wchar_p, c_int]
-        lib.AT_GetString.restype = c_int
+        lib.AT_GetString.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_int]
+        lib.AT_GetString.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_GetStringMaxLength(AT_H Hndl,
         # const AT_WC* Feature, int* MaxStringLength);
-        lib.AT_GetStringMaxLength.argtypes = [c_int, c_wchar_p, POINTER(c_int)]
-        lib.AT_GetStringMaxLength.restype = c_int
+        lib.AT_GetStringMaxLength.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_int)]
+        lib.AT_GetStringMaxLength.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_QueueBuffer(AT_H Hndl, AT_U8* Ptr, int PtrSize);
-        lib.AT_QueueBuffer.argtypes = [c_int, c_char_p, c_int]
-        lib.AT_QueueBuffer.restype = c_int
+        lib.AT_QueueBuffer.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int]
+        lib.AT_QueueBuffer.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_WaitBuffer(AT_H Hndl, AT_U8** Ptr, int* PtrSize,
         # unsigned int Timeout);
-        lib.AT_WaitBuffer.argtypes = [c_int, POINTER(c_char_p), POINTER(c_int), c_uint]
-        lib.AT_WaitBuffer.restype = c_int
+        lib.AT_WaitBuffer.argtypes = [
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_char_p),
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.c_uint,
+        ]
+        lib.AT_WaitBuffer.restype = ctypes.c_int
 
         # int AT_EXP_CONV AT_Flush(AT_H Hndl);
-        lib.AT_Flush.argtypes = [c_int]
-        lib.AT_Flush.restype = c_int
+        lib.AT_Flush.argtypes = [ctypes.c_int]
+        lib.AT_Flush.restype = ctypes.c_int
 
         self.lib = lib
-        self.intPtr = POINTER(c_int)
-        self.boolPtr = POINTER(c_bool)
-        self.longlongPtr = POINTER(c_longlong)
-        self.doublePtr = POINTER(c_double)
-        self.bufferPtr = POINTER(c_char_p)
+        self.intPtr = ctypes.POINTER(ctypes.c_int)
+        self.boolPtr = ctypes.POINTER(ctypes.c_bool)
+        self.longlongPtr = ctypes.POINTER(ctypes.c_longlong)
+        self.doublePtr = ctypes.POINTER(ctypes.c_double)
+        self.bufferPtr = ctypes.POINTER(ctypes.c_char_p)
 
     def initialiseLibrary(self):
         # int AT_EXP_CONV AT_InitialiseLibrary();
@@ -748,38 +773,38 @@ class AT:
     def waitBuffer(self, handle, buffer, timeout=60):
         # int AT_EXP_CONV AT_WaitBuffer(AT_H Hndl, AT_U8** Ptr,
         # int* PtrSize, unsigned int Timeout);
-        pointerSize = self._getIntPtr()
+        ctypes.POINTERSize = self._getIntPtr()
         bufferPtr = self._getBufferPtr(buffer)
-        result = self.lib.AT_WaitBuffer(handle, bufferPtr, pointerSize, timeout)
-        return self._toResultEnum(result), pointerSize[0]
+        result = self.lib.AT_WaitBuffer(handle, bufferPtr, ctypes.POINTERSize, timeout)
+        return self._toResultEnum(result), ctypes.POINTERSize[0]
 
     def flush(self, handle):
         # int AT_EXP_CONV AT_Flush(AT_H Hndl);
         return self._toResultEnum(self.lib.AT_Flush(handle))
 
     def _getIntPtr(self, defaultValue=0):
-        return self.intPtr(c_int(defaultValue))
+        return self.intPtr(ctypes.c_int(defaultValue))
 
     def _getBoolPtr(self, defaultValue=False):
-        return self.boolPtr(c_bool(defaultValue))
+        return self.boolPtr(ctypes.c_bool(defaultValue))
 
     def _getLongLongPtr(self, defaultValue=0):
-        return self.longlongPtr(c_longlong(defaultValue))
+        return self.longlongPtr(ctypes.c_longlong(defaultValue))
 
     def _getDoublePtr(self, defaultValue=0.0):
-        return self.doublePtr(c_double(defaultValue))
+        return self.doublePtr(ctypes.c_double(defaultValue))
 
     def _getBufferPtr(self, buffer):
         return self.bufferPtr(buffer)
 
     def _getUnicodeBuffer(self, size=128):
-        return create_unicode_buffer(size)
+        return ctypes.create_unicode_buffer(size)
 
     def _toResultEnum(self, result):
         return Results(result)
 
     def _getStringBuffer(self, size=128):
-        return create_string_buffer(size)
+        return ctypes.create_string_buffer(size)
 
 
 class ATError(Exception):
@@ -2248,7 +2273,7 @@ class ATZylaDevice(ATBase):
 
         Returns
         -------
-        c_char_p
+        ctypes.c_char_p
             The buffer added to the queue.
         """
         self._assertHandle()
@@ -2261,7 +2286,7 @@ class ATZylaDevice(ATBase):
 
         Parameters
         ----------
-        buffer : c_char_p
+        buffer : ctypes.c_char_p
             The buffer that has already been added to the queue.
 
         Returns

@@ -1,7 +1,6 @@
 import enum
 import ctypes
 import pathlib
-from ctypes import c_int, POINTER
 
 # from ctypes.util import find_library
 
@@ -30,35 +29,35 @@ class EFW:
         )
 
         # EFW_API int EFWGetNum();
-        lib.EFWGetNum.restype = c_int
+        lib.EFWGetNum.restype = ctypes.c_int
 
         # EFW_API int EFWGetProductIDs(int* pPIDs);
-        lib.EFWGetProductIDs.argtypes = [c_int * 16]
-        lib.EFWGetProductIDs.restype = c_int
+        lib.EFWGetProductIDs.argtypes = [ctypes.c_int * 16]
+        lib.EFWGetProductIDs.restype = ctypes.c_int
 
         # EFW_API EFW_ERROR_CODE EFWGetID(int index, int* ID);
-        lib.EFWGetID.argtypes = [c_int, POINTER(c_int)]
-        lib.EFWGetID.restype = c_int
+        lib.EFWGetID.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
+        lib.EFWGetID.restype = ctypes.c_int
 
         # EFW_API	EFW_ERROR_CODE EFWOpen(int ID);
-        lib.EFWOpen.argtypes = [c_int]
-        lib.EFWOpen.restype = c_int
+        lib.EFWOpen.argtypes = [ctypes.c_int]
+        lib.EFWOpen.restype = ctypes.c_int
 
         # EFW_API	EFW_ERROR_CODE EFWGetPosition(int ID, int *pPosition);
-        lib.EFWGetPosition.argtypes = [c_int, POINTER(c_int)]
-        lib.EFWGetPosition.restype = c_int
+        lib.EFWGetPosition.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
+        lib.EFWGetPosition.restype = ctypes.c_int
 
         # EFW_API	EFW_ERROR_CODE EFWSetPosition(int ID, int Position);
-        lib.EFWSetPosition.argtypes = [c_int, c_int]
-        lib.EFWSetPosition.restype = c_int
+        lib.EFWSetPosition.argtypes = [ctypes.c_int, ctypes.c_int]
+        lib.EFWSetPosition.restype = ctypes.c_int
 
         # EFW_API	EFW_ERROR_CODE EFWClose(int ID);
-        lib.EFWClose.argtypes = [c_int]
-        lib.EFWClose.restype = c_int
+        lib.EFWClose.argtypes = [ctypes.c_int]
+        lib.EFWClose.restype = ctypes.c_int
 
         self.udev = udev
         self.lib = lib
-        self.intPtr = POINTER(c_int)
+        self.intPtr = ctypes.POINTER(ctypes.c_int)
 
     def getNumberOfDevices(self):
         # EFW_API int EFWGetNum();
@@ -66,7 +65,7 @@ class EFW:
 
     def getProductIDs(self):
         # EFW_API int EFWGetProductIDs(int* pPIDs);
-        dataType = c_int * 16
+        dataType = ctypes.c_int * 16
         productIDs = dataType(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
         count = self.lib.EFWGetProductIDs(productIDs)
         return [productIDs[i] for i in range(count)]
@@ -99,7 +98,7 @@ class EFW:
         return self._toResultEnum(result)
 
     def _getIntPtr(self, defaultValue=0):
-        return self.intPtr(c_int(defaultValue))
+        return self.intPtr(ctypes.c_int(defaultValue))
 
     def _toResultEnum(self, result):
         return Results(result)
