@@ -2,14 +2,24 @@
 import asyncio
 import argparse
 
-from lsst.ts.GenericCamera import GenericCameraCsc, version
+from lsst.ts.GenericCamera import GenericCameraCsc
 
 parser = argparse.ArgumentParser(f"Start the GenericCamera CSC")
-parser.add_argument("--version", action="version", version=version.__version__)
-parser.add_argument("-v", "--verbose", dest="verbose", action='count', default=0,
-                    help="Set the verbosity for console logging.")
-parser.add_argument("-i", "--index", type=int, default=1,
-                    help="SAL index; use the default value unless you sure you know what you are doing")
+parser.add_argument(
+    "-v",
+    "--verbose",
+    dest="verbose",
+    action="count",
+    default=0,
+    help="Set the verbosity for console logging.",
+)
+parser.add_argument(
+    "-i",
+    "--index",
+    type=int,
+    default=1,
+    help="SAL index; use the default value unless you sure you know what you are doing",
+)
 
 args = parser.parse_args()
 
