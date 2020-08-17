@@ -161,3 +161,4 @@ class CanonCamera(genericcamera.GenericCamera):
             "COOLER_ON": False,
         }
         image = exposure.Exposure(buffer_array, self.width, self.height, tags)
+        return image
