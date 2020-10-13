@@ -21,7 +21,7 @@ setup(
     package_dir={"": "python"},
     packages=find_namespace_packages(where="python"),
     package_data={"": ["*.rst", "*.yaml"]},
-    scripts=["bin.src/run_genericcamera.py", "bin.src/run_liveviewui.py"],
+    scripts=["bin/run_genericcamera.py", "bin/run_liveviewui.py"],
     tests_require=tests_require,
     extras_require={"dev": dev_requires},
     license="GPL",

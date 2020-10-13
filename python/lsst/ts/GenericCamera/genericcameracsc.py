@@ -42,9 +42,23 @@ state.
 
 
 class GenericCameraCsc(salobj.ConfigurableCsc):
-    def __init__(self, index, config_dir=None, initial_state=salobj.State.STANDBY, simulation_mode=0):
 
-        schema_path = pathlib.Path(__file__).resolve().parents[4].joinpath("schema", "GenericCamera.yaml")
+    valid_simulation_modes = (0, 1)
+
+    def __init__(
+        self,
+        index,
+        config_dir=None,
+        initial_state=salobj.State.STANDBY,
+        simulation_mode=0,
+    ):
+
+        schema_path = (
+            pathlib.Path(__file__)
+            .resolve()
+            .parents[4]
+            .joinpath("schema", "GenericCamera.yaml")
+        )
 
         super().__init__(
             "GenericCamera",
@@ -56,7 +70,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         )
 
         ch = logging.StreamHandler()
-        console_format = "%(asctime)s - %(levelname)s - %(name)s [%(filename)s:%(lineno)d]: " "%(message)s"
+        console_format = (
+            "%(asctime)s - %(levelname)s - %(name)s [%(filename)s:%(lineno)d]: "
+            "%(message)s"
+        )
         ch.setFormatter(logging.Formatter(console_format))
         self.log.addHandler(ch)
 
@@ -64,13 +81,17 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.drivers = {}
         for member in inspect.getmembers(driver):
             is_class = inspect.isclass(member[1])
-            is_subclass = False if not is_class else issubclass(member[1], driver.GenericCamera)
+            is_subclass = (
+                False if not is_class else issubclass(member[1], driver.GenericCamera)
+            )
             not_gencam = member[1] is not driver.GenericCamera
             if is_class and is_subclass and not_gencam:
                 self.drivers[member[1].name()] = member[1]
 
         # Make sure all options in schema are valid
-        for camera in self.config_validator.final_validator.schema["properties"]["camera"]["enum"]:
+        for camera in self.config_validator.final_validator.schema["properties"][
+            "camera"
+        ]["enum"]:
             assert camera in self.drivers.keys(), (
                 f"{camera} is not a valid option, " f"must one of {self.drivers.keys()}"
             )
@@ -198,10 +219,15 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self._assert_notlive()
 
         if self.evt_roi.set(
-            topPixel=id_data.topPixel, leftPixel=id_data.leftPixel, width=id_data.width, height=id_data.height
+            topPixel=id_data.topPixel,
+            leftPixel=id_data.leftPixel,
+            width=id_data.width,
+            height=id_data.height,
         ):
             self.log.debug("setROI - Start")
-            self.camera.setROI(id_data.topPixel, id_data.leftPixel, id_data.width, id_data.height)
+            self.camera.setROI(
+                id_data.topPixel, id_data.leftPixel, id_data.width, id_data.height
+            )
             self.evt_roi.put()
             self.log.debug("setROI - End")
         else:
@@ -318,13 +344,20 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
             self.evt_startTakeImage.put()
             await self.camera.startTakeImage(
-                exposureTime, id_data.shutter, id_data.science, id_data.guide, id_data.wfs
+                exposureTime,
+                id_data.shutter,
+                id_data.science,
+                id_data.guide,
+                id_data.wfs,
             )
 
             for imageIndex in range(imagesInSequence):
                 timestamp = time.time()
                 imageName = self.fileNameFormat.format(
-                    timestamp=int(timestamp), name=imageSequenceName, index=imageIndex, total=imagesInSequence
+                    timestamp=int(timestamp),
+                    name=imageSequenceName,
+                    index=imageIndex,
+                    total=imagesInSequence,
                 )
                 if id_data.shutter:
                     self.evt_startShutterOpen.put()
@@ -425,7 +458,11 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             self.log.exception(e)
             await self.stop_liveview()
 
-            self.fault(code=LV_ERROR, report="Error in live view loop.", traceback=traceback.format_exc())
+            self.fault(
+                code=LV_ERROR,
+                report="Error in live view loop.",
+                traceback=traceback.format_exc(),
+            )
 
         self.isLive = False
         self.log.info("liveView_loop - End")

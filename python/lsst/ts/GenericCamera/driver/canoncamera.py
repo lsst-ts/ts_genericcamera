@@ -46,8 +46,7 @@ class CanonCamera(genericcamera.GenericCamera):
 
     @staticmethod
     def name():
-        """Set camera name.
-        """
+        """Set camera name."""
         return "Canon"
 
     def initialise(self, config):
@@ -116,8 +115,14 @@ class CanonCamera(genericcamera.GenericCamera):
         # config object needs to be obtained ...
         cfg = self.camera.get_config()
         # ... the config parameters need to be adjusted ...
-        iso = cfg.get_child_by_name("iso")
-        iso.set_value("100")
+        imageformat = cfg.get_child_by_name("imageformat")
+        imageformat.set_value("Large Fine JPEG")
+        eosremoterelease = cfg.get_child_by_name("eosremoterelease")
+        eosremoterelease.set_value("Immediate")
+        cancelautofocus = cfg.get_child_by_name("cancelautofocus")
+        cancelautofocus.set_value(0)
+        capturetarget = cfg.get_child_by_name("capturetarget")
+        capturetarget.set_value("Internal RAM")
         shutterspeed = cfg.get_child_by_name("shutterspeed")
         shutterspeed.set_value(str(expTime))
         # ... and the config needs to be written baqck to the camera
@@ -125,8 +130,7 @@ class CanonCamera(genericcamera.GenericCamera):
         await super().startTakeImage(expTime, shutter, science, guide, wfs)
 
     async def startIntegration(self):
-        """Start integrating.
-        """
+        """Start integrating."""
         # This starts the exposure while obtaining the path to the file on the
         # camera. The exposure will finish by itself because the camera
         # controls that.
@@ -134,8 +138,7 @@ class CanonCamera(genericcamera.GenericCamera):
         await super().startIntegration()
 
     async def endReadout(self):
-        """End reading out the image.
-        """
+        """End reading out the image."""
         # The image can be obtained by reading out the file_path variable in
         # which the path to the file on the camera was stored.
         camera_file = self.camera.file_get(self.file_path.folder, self.file_path.name, gp.GP_FILE_TYPE_NORMAL)
