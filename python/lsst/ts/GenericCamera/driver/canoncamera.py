@@ -115,33 +115,34 @@ class CanonCamera(genericcamera.GenericCamera):
         # config object needs to be obtained ...
         cfg = self.camera.get_config()
         # ... the config parameters need to be adjusted ...
-        imageformat = cfg.get_child_by_name("imageformat")
-        imageformat.set_value("Large Fine JPEG")
-        eosremoterelease = cfg.get_child_by_name("eosremoterelease")
-        eosremoterelease.set_value("Immediate")
-        cancelautofocus = cfg.get_child_by_name("cancelautofocus")
-        cancelautofocus.set_value(0)
-        capturetarget = cfg.get_child_by_name("capturetarget")
-        capturetarget.set_value("Internal RAM")
-        shutterspeed = cfg.get_child_by_name("shutterspeed")
-        shutterspeed.set_value(str(expTime))
+        cfg.get_child_by_name("imageformat").set_value("Large Fine JPEG")
+        cfg.get_child_by_name("eosremoterelease").set_value("Immediate")
+        cfg.get_child_by_name("cancelautofocus").set_value(0)
+        cfg.get_child_by_name("capturetarget").set_value("Internal RAM")
+        cfg.get_child_by_name("shutterspeed").set_value(str(expTime))
         # ... and the config needs to be written baqck to the camera
         self.camera.set_config(cfg, None)
         await super().startTakeImage(expTime, shutter, science, guide, wfs)
 
     async def startIntegration(self):
-        """Start integrating."""
-        # This starts the exposure while obtaining the path to the file on the
-        # camera. The exposure will finish by itself because the camera
-        # controls that.
+        """Start integrating.
+
+        This starts the exposure while obtaining the path to the file on the
+        camera. The exposure will finish by itself because the camera
+        controls that.
+        """
         self.file_path = self.camera.capture(gp.GP_CAPTURE_IMAGE)
         await super().startIntegration()
 
     async def endReadout(self):
-        """End reading out the image."""
-        # The image can be obtained by reading out the file_path variable in
-        # which the path to the file on the camera was stored.
-        camera_file = self.camera.file_get(self.file_path.folder, self.file_path.name, gp.GP_FILE_TYPE_NORMAL)
+        """End reading out the image.
+
+        The image can be obtained by reading out the file_path variable in
+        which the path to the file on the camera was stored.
+        """
+        camera_file = self.camera.file_get(
+            self.file_path.folder, self.file_path.name, gp.GP_FILE_TYPE_NORMAL
+        )
         # Load the image data
         file_data = camera_file.get_data_and_size()
         # Convert to a numpy array
