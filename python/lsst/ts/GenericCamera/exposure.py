@@ -30,6 +30,7 @@ from PIL import Image
 class Exposure:
     """This class is used to define an exposure. It provides methods
     for manipulating an exposure and saving it to the local disk."""
+
     def __init__(self, buffer, width, height, tags, dtype=np.uint16, isJPEG=False):
         """Constructs an exposure object.
 
@@ -86,7 +87,7 @@ class Exposure:
 
         if self.isJPEG:
             img = Image.open(io.BytesIO(self.buffer))
-            img.save(filePath, 'jpeg')
+            img.save(filePath, "jpeg")
         else:
             img = fits.PrimaryHDU(self.buffer)
             hdul = fits.HDUList([img])

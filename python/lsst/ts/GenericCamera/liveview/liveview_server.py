@@ -1,5 +1,26 @@
 #!/usr/bin/env python3
 
+# This file is part of ts_GenericCamera.
+#
+# Developed for the LSST Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import argparse
 import os
 import time
@@ -17,9 +38,13 @@ from lsst.ts.GenericCamera import AsyncLiveViewClient
 
 parser = argparse.ArgumentParser(description="Start the PyImageStream server.")
 
-parser.add_argument("--s-port", default=8888, type=int, help="Web server port (default: 8888)")
+parser.add_argument(
+    "--s-port", default=8888, type=int, help="Web server port (default: 8888)"
+)
 parser.add_argument("--s-host", default="0.0.0.0", type=str, help="Host")
-parser.add_argument("--c-port", default=8888, type=int, help="Web server port (default: 8888)")
+parser.add_argument(
+    "--c-port", default=8888, type=int, help="Web server port (default: 8888)"
+)
 parser.add_argument("--c-host", default="0.0.0.0", type=str, help="Host")
 
 
@@ -51,10 +76,13 @@ class MJPEGHandler(tornado.web.RequestHandler):
     def get(self):
         ioloop = tornado.ioloop.IOLoop.current()
         self.set_header(
-            "Cache-Control", "no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0"
+            "Cache-Control",
+            "no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0",
         )
         self.set_header("Connection", "close")
-        self.set_header("Content-Type", "multipart/x-mixed-replace;boundary=--boundarydonotcross")
+        self.set_header(
+            "Content-Type", "multipart/x-mixed-replace;boundary=--boundarydonotcross"
+        )
         self.set_header("Expires", "Mon, 3 Jan 2000 12:34:56 GMT")
         self.set_header("Pragma", "no-cache")
         self.served_image_timestamp = time.time()
@@ -79,7 +107,11 @@ static_path = script_path + "/static/"
 app = tornado.web.Application(
     [
         (r"/livestream", MJPEGHandler),
-        (r"/(.*)", tornado.web.StaticFileHandler, {"path": static_path, "default_filename": "index.html"}),
+        (
+            r"/(.*)",
+            tornado.web.StaticFileHandler,
+            {"path": static_path, "default_filename": "index.html"},
+        ),
     ]
 )
 app.listen(args.s_port)
