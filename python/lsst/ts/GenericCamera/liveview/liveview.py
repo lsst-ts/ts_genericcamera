@@ -1,8 +1,8 @@
 # This file is part of ts_GenericCamera.
 #
-# Developed for the LSST Telescope and Site Systems.
-# This product includes software developed by the LSST Project
-# (https://www.lsst.org).
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the Vera Rubin Observatory
+# Project (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
 #
@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['LiveViewServer', 'LiveViewClient', 'AsyncLiveViewClient']
+__all__ = ["LiveViewServer", "LiveViewClient", "AsyncLiveViewClient"]
 
 import asyncio
 import socket
@@ -71,9 +71,9 @@ class LiveViewServer:
         self.log.info("Starting TCP/IP server...")
         self.broad_cast = True
 
-        self._server = await asyncio.start_server(self.broadcast_loop,
-                                                  host=self.host,
-                                                  port=self.port)
+        self._server = await asyncio.start_server(
+            self.broadcast_loop, host=self.host, port=self.port
+        )
 
     async def stop(self):
         """Stop the TCP/IP server.
@@ -99,14 +99,14 @@ class LiveViewServer:
 
             if self._exposure is not None:
                 self.log.debug(f"Sending image... {self._exposure.buffer}")
-                writer.write(f"[START]\r\n".encode())
+                writer.write("[START]\r\n".encode())
                 writer.write(f"{self._exposure.width}\r\n".encode())
                 writer.write(f"{self._exposure.height}\r\n".encode())
                 writer.write(f"{int(self._exposure.isJPEG)}\r\n".encode())
                 buffer = self._exposure.buffer.tobytes()
                 writer.write(f"{len(buffer)}\r\n".encode())
                 writer.write(buffer)
-                writer.write(f"[END]\r\n".encode())
+                writer.write("[END]\r\n".encode())
                 await writer.drain()
             else:
                 self.log.debug("No image to send")
@@ -142,6 +142,7 @@ class LiveViewClient:
     a live view server to receive live JPEG images from a
     camera.
     """
+
     def __init__(self, ip, port):
         """Constructs a live view client to receive data from
         a live view server.
@@ -180,15 +181,15 @@ class LiveViewClient:
             The exposure received from the LiveViewServer."""
         self._assertConnected()
         try:
-            sync = int.from_bytes(self.sock.recv(4), byteorder='big')
+            sync = int.from_bytes(self.sock.recv(4), byteorder="big")
             while True:
                 if sync == 0xCAFEF00D:
-                    width = int.from_bytes(self.sock.recv(4), byteorder='big')
-                    height = int.from_bytes(self.sock.recv(4), byteorder='big')
-                    isJPEG = bool(int.from_bytes(self.sock.recv(4), byteorder='big'))
-                    length = int.from_bytes(self.sock.recv(4), byteorder='big')
+                    width = int.from_bytes(self.sock.recv(4), byteorder="big")
+                    height = int.from_bytes(self.sock.recv(4), byteorder="big")
+                    isJPEG = bool(int.from_bytes(self.sock.recv(4), byteorder="big"))
+                    length = int.from_bytes(self.sock.recv(4), byteorder="big")
                     if length > 0:
-                        imgBuffer = b''
+                        imgBuffer = b""
                         while len(imgBuffer) < length:
                             packet = self.sock.recv(length - len(imgBuffer))
                             if not packet:
@@ -196,9 +197,11 @@ class LiveViewClient:
                             imgBuffer += packet
                         if len(imgBuffer) == length:
                             print("receiveExposure - return")
-                            return exposure.Exposure(imgBuffer, width, height, {}, isJPEG)
+                            return exposure.Exposure(
+                                imgBuffer, width, height, {}, isJPEG
+                            )
                 else:
-                    value = int.from_bytes(self.sock.recv(1), byteorder='big')
+                    value = int.from_bytes(self.sock.recv(1), byteorder="big")
                     sync = ((sync & 0x00FFFFFF) << 8) | value
         except Exception as e:
             self.isConnected = False
@@ -229,7 +232,7 @@ class AsyncLiveViewClient:
 
         self.host = ip
         self.port = port
-        self.connection_timeout = 30.
+        self.connection_timeout = 30.0
 
         self.connect_task = None
         self.reader = None
@@ -239,8 +242,9 @@ class AsyncLiveViewClient:
 
     async def start(self):
         self.connect_task = asyncio.open_connection(host=self.host, port=self.port)
-        self.reader, self.writer = await asyncio.wait_for(self.connect_task,
-                                                          timeout=self.connection_timeout)
+        self.reader, self.writer = await asyncio.wait_for(
+            self.connect_task, timeout=self.connection_timeout
+        )
 
     async def stop(self):
         """ Stop this connection to the LiveViewServer.
@@ -276,33 +280,40 @@ class AsyncLiveViewClient:
 
             read_bytes = await self.reader.readline()
 
-            if read_bytes.rstrip().endswith(b'[START]'):
+            if read_bytes.rstrip().endswith(b"[START]"):
 
                 self.log.debug(f"Image started... Got {read_bytes}")
 
-                read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.)
+                read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.0)
                 width = int(read_bytes.decode().rstrip())
 
-                read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.)
+                read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.0)
                 height = int(read_bytes.decode().rstrip())
 
-                read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.)
+                read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.0)
                 isJPEG = bool(int(read_bytes.decode().rstrip()))
 
-                read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.)
+                read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.0)
                 length = int(read_bytes.decode().rstrip())
 
-                read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.)
+                read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.0)
                 buffer = read_bytes
 
                 while len(buffer) < length:
-                    read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.)
+                    read_bytes = await asyncio.wait_for(
+                        self.reader.readline(), timeout=2.0
+                    )
                     buffer += read_bytes
 
                 dtype = np.uint8 if isJPEG else np.uint16
 
-                return exposure.Exposure(np.frombuffer(buffer.rstrip()[:-5], dtype=dtype),
-                                         width, height, {}, isJPEG)
+                return exposure.Exposure(
+                    np.frombuffer(buffer.rstrip()[:-5], dtype=dtype),
+                    width,
+                    height,
+                    {},
+                    isJPEG,
+                )
             else:
                 self.log.debug(f"Got {read_bytes}. Expecting '>'.")
 

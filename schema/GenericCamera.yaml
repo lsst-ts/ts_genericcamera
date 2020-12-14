@@ -117,10 +117,13 @@ allOf:
         type: number
       width:
         type: number
-        default: 6720
+        default: 6744
       height:
         type: number
-        default: 4480
+        default: 4502
+      iso:
+        type: number
+        default: 200
       ImageType:
         default: RAW
         type: string

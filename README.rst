@@ -17,3 +17,9 @@ Assuming you have the basic LSST DM stack installed you can do the following, fr
   This requires ``documenteer``; see `building single package docs`_ for installation instructions.
 
 .. _building single package docs: https://developer.lsst.io/stack/building-single-package-docs.html
+
+This code uses ``pre-commit`` to maintain ``black`` formatting and ``flake8`` compliance.
+To enable this:
+
+* Run ``pre-commit install`` once.
+* If directed, run ``git config --unset-all core.hooksPath`` once.

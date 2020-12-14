@@ -25,42 +25,6 @@ pipeline {
                 }
             }
         }
-        stage("Checkout sal") {
-            steps {
-                script {
-                    sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repos/ts_sal && /home/saluser/.checkout_repo.sh \${work_branches} && git pull\"
-                    """
-                }
-            }
-        }
-        stage("Checkout salobj") {
-            steps {
-                script {
-                    sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repos/ts_salobj && /home/saluser/.checkout_repo.sh \${work_branches} && git pull\"
-                    """
-                }
-            }
-        }
-        stage("Checkout xml") {
-            steps {
-                script {
-                    sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repos/ts_xml && /home/saluser/.checkout_repo.sh \${work_branches} && git pull\"
-                    """
-                }
-            }
-        }
-        stage("Checkout IDL") {
-            steps {
-                script {
-                    sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repos/ts_idl && /home/saluser/.checkout_repo.sh \${work_branches} && git pull\"
-                    """
-                }
-            }
-        }
         stage("Build IDL files") {
             steps {
                 script {
@@ -89,16 +53,6 @@ pipeline {
                 "cd /home/saluser/repo/ && " +
                 "setup ts_GenericCamera -t saluser && " +
                 "package-docs build\""
-            script {
-                def RESULT = sh returnStatus: true, script: "docker exec -u saluser \${container_name} sh -c \"" +
-                    "source ~/.setup.sh && " +
-                    "cd /home/saluser/repo/ && " +
-                    "setup ts_GenericCamera -t saluser && " +
-                    "ltd upload --product ts-dome --git-ref \${GIT_BRANCH} --dir doc/_build/html\""
-                if ( RESULT != 0 ) {
-                    unstable("Failed to push documentation.")
-                }
-             }
          }
         cleanup {
             sh """

@@ -1,8 +1,8 @@
 # This file is part of ts_GenericCamera.
 #
-# Developed for the LSST Telescope and Site Systems.
-# This product includes software developed by the LSST Project
-# (https://www.lsst.org).
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the Vera Rubin Observatory
+# Project (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
 #
@@ -46,7 +46,9 @@ class SimulatorCamera(genericcamera.GenericCamera):
         self.shutter_time = 0.5  # Time to open/close shutter
         self.shutter_steps = 10  # steps on opening shutter
         self.use_shutter = False
-        self.shutter_state = 0  # State of the shutter 0 = Closed, self.shutter_steps = Open
+        self.shutter_state = (
+            0  # State of the shutter 0 = Closed, self.shutter_steps = Open
+        )
 
         self.exposure_time = 0.001
         self.exposure_steps = 10  # steps on exposing
@@ -260,7 +262,9 @@ class SimulatorCamera(genericcamera.GenericCamera):
         async with self.isbusy_lock:
             self.exposure_task = asyncio.ensure_future(self.simulate_exposure())
 
-        await super().startTakeImage(expTime=expTime, shutter=shutter, science=science, guide=guide, wfs=wfs)
+        await super().startTakeImage(
+            expTime=expTime, shutter=shutter, science=science, guide=guide, wfs=wfs
+        )
 
     async def endTakeImage(self):
         """End take image or images.
@@ -349,7 +353,9 @@ class SimulatorCamera(genericcamera.GenericCamera):
         if self.shutter_state == self.shutter_steps:
             raise RuntimeError("Shutter already open.")
         elif self.shutter_state != 0:
-            raise RuntimeError(f"Shutter state is {self.shutter_state}. " f"Expected 0.")
+            raise RuntimeError(
+                f"Shutter state is {self.shutter_state}. " f"Expected 0."
+            )
 
         self.shutter_open_start_event.set()
 
@@ -397,13 +403,15 @@ class SimulatorCamera(genericcamera.GenericCamera):
 
             while self.exposure_state < self.exposure_steps:
                 self.exposure_state += 1
-                self.log.debug(f"Exposure steps {self.exposure_state}/{self.exposure_steps}.")
+                self.log.debug(
+                    f"Exposure steps {self.exposure_state}/{self.exposure_steps}."
+                )
                 await asyncio.sleep(self.exposure_time / self.exposure_steps)
 
             self.exposure_finish_event.set()
 
         else:
-            self.log.debug(f"Taking zero second exposure.")
+            self.log.debug("Taking zero second exposure.")
             self.exposure_start_event.set()
             # imageByteCount = self.width * self.height * self.bytesPerPixel
             self.imageBuffer = np.zeros(self.width * self.height, dtype=np.uint16)
@@ -418,7 +426,8 @@ class SimulatorCamera(genericcamera.GenericCamera):
             raise RuntimeError("Ongoing readout!")
         elif not self.exposure_state == self.exposure_steps:
             raise RuntimeError(
-                f"Exposure not completed! State {self.exposure_state}, " f"expected {self.exposure_steps}."
+                f"Exposure not completed! State {self.exposure_state}, "
+                f"expected {self.exposure_steps}."
             )
 
         self.readout_start_event.set()

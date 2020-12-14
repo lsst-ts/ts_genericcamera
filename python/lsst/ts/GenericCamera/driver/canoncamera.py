@@ -1,8 +1,8 @@
 # This file is part of ts_GenericCamera.
 #
-# Developed for the LSST Telescope and Site Systems.
-# This product includes software developed by the LSST Project
-# (https://www.lsst.org).
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the Vera Rubin Observatory
+# Project (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
 #
@@ -26,7 +26,7 @@ from . import genericcamera
 
 import gphoto2 as gp
 import numpy as np
-from PIL import Image
+import rawpy
 
 
 class CanonCamera(genericcamera.GenericCamera):
@@ -38,6 +38,8 @@ class CanonCamera(genericcamera.GenericCamera):
         self.currentImageType = None
         self.width = None
         self.height = None
+        self.iso = None
+
         self.camera = None
         self.exposure_time = None
 
@@ -62,6 +64,7 @@ class CanonCamera(genericcamera.GenericCamera):
         self.currentImageType = self.normalImageType
         self.width = config.width
         self.height = config.height
+        self.iso = config.iso
 
         # Initialize the camera. If not camera is detected then an Exception
         # will be raised.
@@ -98,28 +101,33 @@ class CanonCamera(genericcamera.GenericCamera):
 
         Parameters
         ----------
-        expTime : float
-            The exposure time in seconds.
-        shutter : bool
+        expTime : `float`
+            The exposure time in seconds. If the value is at least 1 second
+            then it gets rounded down to the nearest second since Canon cameras
+            don't support floating point exposure times larger than or equal to
+            1 second.
+        shutter : `bool`
             Should the shutter be opened?
-        science : bool
+        science : `bool`
             Should the science/main sensor be used?
-        guide : bool
+        guide : `bool`
             Should guider sensor be used?
-        wfs : bool
+        wfs : `bool`
             Should wave front sensor be used?
         """
         # Store the exposure time for later use
+        if expTime >= 1:
+            expTime = int(expTime)
         self.exposure_time = expTime
         # In order to be able to update the cameraq config via GPhoto, the
         # config object needs to be obtained ...
         cfg = self.camera.get_config()
         # ... the config parameters need to be adjusted ...
-        cfg.get_child_by_name("imageformat").set_value("Large Fine JPEG")
-        cfg.get_child_by_name("eosremoterelease").set_value("Immediate")
-        cfg.get_child_by_name("cancelautofocus").set_value(0)
-        cfg.get_child_by_name("capturetarget").set_value("Internal RAM")
-        cfg.get_child_by_name("shutterspeed").set_value(str(expTime))
+        cfg.get_child_by_name("focusmode").set_value("Manual")
+        cfg.get_child_by_name("imageformat").set_value(self.normalImageType)
+        cfg.get_child_by_name("iso").set_value(str(self.iso))
+        cfg.get_child_by_name("picturestyle").set_value("Standard")
+        cfg.get_child_by_name("shutterspeed").set_value(str(self.exposure_time))
         # ... and the config needs to be written baqck to the camera
         self.camera.set_config(cfg, None)
         await super().startTakeImage(expTime, shutter, science, guide, wfs)
@@ -145,24 +153,33 @@ class CanonCamera(genericcamera.GenericCamera):
         )
         # Load the image data
         file_data = camera_file.get_data_and_size()
+
         # Convert to a numpy array
-        image = Image.open(io.BytesIO(file_data))
-        buffer = image.tobytes()
-        buffer_array = np.frombuffer(buffer, dtype=np.uint16)
-        # Set up the tags for the exposure. The temperature can be read from
-        # the exif data but I don't have that working yet because it involves
-        # more native libraries to be installed.
+        raw = rawpy.RawPy()
+        raw.open_buffer(io.BytesIO(file_data))
+        raw.unpack()
+        rgb = raw.postprocess(
+            no_auto_bright=True, use_auto_wb=False, gamma=(1, 1), output_bps=16
+        )
+        # Use luminosity conversion to get 16 bit B/W image. See
+        # https://stackoverflow.com/a/51571053
+        luminance = np.dot(rgb[..., :3], [0.299, 0.587, 0.114])
+
+        # Remove the image from the camera
+        del camera_file
+        raw.close()
+
+        # Set up the tags for the exposure. Unfortunately no temperature data
+        # are available with this camera.
         tags = {
             "TOP": 0,
             "LEFT": 0,
             "WIDTH": self.width,
             "HEIGHT": self.height,
-            "EXPOSURE": (self.exposure_time / 1000000.0),
-            "OFFSET": 0,
-            "TEMPERATURE": -99,
-            "COOLER_POWER_PERCENTAGE": 0,
-            "TARGET_TEMPERATURE": -99,
-            "COOLER_ON": False,
+            "EXPOSURE": self.exposure_time,
+            "ISO": self.iso,
         }
-        image = exposure.Exposure(buffer_array, self.width, self.height, tags)
+        image = exposure.Exposure(
+            luminance, self.width, self.height, tags, isJPEG=False
+        )
         return image

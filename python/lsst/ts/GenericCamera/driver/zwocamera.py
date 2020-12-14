@@ -1,8 +1,8 @@
 # This file is part of ts_GenericCamera.
 #
-# Developed for the LSST Telescope and Site Systems.
-# This product includes software developed by the LSST Project
-# (https://www.lsst.org).
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the Vera Rubin Observatory
+# Project (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
 #
@@ -149,7 +149,12 @@ class ASICamera(genericcamera.GenericCamera):
         """Sets the region of interest to the whole sensor.
         """
         info = self.dev.getCameraInfo()
-        self.setROI(0, 0, int(info.MaxWidth / self.binValue), int(info.MaxHeight / self.binValue))
+        self.setROI(
+            0,
+            0,
+            int(info.MaxWidth / self.binValue),
+            int(info.MaxHeight / self.binValue),
+        )
 
     def startLiveView(self):
         """Configure the camera for live view.
@@ -216,8 +221,12 @@ class ASICamera(genericcamera.GenericCamera):
         exposureTime, auto = self.dev.getControlValue(ASIControlType.Exposure)
         offset, auto = self.dev.getControlValue(ASIControlType.Offset)
         temperature, auto = self.dev.getControlValue(ASIControlType.Temperature)
-        coolerPowerPercentage, auto = self.dev.getControlValue(ASIControlType.CoolerPowerPercentage)
-        targetTemperature, auto = self.dev.getControlValue(ASIControlType.TargetTemperature)
+        coolerPowerPercentage, auto = self.dev.getControlValue(
+            ASIControlType.CoolerPowerPercentage
+        )
+        targetTemperature, auto = self.dev.getControlValue(
+            ASIControlType.TargetTemperature
+        )
         coolerOn, auto = self.dev.getControlValue(ASIControlType.CoolerOn)
         top, left, width, height = self.getROI()
         tags = {
@@ -420,7 +429,9 @@ class ASIIDCtypes(ctypes.Structure):
 
 class ASISupportedMode:
     def __init__(self, mode):
-        self.SupportedCameraMode = [ASICameraMode(mode.SupportedCameraMode[i]) for i in range(16)]
+        self.SupportedCameraMode = [
+            ASICameraMode(mode.SupportedCameraMode[i]) for i in range(16)
+        ]
 
 
 class ASISupportedModeCtypes(ctypes.Structure):
@@ -429,7 +440,9 @@ class ASISupportedModeCtypes(ctypes.Structure):
 
 class ASI:
     def __init__(self):
-        lib = ctypes.CDLL(pathlib.Path(__file__).resolve().parent.joinpath("libASICamera2.so"))
+        lib = ctypes.CDLL(
+            pathlib.Path(__file__).resolve().parent.joinpath("libASICamera2.so")
+        )
 
         # ASICAMERA_API  int ASIGetNumOfConnectedCameras();
         lib.ASIGetNumOfConnectedCameras.restype = ctypes.c_int
@@ -440,12 +453,18 @@ class ASI:
 
         # ASICAMERA_API ASI_ERROR_CODE ASIGetCameraProperty(ASI_CAMERA_INFO *pASICameraInfo,
         # int iCameraIndex);
-        lib.ASIGetCameraProperty.argtypes = [ctypes.POINTER(ASICameraInfoCtypes), ctypes.c_int]
+        lib.ASIGetCameraProperty.argtypes = [
+            ctypes.POINTER(ASICameraInfoCtypes),
+            ctypes.c_int,
+        ]
         lib.ASIGetCameraProperty.restype = ctypes.c_int
 
         # ASICAMERA_API ASI_ERROR_CODE ASIGetCameraPropertyByID(int iCameraID,
         # ASI_CAMERA_INFO *pASICameraInfo);
-        lib.ASIGetCameraPropertyByID.argtypes = [ctypes.c_int, ctypes.POINTER(ASICameraInfoCtypes)]
+        lib.ASIGetCameraPropertyByID.argtypes = [
+            ctypes.c_int,
+            ctypes.POINTER(ASICameraInfoCtypes),
+        ]
         lib.ASIGetCameraPropertyByID.restype = ctypes.c_int
 
         # ASICAMERA_API  ASI_ERROR_CODE ASIOpenCamera(int iCameraID);
@@ -467,7 +486,11 @@ class ASI:
 
         # ASICAMERA_API ASI_ERROR_CODE ASIGetControlCaps(int iCameraID,
         # int iControlIndex, ASI_CONTROL_CAPS * pControlCaps);
-        lib.ASIGetControlCaps.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ASIControlCapsCtypes)]
+        lib.ASIGetControlCaps.argtypes = [
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.POINTER(ASIControlCapsCtypes),
+        ]
         lib.ASIGetControlCaps.restype = ctypes.c_int
 
         # ASICAMERA_API ASI_ERROR_CODE ASIGetControlValue(int  iCameraID,
@@ -482,12 +505,23 @@ class ASI:
 
         # ASICAMERA_API ASI_ERROR_CODE ASISetControlValue(int  iCameraID,
         # ASI_CONTROL_TYPE  ControlType, long lValue, ASI_BOOL bAuto);
-        lib.ASISetControlValue.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_long, ctypes.c_int]
+        lib.ASISetControlValue.argtypes = [
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_long,
+            ctypes.c_int,
+        ]
         lib.ASISetControlValue.restype = ctypes.c_int
 
         # ASICAMERA_API  ASI_ERROR_CODE ASISetROIFormat(int iCameraID,
         # int iWidth, int iHeight,  int iBin, ASI_IMG_TYPE Img_type);
-        lib.ASISetROIFormat.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        lib.ASISetROIFormat.argtypes = [
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
         lib.ASISetROIFormat.restype = ctypes.c_int
 
         # ASICAMERA_API  ASI_ERROR_CODE ASIGetROIFormat(int iCameraID,
@@ -539,7 +573,12 @@ class ASI:
 
         # ASICAMERA_API  ASI_ERROR_CODE ASIGetVideoData(int iCameraID,
         # unsigned char* pBuffer, long lBuffSize, int iWaitms);
-        lib.ASIGetVideoData.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_long, ctypes.c_int]
+        lib.ASIGetVideoData.argtypes = [
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_long,
+            ctypes.c_int,
+        ]
         lib.ASIGetVideoData.restype = ctypes.c_int
 
         # ASICAMERA_API ASI_ERROR_CODE ASIPulseGuideOn(int iCameraID,
@@ -596,7 +635,10 @@ class ASI:
 
         # ASICAMERA_API ASI_ERROR_CODE  ASIGetCameraSupportMode(int iCameraID,
         # ASI_SUPPORTED_MODE* pSupportedMode);
-        lib.ASIGetCameraSupportMode.argtypes = [ctypes.c_int, ctypes.POINTER(ASISupportedModeCtypes)]
+        lib.ASIGetCameraSupportMode.argtypes = [
+            ctypes.c_int,
+            ctypes.POINTER(ASISupportedModeCtypes),
+        ]
         lib.ASIGetCameraSupportMode.restype = ctypes.c_int
 
         # ASICAMERA_API ASI_ERROR_CODE  ASIGetCameraMode(int iCameraID, ASI_CAMERA_MODE* mode);
@@ -802,7 +844,9 @@ class ASI:
         offsetUnityGain = self._getIntPtr()
         gainLowestRN = self._getIntPtr()
         offsetLowestRN = self._getIntPtr()
-        result = self.lib.ASIGetGainOffset(id, offsetHighestDR, offsetUnityGain, gainLowestRN, offsetLowestRN)
+        result = self.lib.ASIGetGainOffset(
+            id, offsetHighestDR, offsetUnityGain, gainLowestRN, offsetLowestRN
+        )
         return (
             self._toResultEnum(result),
             offsetHighestDR[0],
@@ -1064,7 +1108,9 @@ class ASIDevice(ASIBase):
         auto : bool
             True if the control should be set automatically."""
         self._assertHandle()
-        result = self.asi.setControlValue(self.handle, controlType.value, value, self.boolToInt(auto))
+        result = self.asi.setControlValue(
+            self.handle, controlType.value, value, self.boolToInt(auto)
+        )
         self._raiseIfBad(result)
 
     def setROI(self, width, height, bin, imgType: ASIImageType):
@@ -1295,9 +1341,13 @@ class ASIDevice(ASIBase):
         int
             The offset for the lowest read noise."""
         self._assertHandle()
-        result, highestDROffset, unityGainOffset, lowestRNGain, lowestRNOffset = self.asi.getGainOffset(
-            self.handle
-        )
+        (
+            result,
+            highestDROffset,
+            unityGainOffset,
+            lowestRNGain,
+            lowestRNOffset,
+        ) = self.asi.getGainOffset(self.handle)
         self._raiseIfBad(result)
         return highestDROffset, unityGainOffset, lowestRNGain, lowestRNOffset
 
