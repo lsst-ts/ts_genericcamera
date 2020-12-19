@@ -1,8 +1,8 @@
 # This file is part of ts_GenericCamera.
 #
-# Developed for the LSST Telescope and Site Systems.
-# This product includes software developed by the LSST Project
-# (https://www.lsst.org).
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the Vera Rubin Observatory
+# Project (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
 #
@@ -29,6 +29,7 @@ from .. import exposure
 class GenericCamera(abc.ABC):
     """This class describes the methods required by a generic camera.
     """
+
     def __init__(self, log=None):
         if log is None:
             self.log = logging.getLogger(__name__)
@@ -213,7 +214,7 @@ class GenericCamera(abc.ABC):
         -------
         exposure.Exposure
             The exposure."""
-        return exposure.Exposure(ctypes.create_string_buffer(size=1), 1, 1, {})
+        return exposure.Exposure(ctypes.create_string_buffer(0), 1, 1, {})
 
     async def endTakeImage(self):
         """End take image or images.
