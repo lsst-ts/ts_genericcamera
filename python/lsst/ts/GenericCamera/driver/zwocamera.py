@@ -451,8 +451,8 @@ class ASI:
         lib.ASIGetProductIDs.argtypes = [ctypes.c_int * 256]
         lib.ASIGetProductIDs.restype = ctypes.c_int
 
-        # ASICAMERA_API ASI_ERROR_CODE ASIGetCameraProperty(ASI_CAMERA_INFO *pASICameraInfo,
-        # int iCameraIndex);
+        # ASICAMERA_API ASI_ERROR_CODE ASIGetCameraProperty(ASI_CAMERA_INFO
+        # *pASICameraInfo, int iCameraIndex);
         lib.ASIGetCameraProperty.argtypes = [
             ctypes.POINTER(ASICameraInfoCtypes),
             ctypes.c_int,
@@ -641,19 +641,23 @@ class ASI:
         ]
         lib.ASIGetCameraSupportMode.restype = ctypes.c_int
 
-        # ASICAMERA_API ASI_ERROR_CODE  ASIGetCameraMode(int iCameraID, ASI_CAMERA_MODE* mode);
+        # ASICAMERA_API ASI_ERROR_CODE  ASIGetCameraMode(int iCameraID,
+        # ASI_CAMERA_MODE* mode);
         lib.ASIGetCameraMode.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
         lib.ASIGetCameraMode.restype = ctypes.c_int
 
-        # ASICAMERA_API ASI_ERROR_CODE  ASISetCameraMode(int iCameraID, ASI_CAMERA_MODE mode);
+        # ASICAMERA_API ASI_ERROR_CODE  ASISetCameraMode(int iCameraID,
+        # ASI_CAMERA_MODE mode);
         lib.ASISetCameraMode.argtypes = [ctypes.c_int, ctypes.c_int]
         lib.ASISetCameraMode.restype = ctypes.c_int
 
-        # ASICAMERA_API ASI_ERROR_CODE  ASISendSoftTrigger(int iCameraID, ASI_BOOL bStart);
+        # ASICAMERA_API ASI_ERROR_CODE  ASISendSoftTrigger(int iCameraID,
+        # ASI_BOOL bStart);
         lib.ASISendSoftTrigger.argtypes = [ctypes.c_int, ctypes.c_int]
         lib.ASISendSoftTrigger.restype = ctypes.c_int
 
-        # ASICAMERA_API ASI_ERROR_CODE  ASIGetSerialNumber(int iCameraID, ASI_SN* pSN);
+        # ASICAMERA_API ASI_ERROR_CODE  ASIGetSerialNumber(int iCameraID,
+        # ASI_SN* pSN);
         lib.ASIGetSerialNumber.argtypes = [ctypes.c_int, ctypes.POINTER(ASIIDCtypes)]
         lib.ASIGetSerialNumber.restype = ctypes.c_int
 
@@ -673,8 +677,8 @@ class ASI:
         return [productIDs[i] for i in range(count)]
 
     def getCameraProperty(self, index):
-        # ASICAMERA_API ASI_ERROR_CODE ASIGetCameraProperty(ASI_CAMERA_INFO *pASICameraInfo,
-        # int iCameraIndex);
+        # ASICAMERA_API ASI_ERROR_CODE ASIGetCameraProperty(ASI_CAMERA_INFO
+        # *pASICameraInfo, int iCameraIndex);
         cameraProperty = ASICameraInfoCtypes()
         result = self.lib.ASIGetCameraProperty(cameraProperty, index)
         return self._toResultEnum(result), ASICameraInfo(cameraProperty)
@@ -746,26 +750,29 @@ class ASI:
         return self._toResultEnum(result), width[0], height[0], bin[0], imgType[0]
 
     def setStartPosition(self, id, x, y):
-        # ASICAMERA_API  ASI_ERROR_CODE ASISetStartPos(int iCameraID, int iStartX, int iStartY);
+        # ASICAMERA_API  ASI_ERROR_CODE ASISetStartPos(int iCameraID, int
+        # iStartX, int iStartY);
         result = self.lib.ASISetStartPos(id, x, y)
         return self._toResultEnum(result)
 
     def getStartPosition(self, id):
-        # ASICAMERA_API  ASI_ERROR_CODE ASIGetStartPos(int iCameraID, int *piStartX,
-        # int *piStartY);
+        # ASICAMERA_API  ASI_ERROR_CODE ASIGetStartPos(int iCameraID, int
+        # *piStartX, int *piStartY);
         x = self._getIntPtr()
         y = self._getIntPtr()
         result = self.lib.ASIGetStartPos(id, x, y)
         return self._toResultEnum(result), x[0], y[0]
 
     def getDroppedFrames(self, id):
-        # ASICAMERA_API  ASI_ERROR_CODE ASIGetDroppedFrames(int iCameraID,int *piDropFrames);
+        # ASICAMERA_API  ASI_ERROR_CODE ASIGetDroppedFrames(int iCameraID,int
+        # *piDropFrames);
         dropFrames = self._getIntPtr()
         result = self.lib.ASIGetDroppedFrames(id, dropFrames)
         return self._toResultEnum(result), dropFrames[0]
 
     def enableDarkSubtract(self, id, bmpFile):
-        # ASICAMERA_API ASI_ERROR_CODE ASIEnableDarkSubtract(int iCameraID, char *pcBMPPath);
+        # ASICAMERA_API ASI_ERROR_CODE ASIEnableDarkSubtract(int iCameraID,
+        # char *pcBMPPath);
         bmpFilePath = self.getStringBuffer(bmpFile.encode("ascii"))
         result = self.lib.ASIEnableDarkSubtract(id, bmpFilePath)
         return self._toResultEnum(result)
@@ -804,7 +811,8 @@ class ASI:
         return self._toResultEnum(result)
 
     def startExposure(self, id, isDark):
-        # ASICAMERA_API ASI_ERROR_CODE  ASIStartExposure(int iCameraID, ASI_BOOL bIsDark);
+        # ASICAMERA_API ASI_ERROR_CODE  ASIStartExposure(int iCameraID,
+        # ASI_BOOL bIsDark);
         result = self.lib.ASIStartExposure(id, isDark)
         return self._toResultEnum(result)
 
@@ -838,8 +846,9 @@ class ASI:
         return self._toResultEnum(result)
 
     def getGainOffset(self, id):
-        # ASICAMERA_API ASI_ERROR_CODE ASIGetGainOffset(int iCameraID, int *pOffset_HighestDR,
-        # int *pOffset_UnityGain, int *pGain_LowestRN, int *pOffset_LowestRN);
+        # ASICAMERA_API ASI_ERROR_CODE ASIGetGainOffset(int iCameraID, int
+        # *pOffset_HighestDR, int *pOffset_UnityGain, int *pGain_LowestRN,
+        # int *pOffset_LowestRN);
         offsetHighestDR = self._getIntPtr()
         offsetUnityGain = self._getIntPtr()
         gainLowestRN = self._getIntPtr()
@@ -867,23 +876,27 @@ class ASI:
         return self._toResultEnum(result), ASISupportedMode(supportedMode)
 
     def getCameraMode(self, id):
-        # ASICAMERA_API ASI_ERROR_CODE  ASIGetCameraMode(int iCameraID, ASI_CAMERA_MODE* mode);
+        # ASICAMERA_API ASI_ERROR_CODE  ASIGetCameraMode(int iCameraID,
+        # ASI_CAMERA_MODE* mode);
         mode = self._getIntPtr()
         result = self.lib.ASIGetCameraMode(id, mode)
         return self._toResultEnum(result), ASICameraMode(mode[0])
 
     def setCameraMode(self, id, mode):
-        # ASICAMERA_API ASI_ERROR_CODE  ASISetCameraMode(int iCameraID, ASI_CAMERA_MODE mode);
+        # ASICAMERA_API ASI_ERROR_CODE  ASISetCameraMode(int iCameraID,
+        # ASI_CAMERA_MODE mode);
         result = self.lib.ASISetCameraMode(id, mode)
         return self._toResultEnum(result)
 
     def sendSoftwareTrigger(self, id, start):
-        # ASICAMERA_API ASI_ERROR_CODE  ASISendSoftTrigger(int iCameraID, ASI_BOOL bStart);
+        # ASICAMERA_API ASI_ERROR_CODE  ASISendSoftTrigger(int iCameraID,
+        # ASI_BOOL bStart);
         result = self.lib.ASISendSoftTrigger(id, start)
         return self._toResultEnum(result)
 
     def getSerialNumber(self, id):
-        # ASICAMERA_API ASI_ERROR_CODE  ASIGetSerialNumber(int iCameraID, ASI_SN* pSN);
+        # ASICAMERA_API ASI_ERROR_CODE  ASIGetSerialNumber(int iCameraID,
+        # ASI_SN* pSN);
         serialNumber = ASIIDCtypes()
         result = self.lib.ASIGetSerialNumber(id, serialNumber)
         return self._toResultEnum(result), ASIID(serialNumber)
@@ -961,7 +974,8 @@ class ASILibrary(ASIBase):
         return deviceCount
 
     def getProductIDs(self):
-        """Gets the product IDs of all the ASI cameras attached to this machine.
+        """Gets the product IDs of all the ASI cameras attached to this
+        machine.
 
         Returns
         -------
