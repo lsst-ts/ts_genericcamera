@@ -1,8 +1,8 @@
 # This file is part of ts_GenericCamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
-# This product includes software developed by the Vera Rubin Observatory
-# Project (https://www.lsst.org).
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
 #
@@ -22,13 +22,14 @@
 __all__ = ["GenericCameraCsc"]
 
 import asyncio
-import pathlib
 import time
 import traceback
 import inspect
 import os
 import logging
 
+from .config_schema import CONFIG_SCHEMA
+from . import __version__
 from lsst.ts import salobj
 
 from .liveview import liveview
@@ -43,7 +44,8 @@ state.
 
 class GenericCameraCsc(salobj.ConfigurableCsc):
 
-    valid_simulation_modes = (0, 1)
+    valid_simulation_modes = (0,)
+    version = __version__
 
     def __init__(
         self,
@@ -52,18 +54,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         initial_state=salobj.State.STANDBY,
         simulation_mode=0,
     ):
-
-        schema_path = (
-            pathlib.Path(__file__)
-            .resolve()
-            .parents[4]
-            .joinpath("schema", "GenericCamera.yaml")
-        )
-
         super().__init__(
             "GenericCamera",
             index=index,
-            schema_path=schema_path,
+            config_schema=CONFIG_SCHEMA,
             config_dir=config_dir,
             initial_state=initial_state,
             simulation_mode=simulation_mode,

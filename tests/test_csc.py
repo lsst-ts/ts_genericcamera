@@ -1,6 +1,6 @@
 # This file is part of ts_GenericCamera.
 #
-# Developed for the LSST Telescope and Site Systems.
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
 # (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
@@ -24,7 +24,6 @@ import asynctest
 import glob
 import os
 import pathlib
-import unittest
 import yaml
 import numpy as np
 
@@ -335,6 +334,12 @@ class CscTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
 
             await self.remote.cmd_stopLiveView.start()
 
-
-if __name__ == "__main__":
-    unittest.main()
+    async def test_version(self):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
+            await self.assert_next_sample(
+                self.remote.evt_softwareVersions,
+                cscVersion=GenericCamera.__version__,
+                subsystemVersions="",
+            )
