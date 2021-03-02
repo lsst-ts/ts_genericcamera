@@ -93,7 +93,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.ip = None
         self.port = None
         self.directory = os.path.expanduser("~/")
-        self.fileNameFormat = "{timestamp}-{name}-{index}-{total}"
+        self.fileNameFormat = "{timestamp}-{index}-{total}"
         self.config = None
 
         self.camera = None
@@ -322,8 +322,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     The exposure time in seconds.
                 shutter : bool
                     True if the shutter should be utilized.
-                imageSequenceName : str
-                    The name of the image sequence."""
+        """
         self.assert_enabled("takeImages")
         self._assert_notlive()
         self.isExposing = True
@@ -331,7 +330,6 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         try:
             self.log.info("takeImages - Start")
 
-            imageSequenceName = id_data.imageSequenceName
             imagesInSequence = id_data.numImages
             exposureTime = id_data.expTime
             timeStamp = time.time()
@@ -340,18 +338,15 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             await self.camera.startTakeImage(
                 exposureTime,
                 id_data.shutter,
-                id_data.science,
-                id_data.guide,
-                id_data.wfs,
+                id_data.sensors,
+                id_data.keyValueMap,
+                id_data.obsNote,
             )
 
             for imageIndex in range(imagesInSequence):
                 timestamp = time.time()
                 imageName = self.fileNameFormat.format(
-                    timestamp=int(timestamp),
-                    name=imageSequenceName,
-                    index=imageIndex,
-                    total=imagesInSequence,
+                    timestamp=int(timestamp), index=imageIndex, total=imagesInSequence,
                 )
                 if id_data.shutter:
                     self.evt_startShutterOpen.put()
@@ -361,11 +356,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     self.evt_endShutterOpen.put()
 
                 self.evt_startIntegration.set_put(
-                    imageSequenceName=imageSequenceName,
                     imagesInSequence=imagesInSequence,
                     imageName=imageName,
                     imageIndex=imageIndex,
-                    timeStamp=timeStamp,
+                    timestampAcquisitionStart=timeStamp,
                     exposureTime=exposureTime,
                 )
                 await self.camera.startIntegration()
@@ -379,23 +373,21 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     await self.camera.endShutterClose()
                     self.evt_endShutterClose.put()
                 self.evt_startReadout.set_put(
-                    imageSequenceName=imageSequenceName,
                     imagesInSequence=imagesInSequence,
                     imageName=imageName,
                     imageIndex=imageIndex,
-                    timeStamp=timeStamp,
+                    timestampAcquisitionStart=timeStamp,
                     exposureTime=exposureTime,
                 )
                 await self.camera.startReadout()
 
                 exposure = await self.camera.endReadout()
                 self.evt_endReadout.set_put(
-                    imageSequenceName=imageSequenceName,
                     imagesInSequence=imagesInSequence,
                     imageName=imageName,
                     imageIndex=imageIndex,
-                    timeStamp=timeStamp,
-                    exposureTime=exposureTime,
+                    timestampAcquisitionStart=timeStamp,
+                    requestedExposureTime=exposureTime,
                 )
                 exposure.save(os.path.join(self.directory, imageName + ".fits"))
             await self.camera.endTakeImage()
@@ -407,19 +399,19 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             self.isExposing = False
         self.log.info("takeImages - End")
 
-    async def liveView_loop(self, exposureTime):
+    async def liveView_loop(self, exposure_time):
         """Run the live view capture loop.
 
         Parameters
         ----------
-        exposureTime : float
+        exposure_time : float
             The exposure time of the image (in seconds).
         """
         self.log.debug("liveView_loop - Start")
         self.isLive = True
         try:
             while self.runLiveTask:
-                await self.camera.startTakeImage(exposureTime, True, True, True, True)
+                await self.camera.startTakeImage(exposure_time, True, True, True, True)
 
                 startFrameTime = time.time()
 

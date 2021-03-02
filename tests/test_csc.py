@@ -111,10 +111,10 @@ class CscTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
 
             async def check_rejected(expected_state):
                 self.assertEqual(self.csc.summary_state, expected_state)
-                state = await self.remote.evt_summaryState.next(
+                csc_state = await self.remote.evt_summaryState.next(
                     flush=False, timeout=LONG_TIMEOUT
                 )
-                self.assertEqual(state.summaryState, expected_state)
+                self.assertEqual(csc_state.summaryState, expected_state)
 
                 extra_commands = (
                     "setROI",
@@ -158,10 +158,9 @@ class CscTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 numImages=1,
                 expTime=0.0,
                 shutter=False,
-                science=True,
-                guide=True,
-                wfs=True,
-                imageSequenceName="bias",
+                sensors="",
+                keyValueMap="",
+                obsNote="bias",
             )
 
             startTakeImage = await self.remote.evt_startTakeImage.next(
@@ -219,10 +218,9 @@ class CscTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 numImages=1,
                 expTime=np.random.rand() + 1.0,
                 shutter=True,
-                science=True,
-                guide=True,
-                wfs=True,
-                imageSequenceName="image",
+                sensors="",
+                keyValueMap="",
+                obsNote="image",
             )
 
             startTakeImage = await self.remote.evt_startTakeImage.next(
