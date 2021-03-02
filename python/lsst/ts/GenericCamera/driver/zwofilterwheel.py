@@ -182,7 +182,8 @@ class EFWLibrary(EFWBase):
         return deviceCount
 
     def getProductIDs(self):
-        """Gets the product IDs of all the ZWO filter wheels attached to this machine.
+        """Gets the product IDs of all the ZWO filter wheels attached to this
+        machine.
 
         Returns
         -------

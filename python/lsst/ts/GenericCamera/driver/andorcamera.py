@@ -135,7 +135,8 @@ class AndorCamera(GenericCamera):
         """Take an exposure with the currently configured settings.
 
         The exposure should be the raw image data from the camera which
-        most likely means a buffer created by ctypes.ctypes.create_string_buffer()
+        most likely means a buffer created by
+        ctypes.ctypes.create_string_buffer()
 
         The Exposure class handles converting the image to the correct
         format. If live view, the image data is converted into a JPEG
@@ -353,12 +354,13 @@ class AT:
 
         # typedef int (AT_EXP_CONV *FeatureCallback)(AT_H Hndl, const AT_WC*
         # Feature, void* Context);
-        # int AT_EXP_CONV AT_RegisterFeatureCallback(AT_H Hndl, const AT_WC* Feature,
-        # FeatureCallback EvCallback, void* Context);
-        # int AT_EXP_CONV AT_UnregisterFeatureCallback(AT_H Hndl, const AT_WC* Feature,
-        # FeatureCallback EvCallback, void* Context);
+        # int AT_EXP_CONV AT_RegisterFeatureCallback(AT_H Hndl, const AT_WC*
+        # Feature, FeatureCallback EvCallback, void* Context);
+        # int AT_EXP_CONV AT_UnregisterFeatureCallback(AT_H Hndl, const AT_WC*
+        # Feature, FeatureCallback EvCallback, void* Context);
 
-        # int AT_EXP_CONV AT_IsImplemented(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Implemented);
+        # int AT_EXP_CONV AT_IsImplemented(AT_H Hndl, const AT_WC* Feature,
+        # AT_BOOL* Implemented);
         lib.AT_IsImplemented.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -366,7 +368,8 @@ class AT:
         ]
         lib.AT_IsImplemented.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_IsReadable(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Readable);
+        # int AT_EXP_CONV AT_IsReadable(AT_H Hndl, const AT_WC* Feature,
+        # AT_BOOL* Readable);
         lib.AT_IsReadable.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -374,7 +377,8 @@ class AT:
         ]
         lib.AT_IsReadOnly.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_IsWritable(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Writable);
+        # int AT_EXP_CONV AT_IsWritable(AT_H Hndl, const AT_WC* Feature,
+        # AT_BOOL* Writable);
         lib.AT_IsWritable.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -382,7 +386,8 @@ class AT:
         ]
         lib.AT_IsWritable.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_IsReadOnly(AT_H Hndl, const AT_WC* Feature, AT_BOOL* ReadOnly);
+        # int AT_EXP_CONV AT_IsReadOnly(AT_H Hndl, const AT_WC* Feature,
+        # AT_BOOL* ReadOnly);
         lib.AT_IsReadOnly.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -390,11 +395,13 @@ class AT:
         ]
         lib.AT_IsReadOnly.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_SetInt(AT_H Hndl, const AT_WC* Feature, AT_64 Value);
+        # int AT_EXP_CONV AT_SetInt(AT_H Hndl, const AT_WC* Feature,
+        # AT_64 Value);
         lib.AT_SetInt.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_longlong]
         lib.AT_SetInt.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetInt(AT_H Hndl, const AT_WC* Feature, AT_64* Value);
+        # int AT_EXP_CONV AT_GetInt(AT_H Hndl, const AT_WC* Feature,
+        # AT_64* Value);
         lib.AT_GetInt.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -402,7 +409,8 @@ class AT:
         ]
         lib.AT_GetInt.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetIntMax(AT_H Hndl, const AT_WC* Feature, AT_64* MaxValue);
+        # int AT_EXP_CONV AT_GetIntMax(AT_H Hndl, const AT_WC* Feature,
+        # AT_64* MaxValue);
         lib.AT_GetIntMax.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -410,7 +418,8 @@ class AT:
         ]
         lib.AT_GetIntMax.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetIntMin(AT_H Hndl, const AT_WC* Feature, AT_64* MinValue);
+        # int AT_EXP_CONV AT_GetIntMin(AT_H Hndl, const AT_WC* Feature,
+        # AT_64* MinValue);
         lib.AT_GetIntMin.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -418,11 +427,13 @@ class AT:
         ]
         lib.AT_GetIntMin.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_SetFloat(AT_H Hndl, const AT_WC* Feature, double Value);
+        # int AT_EXP_CONV AT_SetFloat(AT_H Hndl, const AT_WC* Feature,
+        # double Value);
         lib.AT_SetFloat.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_double]
         lib.AT_SetFloat.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetFloat(AT_H Hndl, const AT_WC* Feature, double* Value);
+        # int AT_EXP_CONV AT_GetFloat(AT_H Hndl, const AT_WC* Feature,
+        # double* Value);
         lib.AT_GetFloat.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -430,7 +441,8 @@ class AT:
         ]
         lib.AT_GetFloat.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetFloatMax(AT_H Hndl, const AT_WC* Feature, double* MaxValue);
+        # int AT_EXP_CONV AT_GetFloatMax(AT_H Hndl, const AT_WC* Feature,
+        # double* MaxValue);
         lib.AT_GetFloatMax.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -438,7 +450,8 @@ class AT:
         ]
         lib.AT_GetFloatMax.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetFloatMin(AT_H Hndl, const AT_WC* Feature, double* MinValue);
+        # int AT_EXP_CONV AT_GetFloatMin(AT_H Hndl, const AT_WC* Feature, d
+        # ouble* MinValue);
         lib.AT_GetFloatMin.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -446,11 +459,13 @@ class AT:
         ]
         lib.AT_GetFloatMin.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_SetBool(AT_H Hndl, const AT_WC* Feature, AT_BOOL Value);
+        # int AT_EXP_CONV AT_SetBool(AT_H Hndl, const AT_WC* Feature,
+        # AT_BOOL Value);
         lib.AT_SetBool.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_bool]
         lib.AT_SetBool.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetBool(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Value);
+        # int AT_EXP_CONV AT_GetBool(AT_H Hndl, const AT_WC* Feature,
+        # AT_BOOL* Value);
         lib.AT_GetBool.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -458,11 +473,13 @@ class AT:
         ]
         lib.AT_GetBool.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_SetEnumerated(AT_H Hndl, const AT_WC* Feature, int Value);
+        # int AT_EXP_CONV AT_SetEnumerated(AT_H Hndl, const AT_WC* Feature,
+        # int Value);
         lib.AT_SetEnumerated.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_int]
         lib.AT_SetEnumerated.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_SetEnumeratedString(AT_H Hndl, const AT_WC* Feature, const AT_WC* String);
+        # int AT_EXP_CONV AT_SetEnumeratedString(AT_H Hndl, const AT_WC*
+        # Feature, const AT_WC* String);
         lib.AT_SetEnumeratedString.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -470,7 +487,8 @@ class AT:
         ]
         lib.AT_SetEnumeratedString.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetEnumerated(AT_H Hndl, const AT_WC* Feature, int* Value);
+        # int AT_EXP_CONV AT_GetEnumerated(AT_H Hndl, const AT_WC* Feature,
+        # int* Value);
         lib.AT_GetEnumerated.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -478,7 +496,8 @@ class AT:
         ]
         lib.AT_GetEnumerated.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetEnumeratedCount(AT_H Hndl,const  AT_WC* Feature, int* Count);
+        # int AT_EXP_CONV AT_GetEnumeratedCount(AT_H Hndl,const  AT_WC*
+        # Feature, int* Count);
         lib.AT_GetEnumCount.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -486,8 +505,8 @@ class AT:
         ]
         lib.AT_GetEnumCount.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_IsEnumeratedIndexAvailable(AT_H Hndl, const AT_WC* Feature, int Index,
-        # AT_BOOL* Available);
+        # int AT_EXP_CONV AT_IsEnumeratedIndexAvailable(AT_H Hndl, const
+        # AT_WC* Feature, int Index, AT_BOOL* Available);
         lib.AT_IsEnumeratedIndexAvailable.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -496,8 +515,8 @@ class AT:
         ]
         lib.AT_IsEnumIndexAvailable.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_IsEnumeratedIndexImplemented(AT_H Hndl, const AT_WC* Feature,
-        # int Index, AT_BOOL* Implemented);
+        # int AT_EXP_CONV AT_IsEnumeratedIndexImplemented(AT_H Hndl,
+        # const AT_WC* Feature, int Index, AT_BOOL* Implemented);
         lib.AT_IsEnumeratedIndexImplemented.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -506,8 +525,8 @@ class AT:
         ]
         lib.AT_IsEnumeratedIndexImplemented.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetEnumeratedString(AT_H Hndl, const AT_WC* Feature, int Index,
-        # AT_WC* String, int StringLength);
+        # int AT_EXP_CONV AT_GetEnumeratedString(AT_H Hndl, const AT_WC*
+        # Feature, int Index, AT_WC* String, int StringLength);
         lib.AT_GetEnumeratedString.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -517,11 +536,13 @@ class AT:
         ]
         lib.AT_GetEnumeratedString.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_SetEnumIndex(AT_H Hndl, const AT_WC* Feature, int Value);
+        # int AT_EXP_CONV AT_SetEnumIndex(AT_H Hndl, const AT_WC* Feature,
+        # int Value);
         lib.AT_SetEnumIndex.argtypes = [ctypes.c_int, ctypes.c_wchar_p, ctypes.c_int]
         lib.AT_SetEnumIndex.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_SetEnumString(AT_H Hndl, const AT_WC* Feature, const AT_WC* String);
+        # int AT_EXP_CONV AT_SetEnumString(AT_H Hndl, const AT_WC* Feature,
+        # const AT_WC* String);
         lib.AT_SetEnumString.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -529,7 +550,8 @@ class AT:
         ]
         lib.AT_SetEnumString.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetEnumIndex(AT_H Hndl, const AT_WC* Feature, int* Value);
+        # int AT_EXP_CONV AT_GetEnumIndex(AT_H Hndl, const AT_WC* Feature,
+        # int* Value);
         lib.AT_GetEnumIndex.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -537,7 +559,8 @@ class AT:
         ]
         lib.AT_GetEnumIndex.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetEnumCount(AT_H Hndl,const  AT_WC* Feature, int* Count);
+        # int AT_EXP_CONV AT_GetEnumCount(AT_H Hndl,const  AT_WC* Feature,
+        # int* Count);
         lib.AT_GetEnumCount.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -545,8 +568,8 @@ class AT:
         ]
         lib.AT_GetEnumCount.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_IsEnumIndexAvailable(AT_H Hndl, const AT_WC* Feature, int Index,
-        # AT_BOOL* Available);
+        # int AT_EXP_CONV AT_IsEnumIndexAvailable(AT_H Hndl, const AT_WC*
+        # Feature, int Index, AT_BOOL* Available);
         lib.AT_IsEnumIndexAvailable.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -555,8 +578,8 @@ class AT:
         ]
         lib.AT_IsEnumIndexAvailable.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_IsEnumIndexImplemented(AT_H Hndl, const AT_WC* Feature, int Index,
-        # AT_BOOL* Implemented);
+        # int AT_EXP_CONV AT_IsEnumIndexImplemented(AT_H Hndl, const AT_WC*
+        # Feature, int Index, AT_BOOL* Implemented);
         lib.AT_IsEnumIndexImplemented.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -565,8 +588,8 @@ class AT:
         ]
         lib.AT_IsEnumIndexImplemented.restype = ctypes.c_int
 
-        # int AT_EXP_CONV AT_GetEnumStringByIndex(AT_H Hndl, const AT_WC* Feature, int Index,
-        # AT_WC* String, int StringLength);
+        # int AT_EXP_CONV AT_GetEnumStringByIndex(AT_H Hndl, const AT_WC*
+        # Feature, int Index, AT_WC* String, int StringLength);
         lib.AT_GetEnumStringByIndex.argtypes = [
             ctypes.c_int,
             ctypes.c_wchar_p,
@@ -683,61 +706,72 @@ class AT:
         return self._toResultEnum(result), readOnly[0]
 
     def setInt(self, handle, feature, value):
-        # int AT_EXP_CONV AT_SetInt(AT_H Hndl, const AT_WC* Feature, AT_64 Value);
+        # int AT_EXP_CONV AT_SetInt(AT_H Hndl, const AT_WC* Feature, AT_64
+        # Value);
         return self._toResultEnum(self.lib.AT_SetInt(handle, feature.name, value))
 
     def getInt(self, handle, feature):
-        # int AT_EXP_CONV AT_GetInt(AT_H Hndl, const AT_WC* Feature, AT_64* Value);
+        # int AT_EXP_CONV AT_GetInt(AT_H Hndl, const AT_WC* Feature, AT_64*
+        # Value);
         value = self._getLongLongPtr()
         result = self.lib.AT_GetInt(handle, feature.name, value)
         return self._toResultEnum(result), value[0]
 
     def getIntMax(self, handle, feature):
-        # int AT_EXP_CONV AT_GetIntMax(AT_H Hndl, const AT_WC* Feature, AT_64* MaxValue);
+        # int AT_EXP_CONV AT_GetIntMax(AT_H Hndl, const AT_WC* Feature, AT_64*
+        # MaxValue);
         maxValue = self._getLongLongPtr()
         result = self.lib.AT_GetIntMax(handle, feature.name, maxValue)
         return self._toResultEnum(result), maxValue[0]
 
     def getIntMin(self, handle, feature):
-        # int AT_EXP_CONV AT_GetIntMin(AT_H Hndl, const AT_WC* Feature, AT_64* MinValue);
+        # int AT_EXP_CONV AT_GetIntMin(AT_H Hndl, const AT_WC* Feature, AT_64*
+        # MinValue);
         minValue = self._getLongLongPtr()
         result = self.lib.AT_GetIntMin(handle, feature.name, minValue)
         return self._toResultEnum(result), minValue[0]
 
     def setFloat(self, handle, feature, value):
-        # int AT_EXP_CONV AT_SetFloat(AT_H Hndl, const AT_WC* Feature, double Value);
+        # int AT_EXP_CONV AT_SetFloat(AT_H Hndl, const AT_WC* Feature, double
+        # Value);
         return self._toResultEnum(self.lib.AT_SetFloat(handle, feature.name, value))
 
     def getFloat(self, handle, feature):
-        # int AT_EXP_CONV AT_GetFloat(AT_H Hndl, const AT_WC* Feature, double* Value);
+        # int AT_EXP_CONV AT_GetFloat(AT_H Hndl, const AT_WC* Feature, double*
+        # Value);
         value = self._getDoublePtr()
         result = self.lib.AT_GetFloat(handle, feature.name, value)
         return self._toResultEnum(result), value[0]
 
     def getFloatMax(self, handle, feature):
-        # int AT_EXP_CONV AT_GetFloatMax(AT_H Hndl, const AT_WC* Feature, double* MaxValue);
+        # int AT_EXP_CONV AT_GetFloatMax(AT_H Hndl, const AT_WC* Feature,
+        # double* MaxValue);
         maxValue = self._getDoublePtr()
         result = self.lib.AT_GetFloatMax(handle, feature.name, maxValue)
         return self._toResultEnum(result), maxValue[0]
 
     def getFloatMin(self, handle, feature):
-        # int AT_EXP_CONV AT_GetFloatMin(AT_H Hndl, const AT_WC* Feature, double* MinValue);
+        # int AT_EXP_CONV AT_GetFloatMin(AT_H Hndl, const AT_WC* Feature,
+        # double* MinValue);
         minValue = self._getDoublePtr()
         result = self.lib.AT_GetFloatMin(handle, feature.name, minValue)
         return self._toResultEnum(result), minValue[0]
 
     def setBool(self, handle, feature, value):
-        # int AT_EXP_CONV AT_SetBool(AT_H Hndl, const AT_WC* Feature, AT_BOOL Value);
+        # int AT_EXP_CONV AT_SetBool(AT_H Hndl, const AT_WC* Feature, AT_BOOL
+        # Value);
         return self._toResultEnum(self.lib.AT_SetBool(handle, feature.name, value))
 
     def getBool(self, handle, feature):
-        # int AT_EXP_CONV AT_GetBool(AT_H Hndl, const AT_WC* Feature, AT_BOOL* Value);
+        # int AT_EXP_CONV AT_GetBool(AT_H Hndl, const AT_WC* Feature, AT_BOOL*
+        # Value);
         value = self._getBoolPtr()
         result = self.lib.AT_GetBool(handle, feature.name, value)
         return self._toResultEnum(result), value[0]
 
     def setEnumerated(self, handle, feature, value):
-        # int AT_EXP_CONV AT_SetEnumerated(AT_H Hndl, const AT_WC* Feature, int Value);
+        # int AT_EXP_CONV AT_SetEnumerated(AT_H Hndl, const AT_WC* Feature, int
+        # Value);
         return self._toResultEnum(
             self.lib.AT_SetEnumerated(handle, feature.name, value)
         )
@@ -750,13 +784,15 @@ class AT:
         )
 
     def getEnumerated(self, handle, feature):
-        # int AT_EXP_CONV AT_GetEnumerated(AT_H Hndl, const AT_WC* Feature, int* Value);
+        # int AT_EXP_CONV AT_GetEnumerated(AT_H Hndl, const AT_WC* Feature,
+        # int* Value);
         value = self._getIntPtr()
         result = self.lib.AT_GetEnumerated(handle, feature.name, value)
         return self._toResultEnum(result), value[0]
 
     def getEnumeratedCount(self, handle, feature):
-        # int AT_EXP_CONV AT_GetEnumeratedCount(AT_H Hndl,const  AT_WC* Feature, int* Count);
+        # int AT_EXP_CONV AT_GetEnumeratedCount(AT_H Hndl,const  AT_WC*
+        # Feature, int* Count);
         count = self._getIntPtr()
         result = self.lib.AT_GetEnumeratedCount(handle, feature.name, count)
         return self._toResultEnum(result), count[0]
@@ -789,23 +825,27 @@ class AT:
         return self._toResultEnum(result), string.value
 
     def setEnumIndex(self, handle, feature, value):
-        # int AT_EXP_CONV AT_SetEnumIndex(AT_H Hndl, const AT_WC* Feature, int Value);
+        # int AT_EXP_CONV AT_SetEnumIndex(AT_H Hndl, const AT_WC* Feature,
+        # int Value);
         return self._toResultEnum(self.lib.AT_SetEnumIndex(handle, feature.name, value))
 
     def setEnumString(self, handle, feature, string):
-        # int AT_EXP_CONV AT_SetEnumString(AT_H Hndl, const AT_WC* Feature, const AT_WC* String);
+        # int AT_EXP_CONV AT_SetEnumString(AT_H Hndl, const AT_WC* Feature,
+        # const AT_WC* String);
         return self._toResultEnum(
             self.lib.AT_SetEnumString(handle, feature.name, string)
         )
 
     def getEnumIndex(self, handle, feature):
-        # int AT_EXP_CONV AT_GetEnumIndex(AT_H Hndl, const AT_WC* Feature, int* Value);
+        # int AT_EXP_CONV AT_GetEnumIndex(AT_H Hndl, const AT_WC* Feature,
+        # int* Value);
         value = self._getIntPtr()
         result = self.lib.AT_GetEnumIndex(handle, feature.name, value)
         return self._toResultEnum(result), value[0]
 
     def getEnumCount(self, handle, feature):
-        # int AT_EXP_CONV AT_GetEnumCount(AT_H Hndl,const  AT_WC* Feature, int* Count);
+        # int AT_EXP_CONV AT_GetEnumCount(AT_H Hndl,const  AT_WC* Feature,
+        # int* Count);
         count = self._getIntPtr()
         result = self.lib.AT_GetEnumCount(handle, feature.name, count)
         return self._toResultEnum(result), count[0]
@@ -842,7 +882,8 @@ class AT:
         return self._toResultEnum(self.lib.AT_Command(handle, feature.name))
 
     def setString(self, handle, feature, string):
-        # int AT_EXP_CONV AT_SetString(AT_H Hndl, const AT_WC* Feature, const AT_WC* String);
+        # int AT_EXP_CONV AT_SetString(AT_H Hndl, const AT_WC* Feature, const
+        # AT_WC* String);
         return self._toResultEnum(self.lib.AT_SetString(handle, feature.name, string))
 
     def getString(self, handle, feature):

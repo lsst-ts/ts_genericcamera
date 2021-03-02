@@ -199,13 +199,16 @@ class EUI(QDialog):
         print("startLiveView - Start")
         # data = self.sal.cmd_startLiveView.DataType()
         # data.expTime = self.exposureTimeEdit.value()
-        # asyncio.get_event_loop().run_until_complete(self.sal.cmd_startLiveView.start(data, timeout=10.0))
+        # asyncio.get_event_loop().run_until_complete(
+        #     self.sal.cmd_startLiveView.start(data, timeout=10.0)
+        # )
         self.sal.issueCommand_startLiveView(self.exposureTimeEdit.value())
         print("startLiveView - End")
 
     def stopLiveView(self):
         print("stopLiveView - Start")
-        # asyncio.get_event_loop().run_until_complete(self.sal.cmd_stopLiveView.start(
+        # asyncio.get_event_loop().run_until_complete(
+        #     self.sal.cmd_stopLiveView.start(
         # self.sal.cmd_stopLiveView.DataType(), timeout=10.0))
         self.sal.issueCommand_stopLiveView(True)
         print("stopLiveView - End")
@@ -217,7 +220,9 @@ class EUI(QDialog):
         # data.leftPixel = int(self.roiLeftEdit.value())
         # data.width = int(self.roiWidthEdit.value())
         # data.height = int(self.roiHeightEdit.value())
-        # asyncio.get_event_loop().run_until_complete(self.sal.cmd_setROI.start(data, timeout=5.0))
+        # asyncio.get_event_loop().run_until_complete(
+        #     self.sal.cmd_setROI.start(data, timeout=5.0)
+        # )
         self.sal.issueCommand_setROI(
             int(self.roiTopEdit.value()),
             int(self.roiLeftEdit.value()),
