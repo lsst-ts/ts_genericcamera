@@ -25,7 +25,7 @@ import asyncio
 from lsst.ts.GenericCamera.driver import SimulatorCamera
 
 
-class TestSimulatorCamera(unittest.TestCase):
+class TestSimulatorCamera(unittest.IsolatedAsyncioTestCase):
     def testTakeImage(self):
         async def doit():
 

@@ -61,8 +61,7 @@ class Exposure:
         self.dtype = dtype
 
     def makeJPEG(self):
-        """Takes this exposure and converts it to a JPEG.
-        """
+        """Takes this exposure and converts it to a JPEG."""
         # fileMemory = io.BytesIO()
         # img = Image.frombuffer('L', (self.width, self.height), self.buffer)
         # # The following call takes the most time

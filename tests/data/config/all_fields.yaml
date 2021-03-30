@@ -1,7 +1,7 @@
 ip: 1.2.3.4
 port: 100
 directory: ~/
-fileNameFormat: "{timestamp}-{name}-{index}-{total}"
+fileNameFormat: "{timestamp}-{index}-{total}"
 camera: Simulator
 camera_config:
   maxWidth: 1024

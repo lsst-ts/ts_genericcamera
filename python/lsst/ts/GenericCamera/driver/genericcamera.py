@@ -27,8 +27,7 @@ from .. import exposure
 
 
 class GenericCamera(abc.ABC):
-    """This class describes the methods required by a generic camera.
-    """
+    """This class describes the methods required by a generic camera."""
 
     def __init__(self, log=None):
         if log is None:
@@ -39,8 +38,7 @@ class GenericCamera(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def name():
-        """Set camera name.
-        """
+        """Set camera name."""
         raise NotImplementedError()
 
     def initialise(self, config):
@@ -53,8 +51,7 @@ class GenericCamera(abc.ABC):
         pass
 
     def stop(self):
-        """Stop and close camera.
-        """
+        """Stop and close camera."""
         pass
 
     def getMakeAndModel(self):
@@ -78,7 +75,7 @@ class GenericCamera(abc.ABC):
         -------
         str
             The value of the property.
-            Returns 'UNDEFINED' if the property doesn't exist. """
+            Returns 'UNDEFINED' if the property doesn't exist."""
         return "UNDEFINED"
 
     async def setValue(self, key, value):
@@ -123,8 +120,7 @@ class GenericCamera(abc.ABC):
         pass
 
     def setFullFrame(self):
-        """Sets the region of interest to the whole sensor.
-        """
+        """Sets the region of interest to the whole sensor."""
         pass
 
     def startLiveView(self):
@@ -174,8 +170,7 @@ class GenericCamera(abc.ABC):
         pass
 
     async def startIntegration(self):
-        """Start integrating.
-        """
+        """Start integrating."""
         pass
 
     async def endIntegration(self):
@@ -203,8 +198,7 @@ class GenericCamera(abc.ABC):
         pass
 
     async def startReadout(self):
-        """Start reading out the image.
-        """
+        """Start reading out the image."""
         pass
 
     async def endReadout(self):
@@ -217,6 +211,5 @@ class GenericCamera(abc.ABC):
         return exposure.Exposure(ctypes.create_string_buffer(0), 1, 1, {})
 
     async def endTakeImage(self):
-        """End take image or images.
-        """
+        """End take image or images."""
         pass

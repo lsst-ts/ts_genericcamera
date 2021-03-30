@@ -346,7 +346,9 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             for imageIndex in range(imagesInSequence):
                 timestamp = time.time()
                 imageName = self.fileNameFormat.format(
-                    timestamp=int(timestamp), index=imageIndex, total=imagesInSequence,
+                    timestamp=int(timestamp),
+                    index=imageIndex,
+                    total=imagesInSequence,
                 )
                 if id_data.shutter:
                     self.evt_startShutterOpen.put()
@@ -486,13 +488,11 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.config = config
 
     def _assert_notlive(self):
-        """Raise an exception if live view is active.
-        """
+        """Raise an exception if live view is active."""
         if self.isLive:
             raise Exception()
 
     def _assert_live(self):
-        """Raise an exception if live view is not active.
-        """
+        """Raise an exception if live view is not active."""
         if not self.isLive:
             raise Exception()

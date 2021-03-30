@@ -26,7 +26,7 @@ import numpy as np
 from lsst.ts.GenericCamera import Exposure, LiveViewServer, AsyncLiveViewClient
 
 
-class TestLiveView(unittest.TestCase):
+class TestLiveView(unittest.IsolatedAsyncioTestCase):
     def test(self):
         async def doit():
             width = 1024
