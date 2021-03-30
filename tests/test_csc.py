@@ -20,11 +20,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
-import asynctest
 import glob
 import os
 import pathlib
 import yaml
+import unittest
+
 import numpy as np
 
 from lsst.ts import salobj
@@ -37,7 +38,7 @@ TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "c
 port_generator = salobj.index_generator(imin=3200)
 
 
-class CscTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
+class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def flush_take_image_events(self):
         self.remote.evt_startTakeImage.flush()
         self.remote.evt_startShutterOpen.flush()

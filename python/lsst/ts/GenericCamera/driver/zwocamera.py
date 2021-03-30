@@ -40,8 +40,7 @@ class ASICamera(genericcamera.GenericCamera):
 
     @staticmethod
     def name():
-        """Set camera name.
-        """
+        """Set camera name."""
         return "Zwo"
 
     def initialise(self, config):
@@ -91,7 +90,7 @@ class ASICamera(genericcamera.GenericCamera):
         -------
         str
             The value of the property.
-            Returns 'UNDEFINED' if the property doesn't exist. """
+            Returns 'UNDEFINED' if the property doesn't exist."""
         return super().getValue(key)
 
     async def setValue(self, key, value):
@@ -146,8 +145,7 @@ class ASICamera(genericcamera.GenericCamera):
         self.dev.setStartPosition(left, top)
 
     def setFullFrame(self):
-        """Sets the region of interest to the whole sensor.
-        """
+        """Sets the region of interest to the whole sensor."""
         info = self.dev.getCameraInfo()
         self.setROI(
             0,
@@ -168,8 +166,7 @@ class ASICamera(genericcamera.GenericCamera):
         super().startLiveView()
 
     def stopLiveView(self):
-        """Configure the camera for a standard exposure.
-        """
+        """Configure the camera for a standard exposure."""
         self.currentImageType = self.normalImageType
         top, left, width, height = self.getROI()
         self.setROI(top, left, width, height)
@@ -196,8 +193,7 @@ class ASICamera(genericcamera.GenericCamera):
         await super().startTakeImage(expTime, shutter, science, guide, wfs)
 
     async def startIntegration(self):
-        """Start integrating.
-        """
+        """Start integrating."""
         self.dev.startExposure()
         await super().startIntegration()
 
@@ -214,8 +210,7 @@ class ASICamera(genericcamera.GenericCamera):
         await super().endIntegration()
 
     async def endReadout(self):
-        """Start reading out the image.
-        """
+        """Start reading out the image."""
         buffer = self.dev.getExposureData()
         buffer_array = np.frombuffer(buffer, dtype=np.uint16)
         exposureTime, auto = self.dev.getControlValue(ASIControlType.Exposure)
@@ -956,8 +951,7 @@ class ASILibrary(ASIBase):
         self.initialised = False
 
     def initialiseLibrary(self):
-        """Initialise the ASICamera2 Library.
-        """
+        """Initialise the ASICamera2 Library."""
         if not self.initialised:
             self.asi.getNumOfConnectedCameras()
             self.initialised = True
@@ -1043,8 +1037,7 @@ class ASIDevice(ASIBase):
         self.handle = index
 
     def close(self):
-        """Closes this device.
-        """
+        """Closes this device."""
         self._assertHandle()
         result = self.asi.closeCamera(self.handle)
         self._raiseIfBad(result)
@@ -1213,22 +1206,19 @@ class ASIDevice(ASIBase):
         self._raiseIfBad(result)
 
     def disableDarkSubtract(self):
-        """Disables the automatic subtraction of a dark frame.
-        """
+        """Disables the automatic subtraction of a dark frame."""
         self._assertHandle()
         result = self.asi.disableDarkSubtract(self.handle)
         self._raiseIfBad(result)
 
     def startVideoCapture(self):
-        """Starts capturing video.
-        """
+        """Starts capturing video."""
         self._assertHandle()
         result = self.asi.startVideoCapture(self.handle)
         self._raiseIfBad(result)
 
     def stopVideoCapture(self):
-        """Stops capturing video.
-        """
+        """Stops capturing video."""
         self._assertHandle()
         result = self.asi.stopVideoCapture(self.handle)
         self._raiseIfBad(result)
@@ -1286,8 +1276,7 @@ class ASIDevice(ASIBase):
         self._raiseIfBad(result)
 
     def stopExposure(self):
-        """Stops an exposure.
-        """
+        """Stops an exposure."""
         self._assertHandle()
         result = self.asi.stopExposure(self.handle)
         self._raiseIfBad(result)
@@ -1401,15 +1390,13 @@ class ASIDevice(ASIBase):
         self._raiseIfBad(result)
 
     def sendSoftwareTrigger(self, start):
-        """Sends a software trigger to the camera.
-        """
+        """Sends a software trigger to the camera."""
         self._assertHandle()
         result = self.asi.sendSoftwareTrigger(self.handle, self.boolToInt(start))
         self._raiseIfBad(result)
 
     def getSerialNumber(self):
-        """Gets the serial number of the camera.
-        """
+        """Gets the serial number of the camera."""
         self._assertHandle()
         result, serialNumber = self.asi.getSerialNumber(self.handle)
         self._raiseIfBad(result)

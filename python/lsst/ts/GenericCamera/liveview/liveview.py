@@ -76,8 +76,7 @@ class LiveViewServer:
         )
 
     async def stop(self):
-        """Stop the TCP/IP server.
-        """
+        """Stop the TCP/IP server."""
         if self._server is None:
             return
 
@@ -115,7 +114,7 @@ class LiveViewServer:
             self._exposure = None
 
     async def send_exposure(self, new_exposure):
-        """ Broadcast an exposure to connected clients.
+        """Broadcast an exposure to connected clients.
 
         Parameters
         ----------
@@ -159,8 +158,7 @@ class LiveViewClient:
         self.isConnected = True
 
     def close(self):
-        """Closes this connection to the LiveViewServer.
-        """
+        """Closes this connection to the LiveViewServer."""
         if self.isConnected:
             # self.sock.shutdown(socket.SHUT_RD)
             self.sock.close()
@@ -247,8 +245,7 @@ class AsyncLiveViewClient:
         )
 
     async def stop(self):
-        """ Stop this connection to the LiveViewServer.
-        """
+        """Stop this connection to the LiveViewServer."""
 
         writer = self.writer
         self.reader = None

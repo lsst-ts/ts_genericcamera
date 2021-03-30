@@ -163,8 +163,7 @@ class EFWLibrary(EFWBase):
         self.initialised = False
 
     def initialiseLibrary(self):
-        """Initialise the ZWO SDK Library.
-        """
+        """Initialise the ZWO SDK Library."""
         if not self.initialised:
             self.efw.getNumberOfDevices()
             self.initialised = True
@@ -221,8 +220,7 @@ class EFWDevice(EFWBase):
         self.handle = index
 
     def close(self):
-        """Closes this device.
-        """
+        """Closes this device."""
         self._assertHandle()
         result = self.efw.close(self.handle)
         self._raiseIfBad(result)

@@ -47,7 +47,7 @@ CONFIG_SCHEMA = yaml.safe_load(
       fileNameFormat:
         description: File name format.
         type: string
-        default: "{timestamp}-{name}-{index}-{total}"
+        default: "{timestamp}-{index}-{total}"
       camera:
         description: Camera driver to use.
         type: string

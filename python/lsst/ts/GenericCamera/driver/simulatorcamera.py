@@ -76,8 +76,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
 
     @staticmethod
     def name():
-        """Set camera name.
-        """
+        """Set camera name."""
         return "Simulator"
 
     def initialise(self, config):
@@ -109,7 +108,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         -------
         str
             The value of the property.
-            Returns 'UNDEFINED' if the property doesn't exist. """
+            Returns 'UNDEFINED' if the property doesn't exist."""
         return super().getValue(key)
 
     async def setValue(self, key, value):
@@ -158,8 +157,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         self.height = height
 
     def setFullFrame(self):
-        """Sets the region of interest to the whole sensor.
-        """
+        """Sets the region of interest to the whole sensor."""
         self.setROI(0, 0, self.maxWidth, self.maxHeight)
 
     def startLiveView(self):
@@ -172,8 +170,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         super().startLiveView()
 
     def stopLiveView(self):
-        """Configure the camera for a standard exposure.
-        """
+        """Configure the camera for a standard exposure."""
         self.bytesPerPixel = 2
         self.isLiveExposure = False
         super().stopLiveView()
@@ -267,15 +264,13 @@ class SimulatorCamera(genericcamera.GenericCamera):
         )
 
     async def endTakeImage(self):
-        """End take image or images.
-        """
+        """End take image or images."""
         await self.exposure_task
 
         self.exposure_task = None
 
     async def startIntegration(self):
-        """Start integrating.
-        """
+        """Start integrating."""
         tasks = [self.exposure_task, self.exposure_start_event.wait()]
 
         for f in asyncio.as_completed(tasks):
@@ -297,8 +292,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         await super().endIntegration()
 
     async def startReadout(self):
-        """Start reading out the image.
-        """
+        """Start reading out the image."""
         tasks = [self.exposure_task, self.readout_start_event.wait()]
 
         for f in asyncio.as_completed(tasks):
@@ -308,8 +302,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         await super().startReadout()
 
     async def endReadout(self):
-        """Start reading out the image.
-        """
+        """Start reading out the image."""
         tasks = [self.exposure_task, self.readout_finish_event.wait()]
 
         for f in asyncio.as_completed(tasks):
@@ -320,7 +313,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         return image
 
     async def simulate_exposure(self):
-        """ This method will simulate all steps of exposure asynchronously,
+        """This method will simulate all steps of exposure asynchronously,
         issuing events as each step goes on.
         """
 
@@ -347,8 +340,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
             self.log.debug("Done taking simulated exposure.")
 
     async def open_shutter(self):
-        """ Mimics task of opening the shutter.
-        """
+        """Mimics task of opening the shutter."""
 
         if self.shutter_state == self.shutter_steps:
             raise RuntimeError("Shutter already open.")
@@ -366,8 +358,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         self.shutter_open_finish_event.set()
 
     async def close_shutter(self):
-        """ Mimics task of opening the shutter.
-        """
+        """Mimics task of opening the shutter."""
         if self.shutter_state == 0:
             raise RuntimeError("Shutter already closed.")
 
@@ -380,8 +371,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         self.shutter_close_finish_event.set()
 
     async def expose(self):
-        """ Mimics exposure.
-        """
+        """Mimics exposure."""
 
         if self.exposure_state != 0:
             raise RuntimeError("Ongoing exposure.")
@@ -419,8 +409,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
             self.exposure_finish_event.set()
 
     async def readout(self):
-        """Mimic readout.
-        """
+        """Mimic readout."""
 
         if self.readout_state != 0:
             raise RuntimeError("Ongoing readout!")

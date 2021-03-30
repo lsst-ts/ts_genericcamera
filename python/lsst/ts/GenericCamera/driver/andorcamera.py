@@ -39,8 +39,7 @@ class AndorCamera(GenericCamera):
 
     @staticmethod
     def name():
-        """Set camera name.
-        """
+        """Set camera name."""
         return "Andor"
 
     def initialise(self, config):
@@ -104,8 +103,7 @@ class AndorCamera(GenericCamera):
         return top, left, width, height
 
     def setFullFrame(self):
-        """Sets the region of interest to the whole sensor.
-        """
+        """Sets the region of interest to the whole sensor."""
         result, width = self.dev.at.getIntMax(self.dev.handle, Features.AOIWidth)
         result, height = self.dev.at.getIntMax(self.dev.handle, Features.AOIHeight)
         self.setROI(0, 0, width, height)
@@ -127,8 +125,7 @@ class AndorCamera(GenericCamera):
         self.isLiveExposure = True
 
     def configureForExposure(self):
-        """Configure the camera for a standard exposure.
-        """
+        """Configure the camera for a standard exposure."""
         self.isLiveExposure = False
 
     async def takeExposure(self):
@@ -1048,13 +1045,11 @@ class ATZylaDevice(ATBase):
         self._setSomethingSimple(self.at.setInt, Features.AccumulateCount, value)
 
     def cmdAcquisitionStart(self):
-        """Send the AcquisitionStart command.
-        """
+        """Send the AcquisitionStart command."""
         self._sendCommand(Features.AcquisitionStart)
 
     def cmdAcquisitionStop(self):
-        """Send the AcquisitionStop command.
-        """
+        """Send the AcquisitionStop command."""
         self._sendCommand(Features.AcquisitionStop)
 
     def getAOIBinning(self):
@@ -2344,8 +2339,7 @@ class ATZylaDevice(ATBase):
         self._setSomethingSimple(self.at.setFloat, Features.ShutterTransferTime, value)
 
     def cmdSoftwareTrigger(self):
-        """Send the SoftwareTrigger command.
-        """
+        """Send the SoftwareTrigger command."""
         self._sendCommand(Features.SoftwareTrigger)
 
     def getStaticBlemishCorrection(self):
