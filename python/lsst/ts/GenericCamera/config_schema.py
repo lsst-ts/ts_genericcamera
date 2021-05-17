@@ -156,5 +156,11 @@ CONFIG_SCHEMA = yaml.safe_load(
             type: string
             enum:
               - RAW
+          cube_mnt:
+            type: number
+            default: -0.069
+          quad_mnt:
+            type: number
+            default: 0.055
     """
 )

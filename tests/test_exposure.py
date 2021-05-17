@@ -24,12 +24,27 @@ import tempfile
 import numpy as np
 import os
 
-from lsst.ts.GenericCamera import Exposure
+from astropy.io import fits
+
+from lsst.ts.GenericCamera import Exposure, FitsHeaderItemsGenerator, FitsHeaderTemplate
 
 
 class TestExposure(unittest.TestCase):
-    def test(self):
+    def setUp(self) -> None:
+        self.hdul = None
+        self.tmp_name = os.path.join(
+            tempfile.gettempdir(), f"{next(tempfile._get_candidate_names())}.fits"
+        )
 
+    def tearDown(self) -> None:
+        if self.hdul:
+            self.hdul.close()
+        if os.path.exists(self.tmp_name):
+            os.remove(self.tmp_name)
+
+    def test(self):
+        fhig = FitsHeaderItemsGenerator()
+        tags = fhig.generate_fits_header_items(FitsHeaderTemplate.ALL_SKY)
         width = 1024
         height = 1024
         image = np.random.randint(
@@ -40,19 +55,49 @@ class TestExposure(unittest.TestCase):
         )
 
         exp = Exposure(
-            buffer=image, width=width, height=height, tags=["unit-test", "test", "unit"]
+            buffer=image,
+            width=width,
+            height=height,
+            tags=tags,
         )
 
-        tmp_name = os.path.join(
-            tempfile.gettempdir(), f"{next(tempfile._get_candidate_names())}.fits"
+        exp.save(self.tmp_name)
+
+        self.assertTrue(
+            os.path.exists(self.tmp_name), f"File {self.tmp_name} does not exist."
         )
+        self.hdul = fits.open(self.tmp_name)
+        hdr = self.hdul[0].header
+        # Keep count of how often a header name has been processed becasue some
+        # are double. The double ones mostly are empty names (i.e. '') but some
+        # other double names exist as well.
+        header_name_counts = {}
 
-        exp.save(tmp_name)
+        for tag in tags:
+            name = tag.name
+            value = tag.value.replace("'", "")
+            comment = tag.comment
 
-        self.assertTrue(os.path.exists(tmp_name), f"File {tmp_name} doe not exists.")
+            # Initialize the count for every name to 0 since astropy will
+            # return the correct header item for all values >= 0.
+            if name not in header_name_counts:
+                header_name_counts[name] = 0
+
+            # Get the current count and increase by one for the next iteration
+            # of the loop.
+            count = header_name_counts[name]
+            header_name_counts[name] = count + 1
+
+            self.assertEqual(
+                hdr[(name, count)], value, f"Header value for {name} incorrect."
+            )
+            self.assertEqual(
+                hdr.comments[(name, count)],
+                comment,
+                f"Header comment for {name} incorrect.",
+            )
 
         exp.makeJPEG()
-
         self.assertTrue(exp.isJPEG)
 
 

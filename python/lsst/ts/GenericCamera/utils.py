@@ -19,15 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-try:
-    from .version import *
-except ModuleNotFoundError:
-    __version__ = "?"
+__all__ = [
+    "DATE_FORMAT",
+    "DATETIME_FORMAT",
+]
 
-from .config_schema import *
-from .genericcameracsc import *
-from .exposure import *
-from .fits_header_items_generator import *
-from .liveview import *
-from .driver import *
-from .utils import *
+DATE_FORMAT = "%Y-%m-%d"
+"""Format string for date values in the FITS header."""
+
+DATETIME_FORMAT = f"{DATE_FORMAT}T%H:%M:%S"
+"""Format string for datetime values in the FITS header."""

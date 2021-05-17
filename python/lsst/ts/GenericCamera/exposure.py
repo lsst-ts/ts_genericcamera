@@ -45,8 +45,8 @@ class Exposure:
             The width of the image.
         height : int
             The height of the image.
-        tags : map
-            A list of tags that describe the image.
+        tags : list
+            A list of FitsHeaderItem tags that describe the image.
         dtype : dtype (optional)
             Type of image data.
         isJPEG : bool (optional)
@@ -90,7 +90,7 @@ class Exposure:
         else:
             img = fits.PrimaryHDU(self.buffer)
             hdul = fits.HDUList([img])
-            # hdr = hdul[0].header
-            # for key in self.tags:
-            #     hdr[key] = self.tags[key]
+            hdr = hdul[0].header
+            for tag in self.tags:
+                hdr.append((tag.name, tag.value, tag.comment), end=True)
             hdul.writeto(filePath)

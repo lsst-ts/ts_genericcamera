@@ -1,4 +1,6 @@
+astropy
+documenteer
 gphoto2>=2.2.2
 numpy
+Pillow
 rawpy
-documenteer

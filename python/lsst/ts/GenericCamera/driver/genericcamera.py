@@ -19,11 +19,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+__all__ = ["GenericCamera"]
+
 import abc
 import ctypes
+import datetime
 import logging
 
+from astropy.coordinates import (
+    Angle,
+    SkyCoord,
+)
+from astropy.time import Time
+from astropy import units as u
+
 from .. import exposure
+from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
 
 
 class GenericCamera(abc.ABC):
@@ -34,6 +45,14 @@ class GenericCamera(abc.ABC):
             self.log = logging.getLogger(__name__)
         else:
             self.log = log
+
+        # Load the generic FITS header items.
+        fhig = FitsHeaderItemsGenerator()
+        self.tags = fhig.generate_fits_header_items(FitsHeaderTemplate.ALL_SKY)
+
+        # Variables holding image acquisition info
+        self.datetime_start = None
+        self.datetime_end = None
 
     @staticmethod
     @abc.abstractmethod
@@ -158,6 +177,7 @@ class GenericCamera(abc.ABC):
         """Start opening the shutter.
 
         If the camera doesn't have a shutter then don't do anything."""
+        self.datetime_start = datetime.datetime.now(tz=datetime.timezone.utc)
         pass
 
     async def endShutterOpen(self):
@@ -195,6 +215,7 @@ class GenericCamera(abc.ABC):
         the shutter to finishing closing.
 
         If the camera doesn't have a shutter then don't do anything."""
+        self.datetime_end = datetime.datetime.now(tz=datetime.timezone.utc)
         pass
 
     async def startReadout(self):
@@ -213,3 +234,59 @@ class GenericCamera(abc.ABC):
     async def endTakeImage(self):
         """End take image or images."""
         pass
+
+    def get_tag(self, name):
+        """Convenience function to retrieve the FITS header tag with the
+        provided name.
+
+        Parameters
+        ----------
+        name: `str`
+            The name of the tag to return.
+
+        Returns
+        -------
+        tag: FitsHeaderItem or None
+            Returns the FitsHeaderItem with the provided name, or None if it
+            doesn't exist.
+        """
+        try:
+            # Each tag should only exist once.
+            fhi = [tag for tag in self.tags if tag.name == name][0]
+        except IndexError:
+            # If no tag is found then returen None.
+            fhi = None
+        return fhi
+
+    async def _get_radec_from_altaz_location_time(self, alt, az, obs_time, location):
+        """Get the Right Ascension and Declination from the altitude and
+        azimuth for the given time and location.
+
+        Parameters
+        ----------
+        alt: `float`
+            The altitude in degrees.
+        az: `float`
+            The azimuth in degrees.
+        obs_time: `str`
+            A string representing the date and time. Valid strings are those
+            accepted by astropy.
+        location: `astropy.coordinates.EarthLocation`
+            The EarthLocation representing the longitude, latitude and
+            elevation of the location.
+
+        Returns
+        -------
+        ra_dec: `astropy.coordinates.SkyCoord`
+            The SkyCoord representing the Right Ascension and Declination.
+        """
+        time = Time(obs_time, scale="utc")
+        altaz = SkyCoord(
+            alt=Angle(alt * u.deg),
+            az=Angle(az * u.deg),
+            frame="altaz",
+            obstime=time,
+            location=location,
+        )
+        ra_dec = altaz.transform_to("icrs")
+        return ra_dec
