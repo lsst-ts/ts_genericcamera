@@ -22,10 +22,13 @@
 __all__ = ["SimulatorCamera"]
 
 import asyncio
+import datetime
 import numpy as np
 
 from .. import exposure
 from . import genericcamera
+from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
+from .. import utils
 
 
 class SimulatorCamera(genericcamera.GenericCamera):
@@ -186,6 +189,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         for f in asyncio.as_completed(tasks):
             await f
             break
+        await super().startShutterOpen()
 
     async def endShutterOpen(self):
         """End opening the shutter.
@@ -223,6 +227,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         for f in asyncio.as_completed(tasks):
             await f
             break
+        await super().endShutterClose()
 
     async def startTakeImage(self, expTime, shutter, science, guide, wfs):
         """Start taking an image or a set of images.
@@ -309,7 +314,8 @@ class SimulatorCamera(genericcamera.GenericCamera):
             await f
             break
 
-        image = exposure.Exposure(self.imageBuffer, self.width, self.height, {})
+        await self._set_tag_values()
+        image = exposure.Exposure(self.imageBuffer, self.width, self.height, self.tags)
         return image
 
     async def simulate_exposure(self):
@@ -430,3 +436,29 @@ class SimulatorCamera(genericcamera.GenericCamera):
 
         # Reset readout state
         self.readout_state = 0
+
+    async def _set_tag_values(self):
+        """Convenience coroutine to provide values for some of the tags in the
+        FITS header. More tags can be added if necessary but these were deemed
+        sufficient for unit testing."""
+        # Add the Canon-related FITS header items to the generic ones.
+        self.tags.extend(
+            FitsHeaderItemsGenerator().generate_fits_header_items(
+                FitsHeaderTemplate.CANON
+            )
+        )
+
+        # ---- Date, night and basic image information ----
+        self.get_tag(name="DATE").value = datetime.datetime.now(
+            tz=datetime.timezone.utc
+        ).strftime(utils.DATETIME_FORMAT)
+        self.get_tag(name="DATE-OBS").value = self.datetime_start.strftime(
+            utils.DATE_FORMAT
+        )
+        self.get_tag(name="DATE-BEG").value = self.datetime_start.strftime(
+            utils.DATETIME_FORMAT
+        )
+        self.get_tag(name="DATE-END").value = self.datetime_end.strftime(
+            utils.DATETIME_FORMAT
+        )
+        self.get_tag(name="ISO").value = 100

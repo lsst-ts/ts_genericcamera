@@ -19,10 +19,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import unittest
 import asyncio
+import unittest
 
 from lsst.ts.GenericCamera.driver import SimulatorCamera
+from lsst.ts.GenericCamera.utils import DATETIME_FORMAT
 
 
 class TestSimulatorCamera(unittest.IsolatedAsyncioTestCase):
@@ -57,6 +58,19 @@ class TestSimulatorCamera(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(exposure.width == simcam.maxWidth)
             self.assertTrue(exposure.height == simcam.maxHeight)
             self.assertTrue(exposure.buffer is not None)
+            self.assertIsNotNone(simcam.datetime_start)
+            self.assertIsNotNone(simcam.datetime_end)
+
+            # Test several FITS header tags.
+            self.assertEqual(
+                simcam.get_tag("DATE-BEG").value,
+                simcam.datetime_start.strftime(DATETIME_FORMAT),
+            )
+            self.assertEqual(
+                simcam.get_tag("DATE-END").value,
+                simcam.datetime_end.strftime(DATETIME_FORMAT),
+            )
+            self.assertEqual(simcam.get_tag("ISO").value, 100)
 
         asyncio.get_event_loop().run_until_complete(doit())
 

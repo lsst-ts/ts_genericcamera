@@ -19,11 +19,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import datetime
 import io
 
 from .. import exposure
+from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
 from . import genericcamera
+from .. import utils
 
+from astropy.coordinates import EarthLocation
+from astropy.time import Time
 import gphoto2 as gp
 import numpy as np
 import rawpy
@@ -39,12 +44,21 @@ class CanonCamera(genericcamera.GenericCamera):
         self.width = None
         self.height = None
         self.iso = None
+        self.cube_mnt = None
+        self.quad_mnt = None
 
         self.camera = None
         self.exposure_time = None
 
         # The path to the image in the camera
         self.file_path = None
+
+        # Add the Canon-related FITS header items to the generic ones.
+        self.tags.append(
+            FitsHeaderItemsGenerator().generate_fits_header_items(
+                FitsHeaderTemplate.CANON
+            )
+        )
 
     @staticmethod
     def name():
@@ -65,6 +79,8 @@ class CanonCamera(genericcamera.GenericCamera):
         self.width = config.width
         self.height = config.height
         self.iso = config.iso
+        self.cube_mnt = config.cube_mnt
+        self.quad_mnt = config.quad_mnt
 
         # Initialize the camera. If not camera is detected then an Exception
         # will be raised.
@@ -169,17 +185,89 @@ class CanonCamera(genericcamera.GenericCamera):
         del camera_file
         raw.close()
 
-        # Set up the tags for the exposure. Unfortunately no temperature data
-        # are available with this camera.
-        tags = {
-            "TOP": 0,
-            "LEFT": 0,
-            "WIDTH": self.width,
-            "HEIGHT": self.height,
-            "EXPOSURE": self.exposure_time,
-            "ISO": self.iso,
-        }
+        await self._set_tag_values()
+
         image = exposure.Exposure(
-            luminance, self.width, self.height, tags, isJPEG=False
+            luminance, self.width, self.height, self.tags, isJPEG=False
         )
         return image
+
+    async def _set_tag_values(self):
+        """Convenience coroutine to provide values for all the tags in the FITS
+        header."""
+        # ---- Date, night and basic image information ----
+        now_string = datetime.datetime.now(tz=datetime.timezone.utc).strftime(
+            utils.DATETIME_FORMAT
+        )
+        date_obs = self.datetime_start.strftime(utils.DATE_FORMAT)
+        date_beg = self.datetime_start.strftime(utils.DATETIME_FORMAT)
+        date_end = self.datetime_end.strftime(utils.DATETIME_FORMAT)
+        self.get_tag(name="DATE").value = now_string
+        self.get_tag(name="DATE-OBS").value = date_obs
+        self.get_tag(name="DATE-BEG").value = date_beg
+        self.get_tag(name="DATE-END").value = date_end
+        self.get_tag(name="MJD").value = Time(now_string, format="mjd").value
+        self.get_tag(name="MJD-OBS").value = Time(date_obs, format="mjd").value
+        self.get_tag(name="MJD-BEG").value = Time(date_beg, format="mjd").value
+        self.get_tag(name="MJD-END").value = Time(date_end, format="mjd").value
+        # TODO Not sure what value to set here.
+        self.get_tag(name="OBSID").value = ""
+        self.get_tag(name="IMGTYPE").value = "OBJECT"
+
+        # ---- Pointing info, etc. ----
+        # Always pointing at the zenith.
+        elevation = 90.0
+        # Minor axis always points south
+        azimuth = 0.0
+
+        # Retrieve observing location info
+        lon = next((tag for tag in self.tags if tag.name == "OBS-LONG")).value
+        lat = next((tag for tag in self.tags if tag.name == "OBS-LAT")).value
+        height = next((tag for tag in self.tags if tag.name == "OBS-ELEV")).value
+        # Create EarthLocation instance for Rubin Observatory
+        rubin = EarthLocation.from_geodetic(lon=lon, lat=lat, height=height)
+
+        radec_start = self.__get_radec_from_altaz_location_time(
+            alt=elevation, az=azimuth, obs_time=date_beg, location=rubin
+        )
+        radec_end = self.__get_radec_from_altaz_location_time(
+            alt=elevation, az=azimuth, obs_time=date_end, location=rubin
+        )
+        self.get_tag(name="RASTART").value = radec_start.ra.value
+        self.get_tag(name="DECSTART").value = radec_start.dec.value
+        self.get_tag(name="RAEND").value = radec_end.ra.value
+        self.get_tag(name="DECEND").value = radec_end.dec.value
+        # Rotation for AllsSky camera is assumed to always be zero.
+        self.get_tag(name="ROTPA").value = 0
+        # Can be the same as azimuth since only the unit differs.
+        self.get_tag(name="HASTART").value = azimuth
+        self.get_tag(name="EL").value = elevation
+        self.get_tag(name="AZ").value = azimuth
+        # Can be the same as azimuth since only the unit differs.
+        self.get_tag(name="HAEND").value = azimuth
+        self.get_tag(name="RADESYS").value = "ICRS"
+        # This value was measured.
+        self.get_tag(name="CUBE-MNT").value = self.cube_mnt
+        # This value was measured.
+        self.get_tag(name="QUAD-MNT").value = self.quad_mnt
+
+        # ---- Image-identifying used to build OBS-ID ----
+        self.get_tag(name="CAMCODE").value = f"AllSkyCam_{self.name()}_{self.id}"
+        # TODO Not sure what value to set here.
+        self.get_tag(name="DAYOBS").value = ""
+        # TODO Not sure what value to set here.
+        self.get_tag(name="SEQNUM").value = ""
+        self.get_tag(name="IMGTYPE").value = "OBS"
+
+        # ---- Information from Camera ----
+        self.get_tag(name="APERTURE").value = "F/4"
+        self.get_tag(name="FLEN").value = 8.0
+
+        # ---- Geometry from Camera ----
+        self.get_tag(name="DETSIZE").value = "36 x 24"
+        # Pixel size = 5.36 micrometer, focal length = 8.0 mm
+        self.get_tag(name="SECPIX").value = (5.36 / 8.0) * 206.265
+
+        # ---- Exposure-related information ----
+        self.get_tag(name="EXPTIME").value = self.exposure_time
+        self.get_tag(name="ISO").value = self.iso

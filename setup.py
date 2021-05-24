@@ -19,7 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from setuptools import setup, find_namespace_packages
+import pathlib
+import setuptools
+import sys
 
 install_requires = ["Pillow", "tornado", "numpy", "astropy", "gphoto2", "rawpy"]
 tests_require = ["pytest", "pytest-cov", "pytest-flake8", "yaml"]
@@ -29,8 +31,11 @@ __all__ = ["__version__"]
 
 __version__ = "{version}"
 """
+tools_path = pathlib.PurePosixPath(setuptools.__path__[0])
+base_prefix = pathlib.PurePosixPath(sys.base_prefix)
+data_files_path = tools_path.relative_to(base_prefix).parents[1]
 
-setup(
+setuptools.setup(
     name="ts_GenericCamera",
     description="CSC for Generic Camera.",
     use_scm_version={
@@ -40,8 +45,9 @@ setup(
     setup_requires=["setuptools_scm", "pytest-runner"],
     install_requires=install_requires,
     package_dir={"": "python"},
-    packages=find_namespace_packages(where="python"),
-    package_data={"": ["*.rst", "*.yaml"]},
+    packages=setuptools.find_namespace_packages(where="python"),
+    include_package_data=True,
+    package_data={"": ["*.rst", "*.yaml", "*.header"]},
     data_files=[],
     scripts=["bin/run_genericcamera.py", "bin/run_liveviewui.py"],
     tests_require=tests_require,

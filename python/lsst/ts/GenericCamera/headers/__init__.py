@@ -18,16 +18,3 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-try:
-    from .version import *
-except ModuleNotFoundError:
-    __version__ = "?"
-
-from .config_schema import *
-from .genericcameracsc import *
-from .exposure import *
-from .fits_header_items_generator import *
-from .liveview import *
-from .driver import *
-from .utils import *
