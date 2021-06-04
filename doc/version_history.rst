@@ -6,6 +6,18 @@
 Version History
 ###############
 
+v0.3.2
+======
+
+* Updated the conda recipe for noarch.
+
+Requires:
+
+* ts_salobj 6.3
+* ts_idl 3.1
+* IDL file for ESS from ts_xml 9.0
+
+
 v0.3.1
 ======
 
