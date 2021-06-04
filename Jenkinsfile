@@ -3,6 +3,7 @@ pipeline {
     environment {
         container_name = "c_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
         user_ci = credentials('lsst-io')
+        XML_REPORT="jenkinsReport/report.xml"
         work_branches = "${GIT_BRANCH} ${CHANGE_BRANCH} develop"
     }
     stages {
@@ -10,7 +11,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker pull lsstts/ts_genericcamera:latest
+                    docker pull lsstts/develop-env:develop
                     """
                 }
             }
@@ -20,7 +21,43 @@ pipeline {
                 script {
                     sh """
                     chmod -R a+rw \${WORKSPACE}
-                    container=\$(docker run -v \${WORKSPACE}:/home/saluser/repo/ -td --rm --name \${container_name} -e LTD_USERNAME=\${user_ci_USR} -e LTD_PASSWORD=\${user_ci_PSW} lsstts/ts_genericcamera:latest)
+                    container=\$(docker run -v \${WORKSPACE}:/home/saluser/repo/ -td --rm --name \${container_name} -e LTD_USERNAME=\${user_ci_USR} -e LTD_PASSWORD=\${user_ci_PSW} lsstts/salobj:develop)
+                    """
+                }
+            }
+        }
+        stage("Checkout sal") {
+            steps {
+                script {
+                    sh """
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repos/ts_sal && /home/saluser/.checkout_repo.sh \${work_branches} && git pull\"
+                    """
+                }
+            }
+        }
+        stage("Checkout salobj") {
+            steps {
+                script {
+                    sh """
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repos/ts_salobj && /home/saluser/.checkout_repo.sh \${work_branches} && git pull\"
+                    """
+                }
+            }
+        }
+        stage("Checkout xml") {
+            steps {
+                script {
+                    sh """
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repos/ts_xml && /home/saluser/.checkout_repo.sh \${work_branches} && git pull\"
+                    """
+                }
+            }
+        }
+        stage("Checkout IDL") {
+            steps {
+                script {
+                    sh """
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repos/ts_idl && /home/saluser/.checkout_repo.sh \${work_branches} && git pull\"
                     """
                 }
             }
@@ -34,11 +71,20 @@ pipeline {
                 }
             }
         }
+        stage("Checkout config_ocs") {
+            steps {
+                script {
+                    sh """
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repos/ts_config_ocs/ && /home/saluser/.checkout_repo.sh \${work_branches} \"
+                    """
+                }
+            }
+        }
         stage("Running tests") {
             steps {
                 script {
                     sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd repo && eups declare -r . -t saluser && setup ts_GenericCamera -t saluser && export LSST_DDS_IP=192.168.0.1 && pytest --color=no -ra --junitxml=tests/results/results.xml\"
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd repo && pip install --ignore-installed -e . && eups declare -r . -t saluser && setup ts_GenericCamera -t saluser && pytest --junitxml=\${XML_REPORT}\"
                     """
                 }
             }
@@ -46,18 +92,21 @@ pipeline {
     }
     post {
         always {
-            // The path of xml needed by JUnit is relative to the workspace.
-            junit 'tests/results/results.xml'
-            sh "docker exec -u saluser \${container_name} sh -c \"" +
-                "source ~/.setup.sh && " +
-                "cd /home/saluser/repo/ && " +
-                "setup ts_GenericCamera -t saluser && " +
-                "package-docs build\""
+            // Publish the HTML report
+            publishHTML (target: [
+                allowMissing: false,
+                alwaysLinkToLastBuild: false,
+                keepAll: true,
+                reportDir: 'jenkinsReport/',
+                reportFiles: 'index.html',
+                reportName: "Coverage Report"
+              ])
          }
         cleanup {
             sh """
-                docker exec -u root --privileged \${container_name} sh -c \"chmod -R a+rw /home/saluser/repo/ \"
-                docker stop \${container_name}
+                docker exec -u root --privileged \${container_name} sh -c \"chmod -R a+rw /home/saluser/repo/\"
+                docker stop \${container_name} || echo Could not stop container
+                docker network rm \${network_name} || echo Could not remove network
             """
             deleteDir()
         }
