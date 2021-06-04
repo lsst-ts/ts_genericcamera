@@ -1,5 +1,25 @@
+# This file is part of ts_GenericCamera.
+#
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['main', 'EUI']
+__all__ = ["main", "EUI"]
 
 import os
 
@@ -9,8 +29,16 @@ import argparse
 import asyncio
 
 from PySide2.QtCore import QTimer
-from PySide2.QtWidgets import (QApplication, QVBoxLayout, QHBoxLayout, QDialog,
-                               QLabel, QPushButton, QDoubleSpinBox, QTextEdit)
+from PySide2.QtWidgets import (
+    QApplication,
+    QVBoxLayout,
+    QHBoxLayout,
+    QDialog,
+    QLabel,
+    QPushButton,
+    QDoubleSpinBox,
+    QTextEdit,
+)
 from PySide2.QtGui import QPixmap
 from PySide2 import QtCore
 from PIL import Image
@@ -105,10 +133,10 @@ class EUI(QDialog):
         layout.addWidget(self.takeExposureButton)
         self.controlsLayout.addLayout(layout)
 
-        img = Image.fromarray(np.zeros((1024, 1014))).convert('I')
-        img.save('/tmp/foo.png')
+        img = Image.fromarray(np.zeros((1024, 1014))).convert("I")
+        img.save("/tmp/foo.png")
 
-        self.pix = QPixmap('/tmp/foo.png')
+        self.pix = QPixmap("/tmp/foo.png")
 
         self.imageLabel = QLabel()
         self.imageLabel.setPixmap(self.pix)
@@ -134,7 +162,9 @@ class EUI(QDialog):
                     print("Error on client!")
                     self.client = None
             print("updateDisplays - Here - 3")
-            exposure = self.event_loop.run_until_complete(self.client.receive_exposure())
+            exposure = self.event_loop.run_until_complete(
+                self.client.receive_exposure()
+            )
             print("New exposure.")
             # exposure.makeJPEG()
             # img = Image.open(BytesIO(exposure.buffer))
@@ -154,11 +184,10 @@ class EUI(QDialog):
             #         newHeight = newHeight
             #     img = img.resize((int(newWidth), int(newHeight)))
             as8 = exposure.buffer.astype(np.uint8)
-            img = Image.fromarray(as8.reshape(exposure.height,
-                                              exposure.width))
-            img.save('/tmp/foo.png')
+            img = Image.fromarray(as8.reshape(exposure.height, exposure.width))
+            img.save("/tmp/foo.png")
 
-            self.pix = QPixmap('/tmp/foo.png')
+            self.pix = QPixmap("/tmp/foo.png")
 
             self.imageLabel.setPixmap(self.pix)
         except liveview.ImageReceiveError as e:
@@ -170,13 +199,16 @@ class EUI(QDialog):
         print("startLiveView - Start")
         # data = self.sal.cmd_startLiveView.DataType()
         # data.expTime = self.exposureTimeEdit.value()
-        # asyncio.get_event_loop().run_until_complete(self.sal.cmd_startLiveView.start(data, timeout=10.0))
+        # asyncio.get_event_loop().run_until_complete(
+        #     self.sal.cmd_startLiveView.start(data, timeout=10.0)
+        # )
         self.sal.issueCommand_startLiveView(self.exposureTimeEdit.value())
         print("startLiveView - End")
 
     def stopLiveView(self):
         print("stopLiveView - Start")
-        # asyncio.get_event_loop().run_until_complete(self.sal.cmd_stopLiveView.start(
+        # asyncio.get_event_loop().run_until_complete(
+        #     self.sal.cmd_stopLiveView.start(
         # self.sal.cmd_stopLiveView.DataType(), timeout=10.0))
         self.sal.issueCommand_stopLiveView(True)
         print("stopLiveView - End")
@@ -188,9 +220,15 @@ class EUI(QDialog):
         # data.leftPixel = int(self.roiLeftEdit.value())
         # data.width = int(self.roiWidthEdit.value())
         # data.height = int(self.roiHeightEdit.value())
-        # asyncio.get_event_loop().run_until_complete(self.sal.cmd_setROI.start(data, timeout=5.0))
-        self.sal.issueCommand_setROI(int(self.roiTopEdit.value()), int(self.roiLeftEdit.value()),
-                                     int(self.roiWidthEdit.value()), int(self.roiHeightEdit.value()))
+        # asyncio.get_event_loop().run_until_complete(
+        #     self.sal.cmd_setROI.start(data, timeout=5.0)
+        # )
+        self.sal.issueCommand_setROI(
+            int(self.roiTopEdit.value()),
+            int(self.roiLeftEdit.value()),
+            int(self.roiWidthEdit.value()),
+            int(self.roiHeightEdit.value()),
+        )
         print("setROI - End")
 
     def setFullFrame(self):
@@ -215,19 +253,23 @@ class EUI(QDialog):
 
 def main(argv):
 
-    parser = argparse.ArgumentParser(f"Start the GenericCamera CSC")
+    parser = argparse.ArgumentParser("Start the GenericCamera CSC")
     parser.add_argument("--version", action="version", version=version.__version__)
-    parser.add_argument("-p", "--port", type=int, default=5013,
-                        help="TCP/IP port of live view server.")
-    parser.add_argument("--host", type=str, default='127.0.0.1',
-                        help="TCP/IP host address of live view server.")
+    parser.add_argument(
+        "-p", "--port", type=int, default=5013, help="TCP/IP port of live view server."
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="TCP/IP host address of live view server.",
+    )
 
     args = parser.parse_args(argv[1:])
 
     # Create the Qt Application
     domain = Domain()
-    remote = Remote(domain,
-                    name="GenericCamera", index=1)
+    remote = Remote(domain, name="GenericCamera", index=1)
 
     app = QApplication(sys.argv)
     # Create EUI
@@ -247,5 +289,5 @@ def main(argv):
     sys.exit()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv)

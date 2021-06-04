@@ -19,9 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .genericcamera import *
-from .andorcamera import *
-from .canoncamera import *
-from .simulatorcamera import *
-from .zwocamera import *
-from .zwofilterwheel import *
+__all__ = [
+    "DATE_FORMAT",
+    "DATETIME_FORMAT",
+]
+
+DATE_FORMAT = "%Y-%m-%d"
+"""Format string for date values in the FITS header."""
+
+DATETIME_FORMAT = f"{DATE_FORMAT}T%H:%M:%S"
+"""Format string for datetime values in the FITS header."""

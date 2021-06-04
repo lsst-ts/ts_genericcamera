@@ -1,8 +1,10 @@
+#!/usr/bin/env python
+#
 # This file is part of ts_GenericCamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
-# This product includes software developed by the LSST Project
-# (https://www.lsst.org).
+# This product includes software developed by the Vera Rubin Observatory
+# Project (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
 #
@@ -19,9 +21,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .genericcamera import *
-from .andorcamera import *
-from .canoncamera import *
-from .simulatorcamera import *
-from .zwocamera import *
-from .zwofilterwheel import *
+import sys
+
+from lsst.ts.GenericCamera.liveview.liveviewui import main
+
+main(sys.argv)

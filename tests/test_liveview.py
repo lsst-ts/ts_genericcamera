@@ -1,3 +1,23 @@
+# This file is part of ts_GenericCamera.
+#
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import unittest
 import asyncio
@@ -6,10 +26,8 @@ import numpy as np
 from lsst.ts.GenericCamera import Exposure, LiveViewServer, AsyncLiveViewClient
 
 
-class TestLiveView(unittest.TestCase):
-
+class TestLiveView(unittest.IsolatedAsyncioTestCase):
     def test(self):
-
         async def doit():
             width = 1024
             height = 1024
@@ -18,22 +36,26 @@ class TestLiveView(unittest.TestCase):
 
             server = LiveViewServer(5013)
 
-            client = AsyncLiveViewClient('127.0.0.1', 5013)
+            client = AsyncLiveViewClient("127.0.0.1", 5013)
 
             await server.start()
 
             await client.start()
 
             for i in range(10):
-                image = np.random.randint(low=np.iinfo(np.uint16).min,
-                                          high=np.iinfo(np.uint16).max,
-                                          size=(width, height),
-                                          dtype=np.uint16)
+                image = np.random.randint(
+                    low=np.iinfo(np.uint16).min,
+                    high=np.iinfo(np.uint16).max,
+                    size=(width, height),
+                    dtype=np.uint16,
+                )
 
-                exp = Exposure(buffer=image,
-                               width=width,
-                               height=height,
-                               tags=["unit-test", "test", "unit"])
+                exp = Exposure(
+                    buffer=image,
+                    width=width,
+                    height=height,
+                    tags=["unit-test", "test", "unit"],
+                )
 
                 await server.send_exposure(exp)
 

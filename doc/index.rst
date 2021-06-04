@@ -13,15 +13,10 @@ ts_GenericCamera contains the `GenericCameraCsc` and suport code.
 Using lsst.ts.GenericCamera
 ==============================
 
-ts_GenericCamera requires the following SALPY libraries:
-
-* SALPY_GenericCamera
-
 You can setup and build this package using eups and sconsUtils.
-After setting up the package you can build it and run unit tests by typing ``scons``.
-Building it merely copies ``bin.src/run_genericcamera.py`` into ``bin/`` after tweaking the ``#!`` line.
+After setting up the package you can build it and run unit tests by typing ``py.test``.
 
-To run the `GenericCamera` CSC type ``run_genericcamera.py``
+To run the `GenericCamera` CSC type ``bin/run_genericcamera.py``
 
 .. _lsst.ts.GenericCamera-contributing:
 
@@ -44,3 +39,10 @@ Python API reference
 .. automodapi:: lsst.ts.GenericCamera
    :no-main-docstr:
    :no-inheritance-diagram:
+
+Version History
+===============
+
+.. toctree::
+    version_history
+    :maxdepth: 1

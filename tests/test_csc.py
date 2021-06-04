@@ -1,6 +1,6 @@
-# This file is part of ts_ATDome.
+# This file is part of ts_GenericCamera.
 #
-# Developed for the LSST Data Management System.
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
 # (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
@@ -17,15 +17,16 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
 import glob
 import os
 import pathlib
-import unittest
 import yaml
+import unittest
+
 import numpy as np
-import logging
 
 from lsst.ts import salobj
 from lsst.ts import GenericCamera
@@ -37,20 +38,8 @@ TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "c
 port_generator = salobj.index_generator(imin=3200)
 
 
-class Harness:
-    def __init__(self, initial_state, config_dir=None):
-        salobj.test_utils.set_random_lsst_dds_domain()
-        self.index = 1
-        self.csc = GenericCamera.GenericCameraCsc(
-            index=self.index, config_dir=config_dir,
-            initial_state=initial_state,
-            initial_simulation_mode=0)
-        self.remote = salobj.Remote(domain=self.csc.domain, name="GenericCamera",
-                                    index=self.index)
-        self.csc.log.setLevel(logging.DEBUG)
-
+class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def flush_take_image_events(self):
-
         self.remote.evt_startTakeImage.flush()
         self.remote.evt_startShutterOpen.flush()
         self.remote.evt_endShutterOpen.flush()
@@ -62,272 +51,294 @@ class Harness:
         self.remote.evt_endReadout.flush()
         self.remote.evt_endTakeImage.flush()
 
-    async def __aenter__(self):
-        await self.csc.start_task
-        await self.remote.start_task
-        return self
+    def basic_make_csc(self, initial_state, config_dir, simulation_mode, **kwargs):
+        return GenericCamera.GenericCameraCsc(
+            initial_state=initial_state,
+            config_dir=config_dir,
+            simulation_mode=0,
+            index=1,
+        )
 
-    async def __aexit__(self, *args):
-        await self.csc.close()
+    async def test_default_config_dir(self):
+        async with self.make_csc(initial_state=salobj.State.STANDBY):
+            self.assertEqual(self.csc.summary_state, salobj.State.STANDBY)
 
+            desired_config_pkg_name = "ts_config_ocs"
+            desired_config_env_name = desired_config_pkg_name.upper() + "_DIR"
+            desired_config_pkg_dir = os.environ[desired_config_env_name]
+            desired_config_dir = (
+                pathlib.Path(desired_config_pkg_dir) / "GenericCamera/v1"
+            )
+            self.assertEqual(self.csc.get_config_pkg(), desired_config_pkg_name)
+            self.assertEqual(self.csc.config_dir, desired_config_dir)
 
-class CscTestCase(unittest.TestCase):
-    def setUp(self):
-        print()
+    async def test_configuration(self):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
+            self.assertEqual(self.csc.summary_state, salobj.State.STANDBY)
+            state = await self.remote.evt_summaryState.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertEqual(state.summaryState, salobj.State.STANDBY)
 
-    def test_default_config_dir(self):
-        async def doit():
-            async with Harness(initial_state=salobj.State.STANDBY) as harness:
-                self.assertEqual(harness.csc.summary_state, salobj.State.STANDBY)
+            invalid_files = glob.glob(os.path.join(TEST_CONFIG_DIR, "invalid_*.yaml"))
+            bad_config_names = [os.path.basename(name) for name in invalid_files]
+            bad_config_names.append("no_such_file.yaml")
+            for bad_config_name in bad_config_names:
+                with self.subTest(bad_config_name=bad_config_name):
+                    self.remote.cmd_start.set(settingsToApply=bad_config_name)
+                    with self.assertRaises(salobj.AckError):
+                        await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
 
-                desired_config_pkg_name = "ts_config_ocs"
-                desired_config_env_name = desired_config_pkg_name.upper() + "_DIR"
-                desird_config_pkg_dir = os.environ[desired_config_env_name]
-                desired_config_dir = pathlib.Path(desird_config_pkg_dir) / "GenericCamera/v1"
-                self.assertEqual(harness.csc.get_config_pkg(), desired_config_pkg_name)
-                self.assertEqual(harness.csc.config_dir, desired_config_dir)
+            self.remote.cmd_start.set(settingsToApply="all_fields")
+            await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
+            self.assertEqual(self.csc.summary_state, salobj.State.DISABLED)
+            state = await self.remote.evt_summaryState.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
+            self.assertEqual(state.summaryState, salobj.State.DISABLED)
+            all_fields_path = os.path.join(TEST_CONFIG_DIR, "all_fields.yaml")
+            with open(all_fields_path, "r") as f:
+                all_fields_raw = f.read()
+            all_fields_data = yaml.safe_load(all_fields_raw)
+            for field, value in all_fields_data.items():
+                self.assertEqual(getattr(self.csc.config, field), value)
 
-        asyncio.get_event_loop().run_until_complete(doit())
+    async def test_state_transition(self):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
 
-    def test_configuration(self):
-        async def doit():
-            async with Harness(initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR) as \
-                    harness:
-                self.assertEqual(harness.csc.summary_state, salobj.State.STANDBY)
-                state = await harness.remote.evt_summaryState.next(flush=False,
-                                                                   timeout=LONG_TIMEOUT)
-                self.assertEqual(state.summaryState, salobj.State.STANDBY)
+            async def check_rejected(expected_state):
+                self.assertEqual(self.csc.summary_state, expected_state)
+                csc_state = await self.remote.evt_summaryState.next(
+                    flush=False, timeout=LONG_TIMEOUT
+                )
+                self.assertEqual(csc_state.summaryState, expected_state)
 
-                invalid_files = glob.glob(os.path.join(TEST_CONFIG_DIR, "invalid_*.yaml"))
-                bad_config_names = [os.path.basename(name) for name in invalid_files]
-                bad_config_names.append("no_such_file.yaml")
-                for bad_config_name in bad_config_names:
-                    with self.subTest(bad_config_name=bad_config_name):
-                        harness.remote.cmd_start.set(settingsToApply=bad_config_name)
-                        with salobj.test_utils.assertRaisesAckError():
-                            await harness.remote.cmd_start.start(timeout=STD_TIMEOUT)
+                extra_commands = (
+                    "setROI",
+                    "setFullFrame",
+                    "startLiveView",
+                    "stopLiveView",
+                    "takeImages",
+                )
 
-                harness.remote.cmd_start.set(settingsToApply="all_fields")
-                await harness.remote.cmd_start.start(timeout=STD_TIMEOUT)
-                self.assertEqual(harness.csc.summary_state, salobj.State.DISABLED)
-                state = await harness.remote.evt_summaryState.next(flush=False,
-                                                                   timeout=STD_TIMEOUT)
-                self.assertEqual(state.summaryState, salobj.State.DISABLED)
-                all_fields_path = os.path.join(TEST_CONFIG_DIR, "all_fields.yaml")
-                with open(all_fields_path, "r") as f:
-                    all_fields_raw = f.read()
-                all_fields_data = yaml.safe_load(all_fields_raw)
-                for field, value in all_fields_data.items():
-                    self.assertEqual(getattr(harness.csc.config, field), value)
+                for bad_command in extra_commands:
+                    with self.subTest(bad_command=bad_command):
+                        cmd_attr = getattr(self.remote, f"cmd_{bad_command}")
+                        with self.assertRaises(salobj.AckError):
+                            await cmd_attr.start(cmd_attr.DataType(), timeout=1.0)
 
-        asyncio.get_event_loop().run_until_complete(doit())
+            await check_rejected(salobj.State.STANDBY)
 
-    def test_state_transition(self):
-        async def doit():
-            async with Harness(initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR) as \
-                    harness:
+            await salobj.set_summary_state(self.remote, salobj.State.DISABLED)
 
-                async def check_rejected(expected_state):
-                    self.assertEqual(harness.csc.summary_state, expected_state)
-                    state = await harness.remote.evt_summaryState.next(flush=False,
-                                                                       timeout=LONG_TIMEOUT)
-                    self.assertEqual(state.summaryState, expected_state)
+            await check_rejected(salobj.State.DISABLED)
 
-                    extra_commands = ("setROI",
-                                      "setFullFrame",
-                                      "startLiveView",
-                                      "stopLiveView",
-                                      "takeImages")
+            await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
 
-                    for bad_command in extra_commands:
-                        with self.subTest(bad_command=bad_command):
-                            cmd_attr = getattr(harness.remote, f"cmd_{bad_command}")
-                            with self.assertRaises(salobj.AckError):
-                                await cmd_attr.start(cmd_attr.DataType(), timeout=1.)
+            self.assertEqual(self.csc.summary_state, salobj.State.ENABLED)
+            state = await self.remote.evt_summaryState.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertEqual(state.summaryState, salobj.State.ENABLED)
 
-                await check_rejected(salobj.State.STANDBY)
+            await salobj.set_summary_state(self.remote, salobj.State.DISABLED)
 
-                await salobj.set_summary_state(harness.remote, salobj.State.DISABLED)
+            await check_rejected(salobj.State.DISABLED)
 
-                await check_rejected(salobj.State.DISABLED)
+            await salobj.set_summary_state(self.remote, salobj.State.STANDBY)
 
-                await salobj.set_summary_state(harness.remote, salobj.State.ENABLED)
+            await check_rejected(salobj.State.STANDBY)
 
-                self.assertEqual(harness.csc.summary_state, salobj.State.ENABLED)
-                state = await harness.remote.evt_summaryState.next(flush=False,
-                                                                   timeout=LONG_TIMEOUT)
-                self.assertEqual(state.summaryState, salobj.State.ENABLED)
+    async def test_take_image(self):
+        async def take_bias():
+            await self.remote.cmd_takeImages.set_start(
+                numImages=1,
+                expTime=0.0,
+                shutter=False,
+                sensors="",
+                keyValueMap="",
+                obsNote="bias",
+            )
 
-                await salobj.set_summary_state(harness.remote, salobj.State.DISABLED)
-
-                await check_rejected(salobj.State.DISABLED)
-
-                await salobj.set_summary_state(harness.remote, salobj.State.STANDBY)
-
-                await check_rejected(salobj.State.STANDBY)
-
-        asyncio.get_event_loop().run_until_complete(doit())
-
-    def test_take_image(self):
-
-        async def take_bias(harness):
-            await harness.remote.cmd_takeImages.set_start(numImages=1,
-                                                          expTime=0.,
-                                                          shutter=False,
-                                                          science=True,
-                                                          guide=True,
-                                                          wfs=True,
-                                                          imageSequenceName="bias")
-
-            startTakeImage = await harness.remote.evt_startTakeImage.next(flush=False,
-                                                                          timeout=STD_TIMEOUT)
+            startTakeImage = await self.remote.evt_startTakeImage.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertIsNotNone(startTakeImage)
 
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_startShutterOpen.next(flush=False, timeout=LONG_TIMEOUT)
+                await self.remote.evt_startShutterOpen.next(
+                    flush=False, timeout=LONG_TIMEOUT
+                )
 
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_endShutterOpen.next(flush=False, timeout=LONG_TIMEOUT)
+                await self.remote.evt_endShutterOpen.next(
+                    flush=False, timeout=LONG_TIMEOUT
+                )
 
-            startIntegration = await harness.remote.evt_startIntegration.next(flush=False,
-                                                                              timeout=STD_TIMEOUT)
+            startIntegration = await self.remote.evt_startIntegration.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertIsNotNone(startIntegration)
 
-            endIntegration = await harness.remote.evt_endIntegration.next(flush=False,
-                                                                          timeout=LONG_TIMEOUT)
+            endIntegration = await self.remote.evt_endIntegration.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
             self.assertIsNotNone(endIntegration)
 
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_startShutterClose.next(flush=False, timeout=LONG_TIMEOUT)
+                await self.remote.evt_startShutterClose.next(
+                    flush=False, timeout=LONG_TIMEOUT
+                )
 
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_endShutterClose.next(flush=False, timeout=LONG_TIMEOUT)
+                await self.remote.evt_endShutterClose.next(
+                    flush=False, timeout=LONG_TIMEOUT
+                )
 
-            startReadout = await harness.remote.evt_startReadout.next(flush=False,
-                                                                      timeout=STD_TIMEOUT)
+            startReadout = await self.remote.evt_startReadout.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertIsNotNone(startReadout)
 
-            endReadout = await harness.remote.evt_endReadout.next(flush=False,
-                                                                  timeout=STD_TIMEOUT)
+            endReadout = await self.remote.evt_endReadout.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertIsNotNone(endReadout)
 
-            endTakeImage = await harness.remote.evt_endTakeImage.next(flush=False,
-                                                                      timeout=STD_TIMEOUT)
+            endTakeImage = await self.remote.evt_endTakeImage.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertIsNotNone(endTakeImage)
 
-        async def take_image(harness):
-            await harness.remote.cmd_takeImages.set_start(numImages=1,
-                                                          expTime=np.random.rand() + 1.,
-                                                          shutter=True,
-                                                          science=True,
-                                                          guide=True,
-                                                          wfs=True,
-                                                          imageSequenceName="image")
+        async def take_image():
+            await self.remote.cmd_takeImages.set_start(
+                numImages=1,
+                expTime=np.random.rand() + 1.0,
+                shutter=True,
+                sensors="",
+                keyValueMap="",
+                obsNote="image",
+            )
 
-            startTakeImage = await harness.remote.evt_startTakeImage.next(flush=False,
-                                                                          timeout=STD_TIMEOUT)
+            startTakeImage = await self.remote.evt_startTakeImage.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertIsNotNone(startTakeImage)
 
-            startShutterOpen = await harness.remote.evt_startShutterOpen.next(flush=False,
-                                                                              timeout=LONG_TIMEOUT)
+            startShutterOpen = await self.remote.evt_startShutterOpen.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
             self.assertIsNotNone(startShutterOpen)
 
-            endShutterOpen = await harness.remote.evt_endShutterOpen.next(flush=False,
-                                                                          timeout=LONG_TIMEOUT)
+            endShutterOpen = await self.remote.evt_endShutterOpen.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
             self.assertIsNotNone(endShutterOpen)
 
-            startIntegration = await harness.remote.evt_startIntegration.next(flush=False,
-                                                                              timeout=STD_TIMEOUT)
+            startIntegration = await self.remote.evt_startIntegration.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertIsNotNone(startIntegration)
 
-            endIntegration = await harness.remote.evt_endIntegration.next(flush=False,
-                                                                          timeout=LONG_TIMEOUT)
+            endIntegration = await self.remote.evt_endIntegration.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
             self.assertIsNotNone(endIntegration)
 
-            startShutterClose = await harness.remote.evt_startShutterClose.next(
-                flush=False, timeout=LONG_TIMEOUT)
+            startShutterClose = await self.remote.evt_startShutterClose.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
             self.assertIsNotNone(startShutterClose)
 
-            endShutterClose = await harness.remote.evt_endShutterClose.next(flush=False,
-                                                                            timeout=LONG_TIMEOUT)
+            endShutterClose = await self.remote.evt_endShutterClose.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
             self.assertIsNotNone(endShutterClose)
 
-            startReadout = await harness.remote.evt_startReadout.next(flush=False,
-                                                                      timeout=STD_TIMEOUT)
+            startReadout = await self.remote.evt_startReadout.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertIsNotNone(startReadout)
 
-            endReadout = await harness.remote.evt_endReadout.next(flush=False,
-                                                                  timeout=STD_TIMEOUT)
+            endReadout = await self.remote.evt_endReadout.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertIsNotNone(endReadout)
 
-            endTakeImage = await harness.remote.evt_endTakeImage.next(flush=False,
-                                                                      timeout=STD_TIMEOUT)
+            endTakeImage = await self.remote.evt_endTakeImage.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertIsNotNone(endTakeImage)
 
-        async def doit():
-            async with Harness(initial_state=salobj.State.ENABLED,
-                               config_dir=TEST_CONFIG_DIR) as harness:
+        async with self.make_csc(
+            initial_state=salobj.State.ENABLED, config_dir=TEST_CONFIG_DIR
+        ):
 
-                state = await harness.remote.evt_summaryState.next(flush=False,
-                                                                   timeout=LONG_TIMEOUT)
+            state = await self.remote.evt_summaryState.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
 
-                self.assertEqual(state.summaryState, salobj.State.ENABLED)
+            self.assertEqual(state.summaryState, salobj.State.ENABLED)
 
-                harness.flush_take_image_events()
+            self.flush_take_image_events()
 
-                # Take 2 images with random exposure time
-                with self.subTest(image='image1'):
-                    await take_image(harness)
+            # Take 2 images with random exposure time
+            with self.subTest(image="image1"):
+                await take_image()
 
-                with self.subTest(image='image2'):
-                    await take_image(harness)
+            with self.subTest(image="image2"):
+                await take_image()
 
-                # Try taking 2 bias
-                with self.subTest(image='bias1'):
-                    await take_bias(harness)
+            # Try taking 2 bias
+            with self.subTest(image="bias1"):
+                await take_bias()
 
-                with self.subTest(image='bias2'):
-                    await take_bias(harness)
+            with self.subTest(image="bias2"):
+                await take_bias()
 
-                # await take_bias(harness)
+    async def test_live_view(self):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
 
-        asyncio.get_event_loop().run_until_complete(doit())
+            await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
 
-    def test_live_view(self):
+            self.flush_take_image_events()
 
-        async def doit():
-            async with Harness(initial_state=salobj.State.STANDBY,
-                               config_dir=TEST_CONFIG_DIR) as harness:
+            # Check that LiveView fails if exptime = 0
+            with self.assertRaises(salobj.AckError):
+                await self.remote.cmd_startLiveView.start()
 
-                await salobj.set_summary_state(harness.remote, salobj.State.ENABLED)
+            client = GenericCamera.AsyncLiveViewClient("127.0.0.1", 5013)
 
-                harness.flush_take_image_events()
+            # Start Liveview and get a series of images
+            self.remote.evt_startLiveView.flush()
+            await self.remote.cmd_startLiveView.set_start(expTime=1.0)
 
-                # Check that LiveView fails if exptime = 0
-                with self.assertRaises(salobj.AckError):
-                    await harness.remote.cmd_startLiveView.start()
+            lv_start = await self.remote.evt_startLiveView.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
 
-                client = GenericCamera.AsyncLiveViewClient('127.0.0.1', 5013)
+            self.assertIsNotNone(lv_start)
 
-                # Start Liveview and get a series of images
-                harness.remote.evt_startLiveView.flush()
-                await harness.remote.cmd_startLiveView.set_start(expTime=1.)
+            await client.start()
 
-                lv_start = await harness.remote.evt_startLiveView.next(flush=False,
-                                                                       timeout=LONG_TIMEOUT)
+            r_exp = await client.receive_exposure()
 
-                self.assertIsNotNone(lv_start)
+            self.assertIsNotNone(r_exp)
 
-                await client.start()
+            await self.remote.cmd_stopLiveView.start()
 
-                r_exp = await client.receive_exposure()
-
-                self.assertIsNotNone(r_exp)
-
-                await harness.remote.cmd_stopLiveView.start()
-
-        asyncio.get_event_loop().run_until_complete(doit())
-
-
-if __name__ == "__main__":
-    unittest.main()
+    async def test_version(self):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
+            await self.assert_next_sample(
+                self.remote.evt_softwareVersions,
+                cscVersion=GenericCamera.__version__,
+                subsystemVersions="",
+            )

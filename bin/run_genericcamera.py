@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+#
 # This file is part of ts_GenericCamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
@@ -19,9 +21,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .genericcamera import *
-from .andorcamera import *
-from .canoncamera import *
-from .simulatorcamera import *
-from .zwocamera import *
-from .zwofilterwheel import *
+import asyncio
+
+from lsst.ts.GenericCamera import GenericCameraCsc
+
+asyncio.run(GenericCameraCsc.amain(index=True))

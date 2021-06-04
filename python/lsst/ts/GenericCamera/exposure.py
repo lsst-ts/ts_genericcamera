@@ -1,6 +1,6 @@
 # This file is part of ts_GenericCamera.
 #
-# Developed for the LSST Telescope and Site Systems.
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
 # (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
@@ -30,6 +30,7 @@ from PIL import Image
 class Exposure:
     """This class is used to define an exposure. It provides methods
     for manipulating an exposure and saving it to the local disk."""
+
     def __init__(self, buffer, width, height, tags, dtype=np.uint16, isJPEG=False):
         """Constructs an exposure object.
 
@@ -44,8 +45,8 @@ class Exposure:
             The width of the image.
         height : int
             The height of the image.
-        tags : map
-            A list of tags that describe the image.
+        tags : list
+            A list of FitsHeaderItem tags that describe the image.
         dtype : dtype (optional)
             Type of image data.
         isJPEG : bool (optional)
@@ -60,8 +61,7 @@ class Exposure:
         self.dtype = dtype
 
     def makeJPEG(self):
-        """Takes this exposure and converts it to a JPEG.
-        """
+        """Takes this exposure and converts it to a JPEG."""
         # fileMemory = io.BytesIO()
         # img = Image.frombuffer('L', (self.width, self.height), self.buffer)
         # # The following call takes the most time
@@ -86,11 +86,11 @@ class Exposure:
 
         if self.isJPEG:
             img = Image.open(io.BytesIO(self.buffer))
-            img.save(filePath, 'jpeg')
+            img.save(filePath, "jpeg")
         else:
             img = fits.PrimaryHDU(self.buffer)
             hdul = fits.HDUList([img])
-            # hdr = hdul[0].header
-            # for key in self.tags:
-            #     hdr[key] = self.tags[key]
+            hdr = hdul[0].header
+            for tag in self.tags:
+                hdr.append((tag.name, tag.value, tag.comment), end=True)
             hdul.writeto(filePath)

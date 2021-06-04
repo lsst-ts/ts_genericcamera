@@ -1,0 +1,2 @@
+@Library('JenkinsShared')_
+CondaPipeline(["ts_config_ocs"], "ts-genericcamera", "lsst.ts.genericcamera", "linux-aarch64")

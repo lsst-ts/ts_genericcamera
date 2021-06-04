@@ -1,7 +1,28 @@
+# This file is part of ts_GenericCamera.
+#
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import enum
 import ctypes
 import pathlib
-from ctypes import c_int, POINTER
+
 # from ctypes.util import find_library
 
 
@@ -19,43 +40,46 @@ class Results(enum.Enum):
     End = -1
 
 
-class EFW():
+class EFW:
     def __init__(self):
         # The udev library must be loaded first before the EFWFilter library
         # can be loaded otherwise an OSError is generated
         udev = ctypes.CDLL("/usr/lib64/libudev.so.1", mode=ctypes.RTLD_GLOBAL)
-        lib = ctypes.CDLL(pathlib.Path(__file__).resolve().parent.joinpath("libEFWFilter.so"), mode=ctypes.RTLD_GLOBAL)
+        lib = ctypes.CDLL(
+            pathlib.Path(__file__).resolve().parent.joinpath("libEFWFilter.so"),
+            mode=ctypes.RTLD_GLOBAL,
+        )
 
         # EFW_API int EFWGetNum();
-        lib.EFWGetNum.restype = c_int
+        lib.EFWGetNum.restype = ctypes.c_int
 
         # EFW_API int EFWGetProductIDs(int* pPIDs);
-        lib.EFWGetProductIDs.argtypes = [c_int * 16]
-        lib.EFWGetProductIDs.restype = c_int
+        lib.EFWGetProductIDs.argtypes = [ctypes.c_int * 16]
+        lib.EFWGetProductIDs.restype = ctypes.c_int
 
         # EFW_API EFW_ERROR_CODE EFWGetID(int index, int* ID);
-        lib.EFWGetID.argtypes = [c_int, POINTER(c_int)]
-        lib.EFWGetID.restype = c_int
+        lib.EFWGetID.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
+        lib.EFWGetID.restype = ctypes.c_int
 
         # EFW_API	EFW_ERROR_CODE EFWOpen(int ID);
-        lib.EFWOpen.argtypes = [c_int]
-        lib.EFWOpen.restype = c_int
+        lib.EFWOpen.argtypes = [ctypes.c_int]
+        lib.EFWOpen.restype = ctypes.c_int
 
         # EFW_API	EFW_ERROR_CODE EFWGetPosition(int ID, int *pPosition);
-        lib.EFWGetPosition.argtypes = [c_int, POINTER(c_int)]
-        lib.EFWGetPosition.restype = c_int
+        lib.EFWGetPosition.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
+        lib.EFWGetPosition.restype = ctypes.c_int
 
         # EFW_API	EFW_ERROR_CODE EFWSetPosition(int ID, int Position);
-        lib.EFWSetPosition.argtypes = [c_int, c_int]
-        lib.EFWSetPosition.restype = c_int
+        lib.EFWSetPosition.argtypes = [ctypes.c_int, ctypes.c_int]
+        lib.EFWSetPosition.restype = ctypes.c_int
 
         # EFW_API	EFW_ERROR_CODE EFWClose(int ID);
-        lib.EFWClose.argtypes = [c_int]
-        lib.EFWClose.restype = c_int
+        lib.EFWClose.argtypes = [ctypes.c_int]
+        lib.EFWClose.restype = ctypes.c_int
 
         self.udev = udev
         self.lib = lib
-        self.intPtr = POINTER(c_int)
+        self.intPtr = ctypes.POINTER(ctypes.c_int)
 
     def getNumberOfDevices(self):
         # EFW_API int EFWGetNum();
@@ -63,7 +87,7 @@ class EFW():
 
     def getProductIDs(self):
         # EFW_API int EFWGetProductIDs(int* pPIDs);
-        dataType = c_int * 16
+        dataType = ctypes.c_int * 16
         productIDs = dataType(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
         count = self.lib.EFWGetProductIDs(productIDs)
         return [productIDs[i] for i in range(count)]
@@ -96,7 +120,7 @@ class EFW():
         return self._toResultEnum(result)
 
     def _getIntPtr(self, defaultValue=0):
-        return self.intPtr(c_int(defaultValue))
+        return self.intPtr(ctypes.c_int(defaultValue))
 
     def _toResultEnum(self, result):
         return Results(result)
@@ -139,8 +163,7 @@ class EFWLibrary(EFWBase):
         self.initialised = False
 
     def initialiseLibrary(self):
-        """Initialise the ZWO SDK Library.
-        """
+        """Initialise the ZWO SDK Library."""
         if not self.initialised:
             self.efw.getNumberOfDevices()
             self.initialised = True
@@ -158,7 +181,8 @@ class EFWLibrary(EFWBase):
         return deviceCount
 
     def getProductIDs(self):
-        """Gets the product IDs of all the ZWO filter wheels attached to this machine.
+        """Gets the product IDs of all the ZWO filter wheels attached to this
+        machine.
 
         Returns
         -------
@@ -196,8 +220,7 @@ class EFWDevice(EFWBase):
         self.handle = index
 
     def close(self):
-        """Closes this device.
-        """
+        """Closes this device."""
         self._assertHandle()
         result = self.efw.close(self.handle)
         self._raiseIfBad(result)
