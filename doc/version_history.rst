@@ -6,6 +6,18 @@
 Version History
 ###############
 
+v0.4.0
+======
+
+* Renamed to ts_genericcamera.
+* Renamed the top Python module to lsst.ts.genericcamera.
+
+Requires:
+
+* ts_salobj 6.3
+* ts_idl 3.1
+* IDL file for GenericCamera from ts_xml 9.0
+
 v0.3.2
 ======
 
@@ -15,7 +27,7 @@ Requires:
 
 * ts_salobj 6.3
 * ts_idl 3.1
-* IDL file for ESS from ts_xml 9.0
+* IDL file for GenericCamera from ts_xml 9.0
 
 
 v0.3.1
@@ -27,7 +39,7 @@ Requires:
 
 * ts_salobj 6.3
 * ts_idl 3.1
-* IDL file for ESS from ts_xml 9.0
+* IDL file for GenericCamera from ts_xml 9.0
 
 
 v0.3.0
@@ -39,7 +51,7 @@ Requires:
 
 * ts_salobj 6.3
 * ts_idl 3.1
-* IDL file for ESS from ts_xml 9.0
+* IDL file for GenericCamera from ts_xml 9.0
 
 
 v0.2.0
@@ -51,7 +63,7 @@ Requires:
 
 * ts_salobj 6.3
 * ts_idl 3.0
-* IDL file for ESS from ts_xml 8.0
+* IDL file for GenericCamera from ts_xml 8.0
 
 
 v0.1.0

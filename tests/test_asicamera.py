@@ -1,4 +1,4 @@
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -30,7 +30,7 @@ import types
 
 from lsst.ts.salobj.validator import DefaultingValidator
 
-from lsst.ts.GenericCamera.driver import ASICamera
+from lsst.ts.genericcamera.driver import ASICamera
 
 
 class Harness:

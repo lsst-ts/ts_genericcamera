@@ -1,4 +1,4 @@
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -26,7 +26,7 @@ import yaml
 CONFIG_SCHEMA = yaml.safe_load(
     """
     $schema: http://json-schema.org/draft-07/schema#
-    $id: https://github.com/lsst-ts/ts_GenericCamera/blob/master/python/lsst/ts/GenericCamera/config_schema.py
+    $id: https://github.com/lsst-ts/ts_genericcamera/blob/master/python/lsst/ts/genericcamera/config_schema.py
     # title must end with one or more spaces followed by the schema version, which must begin with "v"
     title: GenericCamera v1
     description: Schema for GenericCamera configuration files

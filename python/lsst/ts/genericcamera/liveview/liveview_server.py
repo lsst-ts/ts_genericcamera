@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -34,7 +34,7 @@ import tornado.websocket
 
 from PIL import Image
 
-from lsst.ts.GenericCamera import AsyncLiveViewClient
+from lsst.ts.genericcamera import AsyncLiveViewClient
 
 parser = argparse.ArgumentParser(description="Start the PyImageStream server.")
 
