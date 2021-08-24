@@ -1,4 +1,4 @@
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -36,7 +36,7 @@ class FitsHeaderTemplate(Enum):
 
 
 class FitsHeaderItem:
-    """ Convenience class for storing FITS Header items.."""
+    """Convenience class for storing FITS Header items.."""
 
     def __init__(self, name, value, comment=""):
         """Construct a FitsHeaderItem.

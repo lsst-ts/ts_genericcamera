@@ -1,4 +1,4 @@
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -29,7 +29,7 @@ import unittest
 import numpy as np
 
 from lsst.ts import salobj
-from lsst.ts import GenericCamera
+from lsst.ts import genericcamera
 
 STD_TIMEOUT = 2  # standard command timeout (sec)
 LONG_TIMEOUT = 20  # timeout for starting SAL components (sec)
@@ -52,7 +52,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         self.remote.evt_endTakeImage.flush()
 
     def basic_make_csc(self, initial_state, config_dir, simulation_mode, **kwargs):
-        return GenericCamera.GenericCameraCsc(
+        return genericcamera.GenericCameraCsc(
             initial_state=initial_state,
             config_dir=config_dir,
             simulation_mode=0,
@@ -313,7 +313,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(salobj.AckError):
                 await self.remote.cmd_startLiveView.start()
 
-            client = GenericCamera.AsyncLiveViewClient("127.0.0.1", 5013)
+            client = genericcamera.AsyncLiveViewClient("127.0.0.1", 5013)
 
             # Start Liveview and get a series of images
             self.remote.evt_startLiveView.flush()
@@ -339,6 +339,6 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         ):
             await self.assert_next_sample(
                 self.remote.evt_softwareVersions,
-                cscVersion=GenericCamera.__version__,
+                cscVersion=genericcamera.__version__,
                 subsystemVersions="",
             )

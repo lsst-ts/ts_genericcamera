@@ -1,4 +1,4 @@
 # -*- python -*-
 from lsst.sconsUtils import scripts
 # Python-only package
-scripts.BasicSConstruct("ts_GenericCamera", disableCc=True)
+scripts.BasicSConstruct("ts_genericcamera", disableCc=True)

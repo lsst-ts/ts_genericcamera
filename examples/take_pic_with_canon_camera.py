@@ -2,7 +2,7 @@ import io
 import logging
 import os
 
-from lsst.ts.GenericCamera import exposure
+from lsst.ts.genericcamera import exposure
 
 import gphoto2 as gp
 import numpy as np

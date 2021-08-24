@@ -1,4 +1,4 @@
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -36,10 +36,10 @@ base_prefix = pathlib.PurePosixPath(sys.base_prefix)
 data_files_path = tools_path.relative_to(base_prefix).parents[1]
 
 setuptools.setup(
-    name="ts_GenericCamera",
+    name="ts_genericcamera",
     description="CSC for Generic Camera.",
     use_scm_version={
-        "write_to": "python/lsst/ts/GenericCamera/version.py",
+        "write_to": "python/lsst/ts/genericcamera/version.py",
         "write_to_template": scm_version_template,
     },
     setup_requires=["setuptools_scm", "pytest-runner"],
@@ -55,6 +55,6 @@ setuptools.setup(
     license="GPL",
     project_urls={
         "Bug Tracker": "https://jira.lsstcorp.org/secure/Dashboard.jspa",
-        "Source Code": "https://github.com/lsst-ts/ts_GenericCamera",
+        "Source Code": "https://github.com/lsst-ts/ts_genericcamera",
     },
 )

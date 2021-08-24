@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the Vera Rubin Observatory
@@ -23,6 +23,6 @@
 
 import sys
 
-from lsst.ts.GenericCamera.liveview.liveviewui import main
+from lsst.ts.genericcamera.liveview.liveviewui import main
 
 main(sys.argv)
