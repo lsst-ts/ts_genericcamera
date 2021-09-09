@@ -26,10 +26,7 @@ import ctypes
 import datetime
 import logging
 
-from astropy.coordinates import (
-    Angle,
-    SkyCoord,
-)
+from astropy.coordinates import Angle, SkyCoord
 from astropy.time import Time
 from astropy import units as u
 
