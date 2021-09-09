@@ -333,6 +333,54 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             await self.remote.cmd_stopLiveView.start()
 
+    async def assert_ae_events(self, timeout):
+        ae_start = await self.remote.evt_startAutoExposure.next(
+            flush=False, timeout=timeout
+        )
+        self.assertIsNotNone(ae_start)
+
+    async def test_auto_exposure(self):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
+
+            await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
+
+            self.flush_take_image_events()
+
+            await self.remote.cmd_startAutoExposure.set_start(
+                minExpTime=1.0, maxExpTime=10.0, payload=""
+            )
+            ae_start = await self.remote.evt_startAutoExposure.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertIsNotNone(ae_start)
+
+            ti_start = await self.remote.evt_startTakeImage.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertIsNotNone(ti_start)
+            ti_end = await self.remote.evt_endTakeImage.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertIsNotNone(ti_end)
+
+            ti_start = await self.remote.evt_startTakeImage.next(
+                flush=False,
+                timeout=LONG_TIMEOUT + genericcamera.AUTO_EXP_IMAGE_INTERVAL,
+            )
+            self.assertIsNotNone(ti_start)
+            ti_end = await self.remote.evt_endTakeImage.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertIsNotNone(ti_end)
+
+            await self.remote.cmd_stopAutoExposure.start()
+            ae_stop = await self.remote.evt_stopAutoExposure.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertIsNotNone(ae_stop)
+
     async def test_version(self):
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR

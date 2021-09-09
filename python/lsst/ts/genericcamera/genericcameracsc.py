@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["GenericCameraCsc"]
+__all__ = ["GenericCameraCsc", "AUTO_EXP_IMAGE_INTERVAL"]
 
 import asyncio
 import time
@@ -324,13 +324,6 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         self.evt_endLiveView.put()
 
-    async def get_image_name(self, timestamp, image_index, images_in_sequence):
-        return self.fileNameFormat.format(
-            timestamp=int(timestamp),
-            index=image_index,
-            total=images_in_sequence,
-        )
-
     async def do_takeImages(self, id_data):
         """Start taking images.
 
@@ -513,7 +506,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         Not much content for now but this may change in the future.
         """
 
-        self.evt_endAutoExposure.put()
+        self.evt_stopAutoExposure.put()
 
     async def liveView_loop(self, exposure_time):
         """Run the live view capture loop.
@@ -587,7 +580,13 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         """
         self.log.debug("autoExposure_loop - Start")
         self.isAutoExposure = True
+
+        # TODO take these values from payload
         shutter = False
+        sensors = ""
+        keyValueMap = ""
+        obsNote = ""
+
         images_in_sequence = 0
         image_index = 0
         exposure_time = min_exp_time
@@ -595,8 +594,19 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         try:
             while self.runAutoExposureTask:
                 timestamp = time.time()
-                image_name = self.get_image_name(
-                    timestamp, image_index, images_in_sequence
+                image_name = self.fileNameFormat.format(
+                    timestamp=int(timestamp),
+                    index=image_index,
+                    total=images_in_sequence,
+                )
+
+                self.evt_startTakeImage.put()
+                await self.camera.startTakeImage(
+                    exposure_time,
+                    shutter,
+                    sensors,
+                    keyValueMap,
+                    obsNote,
                 )
                 exposure = await self.take_image(
                     shutter,
@@ -606,8 +616,22 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     timestamp,
                     image_name,
                 )
+
                 # TODO: analyse image and retake until the background is OK.
+
                 exposure.save(os.path.join(self.directory, image_name + ".fits"))
+                await self.camera.endTakeImage()
+                self.evt_endTakeImage.put()
+
+                # Schedule the next image such that it starts
+                # AUTO_EXP_IMAGE_INTERVAL seconds after the start of
+                # the previous image cycle.
+                now = time.time()
+                time_diff = now - timestamp
+                sleep_time = AUTO_EXP_IMAGE_INTERVAL
+                if time_diff < AUTO_EXP_IMAGE_INTERVAL:
+                    sleep_time = AUTO_EXP_IMAGE_INTERVAL - time_diff
+                await asyncio.sleep(sleep_time)
 
         except Exception as e:
             self.log.error("Error in auto exposure loop.")
