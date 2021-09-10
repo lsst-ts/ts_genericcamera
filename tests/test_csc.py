@@ -339,6 +339,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         )
         self.assertIsNotNone(ae_start)
 
+    # Set the value to 2.0 seconds to speed up the unit test.
+    @unittest.mock.patch(
+        "lsst.ts.genericcamera.genericcameracsc.AUTO_EXP_IMAGE_INTERVAL", 2.0
+    )
     async def test_auto_exposure(self):
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
@@ -367,7 +371,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             ti_start = await self.remote.evt_startTakeImage.next(
                 flush=False,
-                timeout=LONG_TIMEOUT + genericcamera.AUTO_EXP_IMAGE_INTERVAL,
+                timeout=LONG_TIMEOUT + 5,
             )
             self.assertIsNotNone(ti_start)
             ti_end = await self.remote.evt_endTakeImage.next(

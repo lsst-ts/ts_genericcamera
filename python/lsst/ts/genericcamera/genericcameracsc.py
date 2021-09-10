@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["GenericCameraCsc", "AUTO_EXP_IMAGE_INTERVAL"]
+__all__ = ["GenericCameraCsc"]
 
 import asyncio
 import time
@@ -27,6 +27,8 @@ import traceback
 import inspect
 import os
 import logging
+
+import numpy as np
 
 from .config_schema import CONFIG_SCHEMA
 from . import __version__
@@ -50,6 +52,10 @@ AUTO_EXP_IMAGE_INTERVAL = 60
 """The (approximate) interval between consecutive images in the auto
 exposure loop.
 """
+
+# fictional values until established what we expect
+expected_min_background_level = 32500.0
+expected_max_background_level = 33000.0
 
 
 class GenericCameraCsc(salobj.ConfigurableCsc):
@@ -578,7 +584,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             A Yaml string containing additional configuration
             parameters.
         """
-        self.log.debug("autoExposure_loop - Start")
+        self.log.info("autoExposure_loop - Start")
         self.isAutoExposure = True
 
         # TODO take these values from payload
@@ -608,18 +614,36 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     keyValueMap,
                     obsNote,
                 )
-                exposure = await self.take_image(
-                    shutter,
-                    images_in_sequence,
-                    image_index,
-                    exposure_time,
-                    timestamp,
-                    image_name,
-                )
+                exposure = None
 
-                # TODO: analyse image and retake until the background is OK.
+                background_level = 0.0
+                while not (
+                    expected_min_background_level
+                    <= background_level
+                    <= expected_max_background_level
+                ):
+                    self.log.info("Taking exposure.")
+                    exposure = await self.take_image(
+                        shutter,
+                        images_in_sequence,
+                        image_index,
+                        exposure_time,
+                        timestamp,
+                        image_name,
+                    )
+                    self.log.info("Establishing exposure background level.")
+                    background_level = await self.establish_exposure_background(
+                        exposure
+                    )
+                    self.log.info(
+                        f"Background level is {background_level} and a value between "
+                        f"{expected_min_background_level} and {expected_max_background_level} "
+                        f"is expected."
+                    )
 
-                exposure.save(os.path.join(self.directory, image_name + ".fits"))
+                if exposure:
+                    exposure.save(os.path.join(self.directory, image_name + ".fits"))
+
                 await self.camera.endTakeImage()
                 self.evt_endTakeImage.put()
 
@@ -646,6 +670,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         self.isAutoExposure = False
         self.log.info("autoExposure_loop - End")
+
+    async def establish_exposure_background(self, exposure):
+        background_level = np.median(exposure.buffer)
+        return background_level
 
     @staticmethod
     def get_config_pkg():
