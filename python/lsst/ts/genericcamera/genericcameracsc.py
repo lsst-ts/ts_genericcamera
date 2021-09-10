@@ -640,6 +640,29 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                         f"{expected_min_background_level} and {expected_max_background_level} "
                         f"is expected."
                     )
+                    new_exposure_time = exposure_time
+                    if background_level > expected_max_background_level:
+                        new_exposure_time = exposure_time / 2.0
+                        if new_exposure_time < min_exp_time:
+                            new_exposure_time = min_exp_time
+                    elif background_level < expected_min_background_level:
+                        new_exposure_time = exposure_time * 2.0
+                        if new_exposure_time > max_exp_time:
+                            new_exposure_time = max_exp_time
+
+                    if (
+                        not (
+                            expected_min_background_level
+                            <= background_level
+                            <= expected_max_background_level
+                        )
+                        and new_exposure_time == exposure_time
+                    ):
+                        self.log.warn(
+                            "Cannot take an exposure with a valid background level. Ignoring."
+                        )
+                        exposure = None
+                        break
 
                 if exposure:
                     exposure.save(os.path.join(self.directory, image_name + ".fits"))
