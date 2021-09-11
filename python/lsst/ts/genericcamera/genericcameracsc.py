@@ -27,6 +27,7 @@ import traceback
 import inspect
 import os
 import logging
+import yaml
 
 import numpy as np
 
@@ -47,15 +48,6 @@ AE_ERROR = 2000
 """Error code for when the auto exposure loop dies and the CSC is in
 enable state.
 """
-
-AUTO_EXP_IMAGE_INTERVAL = 60
-"""The (approximate) interval between consecutive images in the auto
-exposure loop.
-"""
-
-# fictional values until established what we expect
-expected_min_background_level = 32500.0
-expected_max_background_level = 33000.0
 
 
 class GenericCameraCsc(salobj.ConfigurableCsc):
@@ -471,13 +463,13 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         Parameters
         ----------
         id_data :
-            minExpTime : float
+            minExpTime : `float`
                 The minimum exposure time in seconds.
-            maxExpTime : float
+            maxExpTime : `float`
                 The maximum exposure time in seconds.
-            payload : str
-                Payload string in YAML format with additional
-                configuration parameters.
+            configuration : `str`
+                A Yaml string containing additional configuration
+                parameters.
         """
         self.assert_enabled("startAutoExposure")
         self.log.info("startAutoExposure - Start")
@@ -485,15 +477,25 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self._assert_notautoexposure()
         self.runAutoExposureTask = True
         self.autoExposureTask = asyncio.ensure_future(
-            self.autoExposure_loop(
-                id_data.minExpTime, id_data.maxExpTime, id_data.payload
+            self.run_auto_exposure_loop(
+                id_data.minExpTime, id_data.maxExpTime, id_data.configuration
             )
         )
-        self.evt_startAutoExposure.set_put()
+        self.evt_autoExposureStarted.set_put(
+            minExpTime=id_data.minExpTime,
+            maxExpTime=id_data.maxExpTime,
+            configuration=id_data.configuration,
+        )
         self.log.info("startAutoExposure - End")
 
     async def do_stopAutoExposure(self, id_data):
-        """Stop taking exposures automatically."""
+        """Stop taking exposures automatically.
+
+        Parameters
+        ----------
+        id_data
+            Nothing passed on.
+        """
         self.assert_enabled("stopAutoExposure")
         self._assert_autoexposure()
 
@@ -512,7 +514,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         Not much content for now but this may change in the future.
         """
 
-        self.evt_stopAutoExposure.put()
+        self.evt_autoExposureStopped.put()
 
     async def liveView_loop(self, exposure_time):
         """Run the live view capture loop.
@@ -568,7 +570,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.isLive = False
         self.log.info("liveView_loop - End")
 
-    async def autoExposure_loop(self, min_exp_time, max_exp_time, payload):
+    async def run_auto_exposure_loop(self, min_exp_time, max_exp_time, configuration):
         """Run the auto exposure capture loop.
 
         The cadence of the images is determined by the value of
@@ -580,18 +582,27 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             The minimum exposure time to use.
         max_exp_time: `float`
             The maximum exposure time to use.
-        payload: `str`
+        configuration: `str`
             A Yaml string containing additional configuration
             parameters.
         """
         self.log.info("autoExposure_loop - Start")
         self.isAutoExposure = True
 
-        # TODO take these values from payload
         shutter = False
         sensors = ""
         keyValueMap = ""
         obsNote = ""
+        if configuration != "":
+            config = yaml.safe_load(configuration)
+            if "shutter" in config:
+                shutter = config["shutter"]
+            if "sensors" in config:
+                sensors = config["sensors"]
+            if "keyValueMap" in config:
+                keyValueMap = config["keyValueMap"]
+            if "obsNote" in config:
+                obsNote = config["obsNote"]
 
         images_in_sequence = 0
         image_index = 0
@@ -618,11 +629,11 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
                 background_level = 0.0
                 while not (
-                    expected_min_background_level
+                    self.config.minBackground
                     <= background_level
-                    <= expected_max_background_level
+                    <= self.config.maxBackground
                 ):
-                    self.log.info("Taking exposure.")
+                    self.log.debug("Taking exposure.")
                     exposure = await self.take_image(
                         shutter,
                         images_in_sequence,
@@ -631,30 +642,30 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                         timestamp,
                         image_name,
                     )
-                    self.log.info("Establishing exposure background level.")
+                    self.log.debug("Establishing exposure background level.")
                     background_level = await self.establish_exposure_background(
                         exposure
                     )
-                    self.log.info(
+                    self.log.debug(
                         f"Background level is {background_level} and a value between "
-                        f"{expected_min_background_level} and {expected_max_background_level} "
+                        f"{self.config.minBackground} and {self.config.maxBackground} "
                         f"is expected."
                     )
                     new_exposure_time = exposure_time
-                    if background_level > expected_max_background_level:
+                    if background_level > self.config.maxBackground:
                         new_exposure_time = exposure_time / 2.0
                         if new_exposure_time < min_exp_time:
                             new_exposure_time = min_exp_time
-                    elif background_level < expected_min_background_level:
+                    elif background_level < self.config.minBackground:
                         new_exposure_time = exposure_time * 2.0
                         if new_exposure_time > max_exp_time:
                             new_exposure_time = max_exp_time
 
                     if (
                         not (
-                            expected_min_background_level
+                            self.config.minBackground
                             <= background_level
-                            <= expected_max_background_level
+                            <= self.config.maxBackground
                         )
                         and new_exposure_time == exposure_time
                     ):
@@ -675,9 +686,9 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 # the previous image cycle.
                 now = time.time()
                 time_diff = now - timestamp
-                sleep_time = AUTO_EXP_IMAGE_INTERVAL
-                if time_diff < AUTO_EXP_IMAGE_INTERVAL:
-                    sleep_time = AUTO_EXP_IMAGE_INTERVAL - time_diff
+                sleep_time = self.config.autoExposureInterval
+                if time_diff < self.config.autoExposureInterval:
+                    sleep_time = self.config.autoExposureInterval - time_diff
                 await asyncio.sleep(sleep_time)
 
         except Exception as e:
