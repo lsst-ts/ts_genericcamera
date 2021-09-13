@@ -476,9 +476,28 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self._assert_notlive()
         self._assert_notautoexposure()
         self.runAutoExposureTask = True
+
+        # Prepare potential configuration items for the loop
+        configuration = {
+            "shutter": False,
+            "sensors": "",
+            "keyValueMap": "",
+            "obsNote": "",
+        }
+        if id_data.configuration != "":
+            config = yaml.safe_load(id_data.configuration)
+            configuration["shutter"] = (
+                config["shutter"] if "shutter" in config else False
+            )
+            configuration["sensors"] = config["sensors"] if "sensors" in config else ""
+            configuration["keyValueMap"] = (
+                config["keyValueMap"] if "keyValueMap" in config else ""
+            )
+            configuration["obsNote"] = config["obsNote"] if "obsNote" in config else ""
+
         self.autoExposureTask = asyncio.ensure_future(
             self.run_auto_exposure_loop(
-                id_data.minExpTime, id_data.maxExpTime, id_data.configuration
+                id_data.minExpTime, id_data.maxExpTime, configuration
             )
         )
         self.evt_autoExposureStarted.set_put(
@@ -571,10 +590,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.log.info("liveView_loop - End")
 
     async def run_auto_exposure_loop(self, min_exp_time, max_exp_time, configuration):
-        """Run the auto exposure capture loop.
+        """Prepare and start the auto exposure capture loop.
 
         The cadence of the images is determined by the value of
-        AUTO_EXP_IMAGE_INTERVAL.
+        config.autoExposureInterval.
 
         Parameters
         ----------
@@ -582,118 +601,20 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             The minimum exposure time to use.
         max_exp_time: `float`
             The maximum exposure time to use.
-        configuration: `str`
-            A Yaml string containing additional configuration
-            parameters.
+        configuration: `dict`
+            A dict containing additional configuration parameters.
         """
         self.log.info("autoExposure_loop - Start")
         self.isAutoExposure = True
 
-        shutter = False
-        sensors = ""
-        keyValueMap = ""
-        obsNote = ""
-        if configuration != "":
-            config = yaml.safe_load(configuration)
-            if "shutter" in config:
-                shutter = config["shutter"]
-            if "sensors" in config:
-                sensors = config["sensors"]
-            if "keyValueMap" in config:
-                keyValueMap = config["keyValueMap"]
-            if "obsNote" in config:
-                obsNote = config["obsNote"]
-
-        images_in_sequence = 0
-        image_index = 0
-        exposure_time = min_exp_time
+        configuration["images_in_sequence"] = 0
+        configuration["image_index"] = 0
+        configuration["exposure_time"] = min_exp_time
 
         try:
-            while self.runAutoExposureTask:
-                timestamp = time.time()
-                image_name = self.fileNameFormat.format(
-                    timestamp=int(timestamp),
-                    index=image_index,
-                    total=images_in_sequence,
-                )
-
-                self.evt_startTakeImage.put()
-                await self.camera.startTakeImage(
-                    exposure_time,
-                    shutter,
-                    sensors,
-                    keyValueMap,
-                    obsNote,
-                )
-                exposure = None
-
-                background_level = 0.0
-                while not (
-                    self.config.minBackground
-                    <= background_level
-                    <= self.config.maxBackground
-                ):
-                    self.log.debug("Taking exposure.")
-                    exposure = await self.take_image(
-                        shutter,
-                        images_in_sequence,
-                        image_index,
-                        exposure_time,
-                        timestamp,
-                        image_name,
-                    )
-                    self.log.debug("Establishing exposure background level.")
-                    background_level = await self.establish_exposure_background(
-                        exposure
-                    )
-                    self.log.debug(
-                        f"Background level is {background_level} and a value between "
-                        f"{self.config.minBackground} and {self.config.maxBackground} "
-                        f"is expected."
-                    )
-                    new_exposure_time = exposure_time
-                    if background_level > self.config.maxBackground:
-                        new_exposure_time = exposure_time / 2.0
-                        if new_exposure_time < min_exp_time:
-                            new_exposure_time = min_exp_time
-                    elif background_level < self.config.minBackground:
-                        new_exposure_time = exposure_time * 2.0
-                        if new_exposure_time > max_exp_time:
-                            new_exposure_time = max_exp_time
-
-                    if (
-                        not (
-                            self.config.minBackground
-                            <= background_level
-                            <= self.config.maxBackground
-                        )
-                        and new_exposure_time == exposure_time
-                    ):
-                        self.log.warn(
-                            "Cannot take an exposure with a valid background level. Ignoring."
-                        )
-                        exposure = None
-                        break
-
-                if exposure:
-                    exposure.save(os.path.join(self.directory, image_name + ".fits"))
-
-                await self.camera.endTakeImage()
-                self.evt_endTakeImage.put()
-
-                # Schedule the next image such that it starts
-                # AUTO_EXP_IMAGE_INTERVAL seconds after the start of
-                # the previous image cycle.
-                now = time.time()
-                time_diff = now - timestamp
-                sleep_time = self.config.autoExposureInterval
-                if time_diff < self.config.autoExposureInterval:
-                    sleep_time = self.config.autoExposureInterval - time_diff
-                await asyncio.sleep(sleep_time)
-
-        except Exception as e:
-            self.log.error("Error in auto exposure loop.")
-            self.log.exception(e)
+            await self.run_auto_exposure(min_exp_time, max_exp_time, configuration)
+        except Exception:
+            self.log.exception("Error in auto exposure loop.")
             await self.stop_autoexposure()
 
             self.fault(
@@ -705,7 +626,164 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.isAutoExposure = False
         self.log.info("autoExposure_loop - End")
 
-    async def establish_exposure_background(self, exposure):
+    async def run_auto_exposure(self, min_exp_time, max_exp_time, configuration):
+        """Take auto exposures until `runAutoExposureTask` is False.
+
+        Parameters
+        ----------
+        min_exp_time: `float`
+            The minimum exposure time to use.
+        max_exp_time: `float`
+            The maximum exposure time to use.
+        configuration: `dict`
+            A dict containing additional configuration parameters.
+        """
+        while self.runAutoExposureTask:
+            timestamp = time.time()
+            image_name = self.fileNameFormat.format(
+                timestamp=int(timestamp),
+                index=configuration["image_index"],
+                total=configuration["images_in_sequence"],
+            )
+
+            self.evt_startTakeImage.put()
+            await self.camera.startTakeImage(
+                configuration["exposure_time"],
+                configuration["shutter"],
+                configuration["sensors"],
+                configuration["keyValueMap"],
+                configuration["obsNote"],
+            )
+            exposure = await self.determine_auto_exposure_time_and_get_exposure(
+                min_exp_time, max_exp_time, configuration, timestamp, image_name
+            )
+
+            if exposure:
+                exposure.save(os.path.join(self.directory, image_name + ".fits"))
+
+            await self.camera.endTakeImage()
+            self.evt_endTakeImage.put()
+
+            # Schedule the next image such that it starts
+            # config.autoExposureInterval seconds after the start
+            # of the previous image cycle.
+            now = time.time()
+            time_diff = now - timestamp
+            sleep_time = self.config.autoExposureInterval
+            if time_diff < self.config.autoExposureInterval:
+                sleep_time = self.config.autoExposureInterval - time_diff
+            await asyncio.sleep(sleep_time)
+
+    async def determine_auto_exposure_time_and_get_exposure(
+        self, min_exp_time, max_exp_time, configuration, timestamp, image_name
+    ):
+        """
+
+        Parameters
+        ----------
+        min_exp_time: `float`
+            The minimum exposure time to use.
+        max_exp_time: `float`
+            The maximum exposure time to use.
+        configuration: `dict`
+            A dict containing additional configuration parameters.
+        timestamp: `float`
+            The timestamp of the exposure [s].
+        image_name: `str`
+            The name of the exposure file.
+
+        Returns
+        -------
+        exposure: `exposure.Exposure`
+            An exposure with a background level between the configured
+            minimum and maximim exposure times.
+        """
+        background_level = 0.0
+        exposure = None
+
+        while not (
+            self.config.minBackground <= background_level <= self.config.maxBackground
+        ):
+            self.log.debug("Taking exposure.")
+            exposure = await self.take_image(
+                configuration["shutter"],
+                configuration["images_in_sequence"],
+                configuration["image_index"],
+                configuration["exposure_time"],
+                timestamp,
+                image_name,
+            )
+            self.log.debug("Establishing exposure background level.")
+            background_level = self.establish_exposure_background(exposure)
+            self.log.debug(
+                f"Background level is {background_level} and a value between "
+                f"{self.config.minBackground} and {self.config.maxBackground} "
+                f"is expected."
+            )
+            exposure_time = configuration["exposure_time"]
+            new_exposure_time = await self.adjust_exposure_time(
+                min_exp_time,
+                max_exp_time,
+                configuration,
+                background_level,
+                exposure_time,
+            )
+
+            if (
+                not (
+                    self.config.minBackground
+                    <= background_level
+                    <= self.config.maxBackground
+                )
+                and new_exposure_time == exposure_time
+            ):
+                self.log.warn(
+                    "Cannot take an exposure with a valid background level. Ignoring."
+                )
+                exposure = None
+                break
+
+            exposure_time = new_exposure_time
+        return exposure
+
+    async def adjust_exposure_time(
+        self, min_exp_time, max_exp_time, configuration, background_level, exposure_time
+    ):
+        """Adjust the exposure time based on the current exposure time
+        and the background level.
+
+        Parameters
+        ----------
+        min_exp_time: `float`
+            The minimum exposure time to use.
+        max_exp_time: `float`
+            The maximum exposure time to use.
+        configuration: `dict`
+            A dict containing additional configuration parameters.
+        background_level: `float`
+            The background level to compare against the background
+            level limits.
+        exposure_time: `float`
+            The current exposure time [s].
+
+        Returns
+        -------
+        new_exposure_time: `float`
+            The new exposure time based on the background level and
+            the current exposure time.
+        """
+        new_exposure_time = exposure_time
+        if background_level > self.config.maxBackground:
+            new_exposure_time = exposure_time / 2.0
+            if new_exposure_time < min_exp_time:
+                new_exposure_time = min_exp_time
+        elif background_level < self.config.minBackground:
+            new_exposure_time = exposure_time * 2.0
+            if new_exposure_time > max_exp_time:
+                new_exposure_time = max_exp_time
+        return new_exposure_time
+
+    def establish_exposure_background(self, exposure):
         background_level = np.median(exposure.buffer)
         return background_level
 
@@ -743,20 +821,16 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
     def _assert_notlive(self):
         """Raise an exception if live view is active."""
-        if self.isLive:
-            raise Exception()
+        assert not self.isLive, "Live view is active."
 
     def _assert_live(self):
         """Raise an exception if live view is not active."""
-        if not self.isLive:
-            raise Exception()
+        assert self.isLive, "Live view is not active."
 
     def _assert_notautoexposure(self):
         """Raise an exception if auto exposure is active."""
-        if self.isAutoExposure:
-            raise Exception()
+        assert not self.isAutoExposure, "Auto exposure is active."
 
     def _assert_autoexposure(self):
         """Raise an exception if auto exposure is not active."""
-        if not self.isAutoExposure:
-            raise Exception()
+        assert self.isAutoExposure, "Auto exposure is not active."
