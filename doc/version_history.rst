@@ -11,12 +11,13 @@ v0.4.0
 
 * Renamed to ts_genericcamera.
 * Renamed the top Python module to lsst.ts.genericcamera.
+* Added an auto exposure infrastructure.
 
 Requires:
 
 * ts_salobj 6.3
 * ts_idl 3.1
-* IDL file for GenericCamera from ts_xml 9.0
+* IDL file for GenericCamera from ts_xml 10.0
 
 v0.3.2
 ======

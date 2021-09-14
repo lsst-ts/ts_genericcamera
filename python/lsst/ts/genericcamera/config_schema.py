@@ -57,6 +57,18 @@ CONFIG_SCHEMA = yaml.safe_load(
         - Zwo
         - Canon
         default: Simulator
+      autoExposureInterval:
+        description: The interval [sec] at which exposures are taken in auto exposure mode.
+        type: number
+        default: 60
+      minBackground:
+        description: The minimum background level in auto exposure mode.
+        type: number
+        default: 32500.0
+      maxBackground:
+        description: The maximum background level in auto exposure mode.
+        type: number
+        default: 33000.0
     allOf:
     # For each supported camera add a new if/then case below.
     # Warning: set the default values for each case at the camera level
