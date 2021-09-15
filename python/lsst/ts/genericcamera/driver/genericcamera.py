@@ -1,4 +1,4 @@
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -26,10 +26,7 @@ import ctypes
 import datetime
 import logging
 
-from astropy.coordinates import (
-    Angle,
-    SkyCoord,
-)
+from astropy.coordinates import Angle, SkyCoord
 from astropy.time import Time
 from astropy import units as u
 
@@ -171,13 +168,13 @@ class GenericCamera(abc.ABC):
         wfs : bool
             Should wave front sensor be used?
         """
+        self.datetime_start = datetime.datetime.now(tz=datetime.timezone.utc)
         return True
 
     async def startShutterOpen(self):
         """Start opening the shutter.
 
         If the camera doesn't have a shutter then don't do anything."""
-        self.datetime_start = datetime.datetime.now(tz=datetime.timezone.utc)
         pass
 
     async def endShutterOpen(self):
@@ -215,12 +212,11 @@ class GenericCamera(abc.ABC):
         the shutter to finishing closing.
 
         If the camera doesn't have a shutter then don't do anything."""
-        self.datetime_end = datetime.datetime.now(tz=datetime.timezone.utc)
         pass
 
     async def startReadout(self):
         """Start reading out the image."""
-        pass
+        self.datetime_end = datetime.datetime.now(tz=datetime.timezone.utc)
 
     async def endReadout(self):
         """End reading out the image.

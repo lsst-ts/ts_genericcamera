@@ -1,42 +1,42 @@
-.. py:currentmodule:: lsst.ts.GenericCamera
+.. py:currentmodule:: lsst.ts.genericcamera
 
-.. _lsst.ts.GenericCamera:
+.. _lsst.ts.genericcamera:
 
-########################
-lsst.ts.GenericCamera
-########################
+#####################
+lsst.ts.genericcamera
+#####################
 
-ts_GenericCamera contains the `GenericCameraCsc` and suport code.
+ts_genericcamera contains the `GenericCameraCsc` and suport code.
 
-.. _lsst.ts.GenericCamera-using:
+.. _lsst.ts.genericcamera-using:
 
-Using lsst.ts.GenericCamera
-==============================
+Using lsst.ts.genericcamera
+===========================
 
 You can setup and build this package using eups and sconsUtils.
 After setting up the package you can build it and run unit tests by typing ``py.test``.
 
 To run the `GenericCamera` CSC type ``bin/run_genericcamera.py``
 
-.. _lsst.ts.GenericCamera-contributing:
+.. _lsst.ts.genericcamera-contributing:
 
 Contributing
 ============
 
-``lsst.ts.GenericCamera`` is developed at https://github.com/lsst-ts/ts_GenericCamera.
-You can find Jira issues for this module under the `ts_GenericCamera <https://jira.lsstcorp.org/issues/?jql=project%20%3D%20DM%20AND%20component%20%3D%20ts_GenericCamera>`_ component.
+``lsst.ts.genericcamera`` is developed at https://github.com/lsst-ts/ts_genericcamera.
+You can find Jira issues for this module under the `ts_genericcamera <https://jira.lsstcorp.org/issues/?jql=project%20%3D%20DM%20AND%20component%20%3D%20ts_genericcamera>`_ component.
 
 .. If there are topics related to developing this module (rather than using it), link to this from a toctree placed here.
 
 .. .. toctree::
 ..    :maxdepth: 1
 
-.. _lsst.ts.GenericCamera-pyapi:
+.. _lsst.ts.genericcamera-pyapi:
 
 Python API reference
 ====================
 
-.. automodapi:: lsst.ts.GenericCamera
+.. automodapi:: lsst.ts.genericcamera
    :no-main-docstr:
    :no-inheritance-diagram:
 

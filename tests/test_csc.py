@@ -1,4 +1,4 @@
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -29,7 +29,7 @@ import unittest
 import numpy as np
 
 from lsst.ts import salobj
-from lsst.ts import GenericCamera
+from lsst.ts import genericcamera
 
 STD_TIMEOUT = 2  # standard command timeout (sec)
 LONG_TIMEOUT = 20  # timeout for starting SAL components (sec)
@@ -52,7 +52,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         self.remote.evt_endTakeImage.flush()
 
     def basic_make_csc(self, initial_state, config_dir, simulation_mode, **kwargs):
-        return GenericCamera.GenericCameraCsc(
+        return genericcamera.GenericCameraCsc(
             initial_state=initial_state,
             config_dir=config_dir,
             simulation_mode=0,
@@ -313,7 +313,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(salobj.AckError):
                 await self.remote.cmd_startLiveView.start()
 
-            client = GenericCamera.AsyncLiveViewClient("127.0.0.1", 5013)
+            client = genericcamera.AsyncLiveViewClient("127.0.0.1", 5013)
 
             # Start Liveview and get a series of images
             self.remote.evt_startLiveView.flush()
@@ -333,12 +333,58 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             await self.remote.cmd_stopLiveView.start()
 
+    async def test_auto_exposure(self):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
+
+            await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
+
+            # Set the auto exposure time interval to a low value so
+            # the test doesn't take so long
+            self.csc.config.autoExposureInterval = 2.0
+
+            self.flush_take_image_events()
+
+            await self.remote.cmd_startAutoExposure.set_start(
+                minExpTime=1.0, maxExpTime=10.0, configuration=""
+            )
+            ae_start = await self.remote.evt_autoExposureStarted.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertIsNotNone(ae_start)
+
+            ti_start = await self.remote.evt_startTakeImage.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertIsNotNone(ti_start)
+            ti_end = await self.remote.evt_endTakeImage.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertIsNotNone(ti_end)
+
+            ti_start = await self.remote.evt_startTakeImage.next(
+                flush=False,
+                timeout=LONG_TIMEOUT + 5,
+            )
+            self.assertIsNotNone(ti_start)
+            ti_end = await self.remote.evt_endTakeImage.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertIsNotNone(ti_end)
+
+            await self.remote.cmd_stopAutoExposure.start()
+            ae_stop = await self.remote.evt_autoExposureStopped.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertIsNotNone(ae_stop)
+
     async def test_version(self):
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
         ):
             await self.assert_next_sample(
                 self.remote.evt_softwareVersions,
-                cscVersion=GenericCamera.__version__,
+                cscVersion=genericcamera.__version__,
                 subsystemVersions="",
             )

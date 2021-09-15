@@ -1,4 +1,4 @@
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -22,8 +22,8 @@
 import asyncio
 import unittest
 
-from lsst.ts.GenericCamera.driver import SimulatorCamera
-from lsst.ts.GenericCamera.utils import DATETIME_FORMAT
+from lsst.ts.genericcamera.driver import SimulatorCamera
+from lsst.ts.genericcamera.utils import DATETIME_FORMAT
 
 
 class TestSimulatorCamera(unittest.IsolatedAsyncioTestCase):

@@ -1,10 +1,10 @@
-###################
-ts_GenericCamera
-###################
+################
+ts_genericcamera
+################
 
-``ts_GenericCamera`` is a component of LSST Telescope and Site software.
+``ts_genericcamera`` is a component of LSST Telescope and Site software.
 
-``ts_GenericCamera`` implements the ``ts_GenericCamera`` CSC, which is responsible for
+``ts_genericcamera`` implements the ``GenericCamera`` CSC, which is responsible for
 making the closed loop optical system.
 
 The package is compatible with LSST DM's ``scons`` build system and ``eups`` package management system.

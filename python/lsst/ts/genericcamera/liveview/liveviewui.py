@@ -1,4 +1,4 @@
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -49,7 +49,7 @@ from . import liveview
 
 from lsst.ts.salobj import Remote, Domain
 
-from lsst.ts.GenericCamera import version
+from lsst.ts.genericcamera import version
 
 os.environ["PYQTGRAPH_QT_LIB"] = "PySide2"
 

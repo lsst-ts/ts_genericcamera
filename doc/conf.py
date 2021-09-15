@@ -1,4 +1,4 @@
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera C. Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -25,9 +25,9 @@ This configuration only affects single-package Sphinx documentation builds.
 """
 
 from documenteer.conf.pipelinespkg import *  # noqa
-import lsst.ts.GenericCamera  # noqa
+import lsst.ts.genericcamera  # noqa
 
-project = "ts_GenericCamera"
+project = "ts_genericcamera"
 html_theme_options["logotext"] = project  # noqa
 html_title = project
 html_short_title = project

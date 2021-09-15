@@ -1,4 +1,4 @@
-# This file is part of ts_GenericCamera.
+# This file is part of ts_genericcamera.
 #
 # Developed for the Vera Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -27,7 +27,7 @@ import logging
 
 import numpy as np
 
-from lsst.ts.GenericCamera import exposure
+from lsst.ts.genericcamera import exposure
 
 
 class LiveViewServer:

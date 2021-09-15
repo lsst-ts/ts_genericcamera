@@ -84,7 +84,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd repo && pip install --ignore-installed -e . && eups declare -r . -t saluser && setup ts_GenericCamera -t saluser && pytest --junitxml=\${XML_REPORT}\"
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd repo && pip install --ignore-installed -e . && eups declare -r . -t saluser && setup ts_genericcamera -t saluser && pytest --junitxml=\${XML_REPORT}\"
                     """
                 }
             }
