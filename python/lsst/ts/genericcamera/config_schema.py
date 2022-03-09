@@ -25,154 +25,55 @@ import yaml
 
 CONFIG_SCHEMA = yaml.safe_load(
     """
-    $schema: http://json-schema.org/draft-07/schema#
-    $id: https://github.com/lsst-ts/ts_genericcamera/blob/master/python/lsst/ts/genericcamera/config_schema.py
-    # title must end with one or more spaces followed by the schema version, which must begin with "v"
-    title: GenericCamera v1
-    description: Schema for GenericCamera configuration files
-    type: object
-    properties:
-      ip:
-        description: IP address of the live view server.
-        type: string
-        default: 127.0.0.1
-      port:
-        description: Port for the live view server.
-        type: number
-        default: 5013
-      directory:
-        description: Directory to store images (default is home folder).
-        type: string
-        default: ~/
-      fileNameFormat:
-        description: File name format.
-        type: string
-        default: "{timestamp}-{index}-{total}"
-      camera:
-        description: Camera driver to use.
-        type: string
-        enum:
-        - Simulator
-        - Andor
-        - Zwo
-        - Canon
-        default: Simulator
-      autoExposureInterval:
-        description: The interval [sec] at which exposures are taken in auto exposure mode.
-        type: number
-        default: 60
-      minBackground:
-        description: The minimum background level in auto exposure mode.
-        type: number
-        default: 32500.0
-      maxBackground:
-        description: The maximum background level in auto exposure mode.
-        type: number
-        default: 33000.0
-    allOf:
-    # For each supported camera add a new if/then case below.
-    # Warning: set the default values for each case at the camera level
-    # (rather than deeper down on properties within camera),
-    # so users can omit camera and still get proper defaults.
-    - if:
+  $schema: http://json-schema.org/draft-07/schema#
+  $id: https://github.com/lsst-ts/ts_genericcamera/blob/master/python/lsst/ts/genericcamera/config_schema.py
+  # title must end with one or more spaces followed by the schema version, which must begin with "v"
+  title: GenericCamera v2
+  description: Schema for GenericCamera configuration files
+  type: object
+  properties:
+    instances:
+      type: array
+      description: Configuration for each WeatherStation instance.
+      minItem: 1
+      items:
+        type: object
         properties:
+          sal_index:
+            type: integer
+            description: SAL index of WeatherStation instance.
+            minimum: 1
+          ip:
+            description: IP address of the live view server.
+            type: string
+          port:
+            description: Port for the live view server.
+            type: number
+          directory:
+            description: Directory to store images (default is home folder).
+            type: string
+          fileNameFormat:
+            description: File name format.
+            type: string
           camera:
-            const: Simulator
-      then:
-        properties:
-          maxWidth:
-            type: number
-            default: 1024
-            minimum: 1024
-            maximum: 2048
-          maxHeight:
-            type: number
-            default: 1024
-            minimum: 1024
-            maximum: 2048
-    - if:
-        properties:
-          camera:
-            const: Andor
-      then:
-        properties:
-          id:
-            default: 0
-            type: number
-          accumulateCount:
-            default: 1
-            type: number
-          binValue:
-            default: 1
-            type: number
-          ImageType:
-            default: Mono16
+            description: Camera driver to use.
             type: string
             enum:
-              - Mono12
-              - Mono12Packed
-              - Mono16
-              - Mono32
-    - if:
-        properties:
-          camera:
-            const: Zwo
-      then:
-        properties:
-          id:
-            default: 0
+            - Simulator
+            - Andor
+            - Zwo
+            - Canon
+          autoExposureInterval:
+            description: The interval [sec] at which exposures are taken in auto exposure mode.
             type: number
-          binValue:
-            default: 1
+          minBackground:
+            description: The minimum background level in auto exposure mode.
             type: number
-          currentImageType:
-            default: Raw16
-            type: string
-            enum:
-              - Raw8
-              - RGB24
-              - Raw16
-              - Y8
-          useZWOFilterWheel:
-            default: true
-            type: boolean
-          filterId:
-            default: 1
+          maxBackground:
+            description: The maximum background level in auto exposure mode.
             type: number
-          filterNumber:
-            default: 2
-            type: number
-    - if:
-        properties:
-          camera:
-            const: Canon
-      then:
-        properties:
-          id:
-            default: 0
-            type: number
-          binValue:
-            default: 1
-            type: number
-          width:
-            type: number
-            default: 6744
-          height:
-            type: number
-            default: 4502
-          iso:
-            type: number
-            default: 200
-          ImageType:
-            default: RAW
-            type: string
-            enum:
-              - RAW
-          cube_mnt:
-            type: number
-            default: -0.069
-          quad_mnt:
-            type: number
-            default: 0.055
-    """
+          config:
+            description: Configuration for the GenericCamera model.
+            type: object
+  """
 )

@@ -22,16 +22,17 @@
 import datetime
 import io
 
-from .. import exposure
-from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
-from . import genericcamera
-from .. import utils
-
 from astropy.coordinates import EarthLocation
 from astropy.time import Time
 import gphoto2 as gp
 import numpy as np
 import rawpy
+import yaml
+
+from .. import exposure
+from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
+from . import genericcamera
+from .. import utils
 
 
 class CanonCamera(genericcamera.GenericCamera):
@@ -86,6 +87,42 @@ class CanonCamera(genericcamera.GenericCamera):
         # will be raised.
         self.camera = gp.Camera()
         self.camera.init()
+
+    def get_config_schema(self):
+        return yaml.safe_load(
+            """
+$schema: http://json-schema.org/draft-07/schema#
+description: Schema for the Canon GenericCamera.
+type: object
+properties:
+  id:
+    default: 0
+    type: number
+  binValue:
+    default: 1
+    type: number
+  width:
+    type: number
+    default: 6744
+  height:
+    type: number
+    default: 4502
+  iso:
+    type: number
+    default: 200
+  ImageType:
+    default: RAW
+    type: string
+    enum:
+      - RAW
+  cube_mnt:
+    type: number
+    default: -0.069
+  quad_mnt:
+    type: number
+    default: 0.055
+"""
+        )
 
     def getMakeAndModel(self):
         """Get the make and model of the camera.

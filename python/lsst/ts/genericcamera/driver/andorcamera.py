@@ -20,11 +20,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
-import enum
 import ctypes
 from ctypes.util import find_library
+import enum
 import struct
+
 import numpy as np
+import yaml
 
 from .genericcamera import GenericCamera
 from ..exposure import Exposure
@@ -55,6 +57,33 @@ class AndorCamera(GenericCamera):
         self.normalImageType = "Mono16"
         self.currentImageTYpe = self.normalImageType
         self.dev = self.lib.openZyla(self.id)
+
+    def get_config_schema(self):
+        return yaml.safe_load(
+            """
+$schema: http://json-schema.org/draft-07/schema#
+description: Schema for the Andor GenericCamera.
+type: object
+properties:
+  id:
+    default: 0
+    type: number
+  accumulateCount:
+    default: 1
+    type: number
+  binValue:
+    default: 1
+    type: number
+  ImageType:
+    default: Mono16
+    type: string
+    enum:
+      - Mono12
+      - Mono12Packed
+      - Mono16
+      - Mono32
+"""
+        )
 
     def getMakeAndModel(self):
         """Get the make and model of the camera.

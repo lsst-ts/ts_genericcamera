@@ -66,6 +66,17 @@ class GenericCamera(abc.ABC):
             The name of the configuration file to load."""
         pass
 
+    @abc.abstractmethod
+    def get_config_schema(self):
+        """Get the configuration schema for this GenericCamera Model.
+
+        Returns
+        -------
+        `dict`
+            The configuration schema in yaml format.
+        """
+        raise NotImplementedError()
+
     def stop(self):
         """Stop and close camera."""
         pass

@@ -23,7 +23,9 @@ __all__ = ["SimulatorCamera"]
 
 import asyncio
 import datetime
+
 import numpy as np
+import yaml
 
 from .. import exposure
 from . import genericcamera
@@ -90,6 +92,26 @@ class SimulatorCamera(genericcamera.GenericCamera):
         config : str
             The name of the configuration file to load."""
         pass
+
+    def get_config_schema(self):
+        return yaml.safe_load(
+            """
+$schema: http://json-schema.org/draft-07/schema#
+description: Schema for the Simulator GenericCamera.
+type: object
+properties:
+  maxWidth:
+    type: number
+    default: 1024
+    minimum: 1024
+    maximum: 2048
+  maxHeight:
+    type: number
+    default: 1024
+    minimum: 1024
+    maximum: 2048
+"""
+        )
 
     def getMakeAndModel(self):
         """Get the make and model of the camera.

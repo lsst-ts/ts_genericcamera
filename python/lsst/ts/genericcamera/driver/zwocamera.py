@@ -20,10 +20,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import ctypes
 import enum
 import pathlib
+
 import numpy as np
-import ctypes
+import yaml
 
 from . import zwofilterwheel
 from .. import exposure
@@ -68,6 +70,39 @@ class ASICamera(genericcamera.GenericCamera):
             self.zwoDev = self.zwoLib.openEFW(self.filterId)
             # self.zwoDev.setPosition(self.filterNumber)
             self.filterNumber = self.zwoLib.getPosition(self.filterId)
+
+    def get_config_schema(self):
+        return yaml.safe_load(
+            """
+$schema: http://json-schema.org/draft-07/schema#
+description: Schema for the ZWO GenericCamera.
+type: object
+properties:
+  id:
+    default: 0
+    type: number
+  binValue:
+    default: 1
+    type: number
+  currentImageType:
+    default: Raw16
+    type: string
+    enum:
+      - Raw8
+      - RGB24
+      - Raw16
+      - Y8
+  useZWOFilterWheel:
+    default: true
+    type: boolean
+  filterId:
+    default: 1
+    type: number
+  filterNumber:
+    default: 2
+    type: number
+"""
+        )
 
     def getMakeAndModel(self):
         """Get the make and model of the camera.

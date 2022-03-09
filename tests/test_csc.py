@@ -23,19 +23,17 @@ import asyncio
 import glob
 import os
 import pathlib
-import yaml
 import unittest
 
 import numpy as np
+import yaml
 
 from lsst.ts import salobj
 from lsst.ts import genericcamera
 
 STD_TIMEOUT = 2  # standard command timeout (sec)
 LONG_TIMEOUT = 20  # timeout for starting SAL components (sec)
-TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
-
-port_generator = salobj.index_generator(imin=3200)
+TEST_CONFIG_DIR = pathlib.Path(__file__).parent / "data" / "config"
 
 
 class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
@@ -67,7 +65,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             desired_config_env_name = desired_config_pkg_name.upper() + "_DIR"
             desired_config_pkg_dir = os.environ[desired_config_env_name]
             desired_config_dir = (
-                pathlib.Path(desired_config_pkg_dir) / "GenericCamera/v1"
+                pathlib.Path(desired_config_pkg_dir) / "GenericCamera/v2"
             )
             self.assertEqual(self.csc.get_config_pkg(), desired_config_pkg_name)
             self.assertEqual(self.csc.config_dir, desired_config_dir)
@@ -87,11 +85,11 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             bad_config_names.append("no_such_file.yaml")
             for bad_config_name in bad_config_names:
                 with self.subTest(bad_config_name=bad_config_name):
-                    self.remote.cmd_start.set(settingsToApply=bad_config_name)
+                    self.remote.cmd_start.set(configurationOverride=bad_config_name)
                     with self.assertRaises(salobj.AckError):
                         await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
 
-            self.remote.cmd_start.set(settingsToApply="all_fields")
+            self.remote.cmd_start.set(configurationOverride="all_fields.yaml")
             await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
             self.assertEqual(self.csc.summary_state, salobj.State.DISABLED)
             state = await self.remote.evt_summaryState.next(
@@ -102,7 +100,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             with open(all_fields_path, "r") as f:
                 all_fields_raw = f.read()
             all_fields_data = yaml.safe_load(all_fields_raw)
-            for field, value in all_fields_data.items():
+            instance = all_fields_data["instances"][0]
+            for field, value in instance.items():
                 self.assertEqual(getattr(self.csc.config, field), value)
 
     async def test_state_transition(self):
