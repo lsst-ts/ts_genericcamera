@@ -341,7 +341,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             # Set the auto exposure time interval to a low value so
             # the test doesn't take so long
-            self.csc.config.autoExposureInterval = 2.0
+            self.csc.config.auto_exposure_interval = 2.0
 
             self.flush_take_image_events()
 

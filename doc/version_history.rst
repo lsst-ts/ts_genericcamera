@@ -10,6 +10,8 @@ v0.5.0
 ======
 
 * Prepare for salobj 7.
+* Rename the GenericCamera base class to BaseCamera.
+* Replace camelCase names with snake_case where appropriate.
 
 Requires:
 

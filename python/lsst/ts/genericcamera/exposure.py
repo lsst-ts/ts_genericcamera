@@ -31,7 +31,7 @@ class Exposure:
     """This class is used to define an exposure. It provides methods
     for manipulating an exposure and saving it to the local disk."""
 
-    def __init__(self, buffer, width, height, tags, dtype=np.uint16, isJPEG=False):
+    def __init__(self, buffer, width, height, tags, dtype=np.uint16, is_jpeg=False):
         """Constructs an exposure object.
 
         Exposures meant to be a JPEG image should have 8bit pixels.
@@ -49,7 +49,7 @@ class Exposure:
             A list of FitsHeaderItem tags that describe the image.
         dtype : dtype (optional)
             Type of image data.
-        isJPEG : bool (optional)
+        is_jpeg : bool (optional)
             True if the image described is a JPEG.
         """
         self.width = width
@@ -57,10 +57,10 @@ class Exposure:
         print(len(buffer))
         self.buffer = buffer.reshape(height, width)
         self.tags = tags
-        self.isJPEG = isJPEG
+        self.is_jpeg = is_jpeg
         self.dtype = dtype
 
-    def makeJPEG(self):
+    def make_jpeg(self):
         """Takes this exposure and converts it to a JPEG."""
         # fileMemory = io.BytesIO()
         # img = Image.frombuffer('L', (self.width, self.height), self.buffer)
@@ -73,24 +73,24 @@ class Exposure:
 
         self.buffer = self.buffer.astype(np.uint8)
 
-        self.isJPEG = True
+        self.is_jpeg = True
         self.dtype = self.buffer.dtype
 
-    def save(self, filePath):
+    def save(self, file_path):
         """Saves this exposure to the local drive.
 
         Parameters
         ----------
-        filePath : str
+        file_path : str
             The path to the file to save the image to."""
 
-        if self.isJPEG:
+        if self.is_jpeg:
             img = Image.open(io.BytesIO(self.buffer))
-            img.save(filePath, "jpeg")
+            img.save(file_path, "jpeg")
         else:
             img = fits.PrimaryHDU(self.buffer)
             hdul = fits.HDUList([img])
             hdr = hdul[0].header
             for tag in self.tags:
                 hdr.append((tag.name, tag.value, tag.comment), end=True)
-            hdul.writeto(filePath)
+            hdul.writeto(file_path)

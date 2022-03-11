@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["GenericCamera"]
+__all__ = ["BaseCamera"]
 
 import abc
 import ctypes
@@ -34,7 +34,7 @@ from .. import exposure
 from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
 
 
-class GenericCamera(abc.ABC):
+class BaseCamera(abc.ABC):
     """This class describes the methods required by a generic camera."""
 
     def __init__(self, log=None):
@@ -77,11 +77,11 @@ class GenericCamera(abc.ABC):
         """
         raise NotImplementedError()
 
-    def stop(self):
+    async def stop(self):
         """Stop and close camera."""
         pass
 
-    def getMakeAndModel(self):
+    def get_make_and_model(self):
         """Get the make and model of the camera.
 
         Returns
@@ -90,7 +90,7 @@ class GenericCamera(abc.ABC):
             The make and model of the camera."""
         return "GenericCamera"
 
-    def getValue(self, key):
+    def get_value(self, key):
         """Gets the value of a unique property of the camera.
 
         Parameters
@@ -105,7 +105,7 @@ class GenericCamera(abc.ABC):
             Returns 'UNDEFINED' if the property doesn't exist."""
         return "UNDEFINED"
 
-    async def setValue(self, key, value):
+    async def set_value(self, key, value):
         """Set a unique property of the camera.
 
         Parameters
@@ -116,7 +116,7 @@ class GenericCamera(abc.ABC):
             The value of the property."""
         pass
 
-    def getROI(self):
+    def get_roi(self):
         """Gets the region of interest.
 
         Returns
@@ -131,7 +131,7 @@ class GenericCamera(abc.ABC):
             The height of the region in pixels."""
         return 0, 0, 0, 0
 
-    def setROI(self, top, left, width, height):
+    def set_roi(self, top, left, width, height):
         """Sets the region of interest.
 
         Parameters
@@ -146,29 +146,29 @@ class GenericCamera(abc.ABC):
             The height of the region in pixels."""
         pass
 
-    def setFullFrame(self):
+    def set_full_frame(self):
         """Sets the region of interest to the whole sensor."""
         pass
 
-    def startLiveView(self):
+    def start_live_view(self):
         """Starts a live view data stream from the camera.
 
         This should change the image format to 8bits per pixel so
         the image can be encoded to JPEG."""
         pass
 
-    def stopLiveView(self):
+    def stop_live_view(self):
         """Stops an active live view data stream from the camera.
 
         This should review the image format back to 16bits per pixel."""
         pass
 
-    async def startTakeImage(self, expTime, shutter, science, guide, wfs):
+    async def start_take_image(self, exp_time, shutter, science, guide, wfs):
         """Start taking an image or a set of images.
 
         Parameters
         ----------
-        expTime : float
+        exp_time : float
             The exposure time in seconds.
         shutter : bool
             Should the shutter be opened?
@@ -182,13 +182,13 @@ class GenericCamera(abc.ABC):
         self.datetime_start = datetime.datetime.now(tz=datetime.timezone.utc)
         return True
 
-    async def startShutterOpen(self):
+    async def start_shutter_open(self):
         """Start opening the shutter.
 
         If the camera doesn't have a shutter then don't do anything."""
         pass
 
-    async def endShutterOpen(self):
+    async def end_shutter_open(self):
         """End opening the shutter.
 
         If the camera does have a shutter then this should wait for the
@@ -197,17 +197,17 @@ class GenericCamera(abc.ABC):
         If the camera doesn't have a shutter then don't do anything."""
         pass
 
-    async def startIntegration(self):
+    async def start_integration(self):
         """Start integrating."""
         pass
 
-    async def endIntegration(self):
+    async def end_integration(self):
         """End integration.
 
         This should wait for the integration period to complete."""
         pass
 
-    async def startShutterClose(self):
+    async def start_shutter_close(self):
         """Start closing the shutter.
 
         If the camera does have a shutter then start closing the
@@ -216,7 +216,7 @@ class GenericCamera(abc.ABC):
         If the camera doesn't have a shutter then don't do anything."""
         pass
 
-    async def endShutterClose(self):
+    async def end_shutter_close(self):
         """End closing the shutter.
 
         If the camera does have a shutter then this should wait for
@@ -225,11 +225,11 @@ class GenericCamera(abc.ABC):
         If the camera doesn't have a shutter then don't do anything."""
         pass
 
-    async def startReadout(self):
+    async def start_readout(self):
         """Start reading out the image."""
         self.datetime_end = datetime.datetime.now(tz=datetime.timezone.utc)
 
-    async def endReadout(self):
+    async def end_readout(self):
         """End reading out the image.
 
         Returns
@@ -238,7 +238,7 @@ class GenericCamera(abc.ABC):
             The exposure."""
         return exposure.Exposure(ctypes.create_string_buffer(0), 1, 1, {})
 
-    async def endTakeImage(self):
+    async def end_take_image(self):
         """End take image or images."""
         pass
 

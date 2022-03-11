@@ -25,55 +25,63 @@ import yaml
 
 CONFIG_SCHEMA = yaml.safe_load(
     """
-  $schema: http://json-schema.org/draft-07/schema#
-  $id: https://github.com/lsst-ts/ts_genericcamera/blob/master/python/lsst/ts/genericcamera/config_schema.py
-  # title must end with one or more spaces followed by the schema version, which must begin with "v"
-  title: GenericCamera v2
-  description: Schema for GenericCamera configuration files
-  type: object
-  properties:
-    instances:
-      type: array
-      description: Configuration for each WeatherStation instance.
-      minItem: 1
-      items:
-        type: object
-        properties:
-          sal_index:
-            type: integer
-            description: SAL index of WeatherStation instance.
-            minimum: 1
-          ip:
-            description: IP address of the live view server.
-            type: string
-          port:
-            description: Port for the live view server.
-            type: number
-          directory:
-            description: Directory to store images (default is home folder).
-            type: string
-          fileNameFormat:
-            description: File name format.
-            type: string
-          camera:
-            description: Camera driver to use.
-            type: string
-            enum:
-            - Simulator
-            - Andor
-            - Zwo
-            - Canon
-          autoExposureInterval:
-            description: The interval [sec] at which exposures are taken in auto exposure mode.
-            type: number
-          minBackground:
-            description: The minimum background level in auto exposure mode.
-            type: number
-          maxBackground:
-            description: The maximum background level in auto exposure mode.
-            type: number
-          config:
-            description: Configuration for the GenericCamera model.
-            type: object
+$schema: http://json-schema.org/draft-07/schema#
+$id: https://github.com/lsst-ts/ts_genericcamera/blob/master/python/lsst/ts/genericcamera/config_schema.py
+# title must end with one or more spaces followed by the schema version, which must begin with "v"
+title: GenericCamera v2
+description: Schema for GenericCamera configuration files
+type: object
+properties:
+  instances:
+    type: array
+    description: Configuration for each GenericCamera instance.
+    minItem: 1
+    items:
+      type: object
+      properties:
+        sal_index:
+          type: integer
+          description: SAL index of GenericCamera instance.
+          minimum: 1
+        ip:
+          description: IP address of the live view server.
+          type: string
+        port:
+          description: Port for the live view server.
+          type: number
+        directory:
+          description: Directory to store images (default is home folder).
+          type: string
+        file_name_format:
+          description: >
+            File name format. Supported tags are:
+              - timestamp: the TAI timestamp of the image which is the start of
+                image acquisition.
+              - index: the index of the image in the sequence of images to be
+                taken.
+              - total: the total amount of images to take.
+          type: string
+        camera:
+          description: Camera driver to use.
+          type: string
+          enum:
+          - Simulator
+          - Andor
+          - Zwo
+          - Canon
+        auto_exposure_interval:
+          description: The interval [sec] at which exposures are taken in auto exposure mode.
+          type: number
+        min_background:
+          description: The minimum background level in auto exposure mode.
+          type: number
+        max_background:
+          description: The maximum background level in auto exposure mode.
+          type: number
+        config:
+          description: >
+            Configuration for the specified camera driver.
+            See the camera driver class for the config schema.
+          type: object
   """
 )

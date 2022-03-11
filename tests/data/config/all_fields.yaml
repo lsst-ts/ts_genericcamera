@@ -3,9 +3,12 @@ instances:
   - sal_index: 1
     ip: "1.2.3.4"
     port: 100
-    directory: ~/
-    fileNameFormat: "{timestamp}-{index}-{total}"
+    directory: "~/"
+    file_name_format: "{timestamp}-{index}-{total}"
     camera: "Simulator"
+    auto_exposure_nterval: 60
+    min_background: 32500.0
+    max_background: 33000.0
     config:
-      maxWidth: 1024
-      maxHeight: 1024
+      max_width: 1024
+      max_height: 1024

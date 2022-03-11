@@ -62,7 +62,7 @@ tags = {
     "EXPOSURE": exposure_time,
     "ISO": iso,
 }
-exposure = exposure.Exposure(luminance, width, height, tags, isJPEG=False)
+exposure = exposure.Exposure(luminance, width, height, tags, False)
 exposure.save(os.path.join("", "img.fits"))
 
 logging.info("Done image.")

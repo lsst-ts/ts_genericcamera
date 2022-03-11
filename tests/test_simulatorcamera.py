@@ -32,31 +32,31 @@ class TestSimulatorCamera(unittest.IsolatedAsyncioTestCase):
 
             simcam = SimulatorCamera()
 
-            await simcam.startTakeImage(
-                expTime=1.0, shutter=True, science=True, guide=True, wfs=True
+            await simcam.start_take_image(
+                exp_time=1.0, shutter=True, science=True, guide=True, wfs=True
             )
 
-            await simcam.startShutterOpen()
+            await simcam.start_shutter_open()
 
-            await simcam.endShutterOpen()
+            await simcam.end_shutter_open()
 
-            await simcam.startIntegration()
-            await simcam.endIntegration()
+            await simcam.start_integration()
+            await simcam.end_integration()
 
-            await simcam.startShutterClose()
+            await simcam.start_shutter_close()
 
-            await simcam.endShutterClose()
+            await simcam.end_shutter_close()
 
-            await simcam.startReadout()
+            await simcam.start_readout()
 
-            exposure = await simcam.endReadout()
+            exposure = await simcam.end_readout()
 
-            await simcam.endTakeImage()
+            await simcam.end_take_image()
 
             self.assertTrue(exposure is not None)
-            self.assertTrue(not exposure.isJPEG)
-            self.assertTrue(exposure.width == simcam.maxWidth)
-            self.assertTrue(exposure.height == simcam.maxHeight)
+            self.assertTrue(not exposure.is_jpeg)
+            self.assertTrue(exposure.width == simcam.max_width)
+            self.assertTrue(exposure.height == simcam.max_height)
             self.assertTrue(exposure.buffer is not None)
             self.assertIsNotNone(simcam.datetime_start)
             self.assertIsNotNone(simcam.datetime_end)

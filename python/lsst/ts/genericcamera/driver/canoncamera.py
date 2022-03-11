@@ -31,17 +31,17 @@ import yaml
 
 from .. import exposure
 from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
-from . import genericcamera
+from . import basecamera
 from .. import utils
 
 
-class CanonCamera(genericcamera.GenericCamera):
+class CanonCamera(basecamera.BaseCamera):
     def __init__(self, log=None):
         super().__init__(log=log)
         self.id = None
-        self.binValue = None
-        self.normalImageType = None
-        self.currentImageType = None
+        self.bin_value = None
+        self.normal_image_type = None
+        self.current_image_type = None
         self.width = None
         self.height = None
         self.iso = None
@@ -74,9 +74,9 @@ class CanonCamera(genericcamera.GenericCamera):
         config : str
             The name of the configuration file to load."""
         self.id = config.id
-        self.binValue = config.binValue
-        self.normalImageType = config.ImageType
-        self.currentImageType = self.normalImageType
+        self.bin_value = config.bin_value
+        self.normal_image_type = config.image_type
+        self.current_image_type = self.normal_image_type
         self.width = config.width
         self.height = config.height
         self.iso = config.iso
@@ -92,39 +92,54 @@ class CanonCamera(genericcamera.GenericCamera):
         return yaml.safe_load(
             """
 $schema: http://json-schema.org/draft-07/schema#
-description: Schema for the Canon GenericCamera.
+description: Schema for Canon cameras.
 type: object
 properties:
   id:
     default: 0
     type: number
-  binValue:
+    description: The ID of the camera to be set in the FITS header.
+  bin_value:
     default: 1
     type: number
+    description: The value for how to bin the image pixels.
   width:
     type: number
     default: 6744
+    description: >
+      The width of the sensor in pixels. This must match the full sensor width
+      including the black point borders.
   height:
     type: number
     default: 4502
+    description: >
+      The height of the sensor in pixels. This must match the full sensor
+      heigth including the black point borders.
   iso:
     type: number
     default: 200
-  ImageType:
+  image_type:
     default: RAW
     type: string
+    description: >
+      The image type to store. This usually provides informtation about the
+      pixel depth, the color space or whether it is a raw image of not.
     enum:
       - RAW
   cube_mnt:
     type: number
+    decription: >
+      The cubic distortion correction. This must be measured from an image.
     default: -0.069
   quad_mnt:
     type: number
+    decription: >
+      The quartic distortion correction. This must be measured from an image.
     default: 0.055
 """
         )
 
-    def getMakeAndModel(self):
+    def get_make_and_model(self):
         """Get the make and model of the camera.
 
         Returns
@@ -134,7 +149,7 @@ properties:
         abilities = self.camera.get_abilities()
         return abilities.model
 
-    def getROI(self):
+    def get_roi(self):
         """Gets the region of interest.
 
         Returns
@@ -149,12 +164,12 @@ properties:
             The height of the region in pixels."""
         return 0, 0, self.width, self.height
 
-    async def startTakeImage(self, expTime, shutter, science, guide, wfs):
+    async def start_take_image(self, exp_time, shutter, science, guide, wfs):
         """Start taking an image or a set of images.
 
         Parameters
         ----------
-        expTime : `float`
+        exp_time : `float`
             The exposure time in seconds. If the value is at least 1 second
             then it gets rounded down to the nearest second since Canon cameras
             don't support floating point exposure times larger than or equal to
@@ -169,23 +184,23 @@ properties:
             Should wave front sensor be used?
         """
         # Store the exposure time for later use
-        if expTime >= 1:
-            expTime = int(expTime)
-        self.exposure_time = expTime
+        if exp_time >= 1:
+            exp_time = int(exp_time)
+        self.exposure_time = exp_time
         # In order to be able to update the cameraq config via GPhoto, the
         # config object needs to be obtained ...
         cfg = self.camera.get_config()
         # ... the config parameters need to be adjusted ...
         cfg.get_child_by_name("focusmode").set_value("Manual")
-        cfg.get_child_by_name("imageformat").set_value(self.normalImageType)
+        cfg.get_child_by_name("imageformat").set_value(self.normal_image_type)
         cfg.get_child_by_name("iso").set_value(str(self.iso))
         cfg.get_child_by_name("picturestyle").set_value("Standard")
         cfg.get_child_by_name("shutterspeed").set_value(str(self.exposure_time))
         # ... and the config needs to be written baqck to the camera
         self.camera.set_config(cfg, None)
-        await super().startTakeImage(expTime, shutter, science, guide, wfs)
+        await super().start_take_image(exp_time, shutter, science, guide, wfs)
 
-    async def startIntegration(self):
+    async def start_integration(self):
         """Start integrating.
 
         This starts the exposure while obtaining the path to the file on the
@@ -193,9 +208,9 @@ properties:
         controls that.
         """
         self.file_path = self.camera.capture(gp.GP_CAPTURE_IMAGE)
-        await super().startIntegration()
+        await super().start_integration()
 
-    async def endReadout(self):
+    async def end_readout(self):
         """End reading out the image.
 
         The image can be obtained by reading out the file_path variable in
@@ -224,9 +239,7 @@ properties:
 
         await self._set_tag_values()
 
-        image = exposure.Exposure(
-            luminance, self.width, self.height, self.tags, isJPEG=False
-        )
+        image = exposure.Exposure(luminance, self.width, self.height, self.tags, False)
         return image
 
     async def _set_tag_values(self):

@@ -97,8 +97,8 @@ class TestExposure(unittest.TestCase):
                 f"Header comment for {name} incorrect.",
             )
 
-        exp.makeJPEG()
-        self.assertTrue(exp.isJPEG)
+        exp.make_jpeg()
+        self.assertTrue(exp.is_jpeg)
 
 
 if __name__ == "__main__":
