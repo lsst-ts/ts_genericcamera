@@ -65,26 +65,26 @@ class Harness:
 
     async def take_image(self):
 
-        await self.asicam.startTakeImage(
+        await self.asicam.start_take_image(
             expTime=1.0, shutter=True, science=True, guide=True, wfs=True
         )
 
-        await self.asicam.startShutterOpen()
+        await self.asicam.start_shutter_open()
 
-        await self.asicam.endShutterOpen()
+        await self.asicam.end_shutter_open()
 
-        await self.asicam.startIntegration()
-        await self.asicam.endIntegration()
+        await self.asicam.start_integration()
+        await self.asicam.end_integration()
 
-        await self.asicam.startShutterClose()
+        await self.asicam.start_shutter_close()
 
-        await self.asicam.endShutterClose()
+        await self.asicam.end_shutter_close()
 
-        await self.asicam.startReadout()
+        await self.asicam.start_readout()
 
-        exposure = await self.asicam.endReadout()
+        exposure = await self.asicam.end_readout()
 
-        await self.asicam.endTakeImage()
+        await self.asicam.end_take_image()
 
         return exposure
 
@@ -99,7 +99,7 @@ class TestASICamera(unittest.TestCase):
             exposure = await harness.take_image()
 
             self.assertTrue(exposure is not None)
-            self.assertTrue(not exposure.isJPEG)
+            self.assertTrue(not exposure.is_jpeg)
             self.assertTrue(exposure.width == harness.asicam.maxWidth)
             self.assertTrue(exposure.height == harness.asicam.maxHeight)
             self.assertTrue(exposure.buffer is not None)

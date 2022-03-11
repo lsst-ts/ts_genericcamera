@@ -20,23 +20,35 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import ctypes
 import enum
 import pathlib
+
 import numpy as np
-import ctypes
+import yaml
 
 from . import zwofilterwheel
 from .. import exposure
-from . import genericcamera
+from . import basecamera
 
 
-class ASICamera(genericcamera.GenericCamera):
+class ASICamera(basecamera.BaseCamera):
     def __init__(self, log=None):
         super().__init__(log=log)
 
         self.lib = ASILibrary()
         self.lib.initialiseLibrary()
-        self.isLiveExposure = False
+        self.is_live_exposure = False
+        self.id = 0
+        self.bin_value = 0
+        self.normal_image_type = None
+        self.current_image_type = None
+        self.dev = None
+        self.use_zwo_filter_wheel = None
+        self.filter_id = None
+        self.filter_number = None
+        self.zwo_lib = None
+        self.zwo_dev = None
 
     @staticmethod
     def name():
@@ -51,25 +63,70 @@ class ASICamera(genericcamera.GenericCamera):
         config : str
             The name of the configuration file to load."""
         self.id = config.id
-        self.binValue = config.binValue
-        self.normalImageType = getattr(ASIImageType, config.currentImageType)
-        self.currentImageType = self.normalImageType
+        self.bin_value = config.bin_value
+        self.normal_image_type = getattr(ASIImageType, config.current_image_type)
+        self.current_image_type = self.normal_image_type
         self.dev = self.lib.openASI(self.id)
-        self.setFullFrame()
+        self.set_full_frame()
 
-        self.useZWOFilterWheel = config.useZWOFilterWheel
+        self.use_zwo_filter_wheel = config.use_zwo_filter_wheel
 
-        self.filterId = config.filterId  # ID of the filter wheel not the filter
-        self.filterNumber = None
+        self.filter_id = config.filter_id  # ID of the filter wheel not the filter
+        self.filter_number = None
 
-        if self.useZWOFilterWheel:
-            self.zwoLib = zwofilterwheel.EFWLibrary()
-            self.zwoLib.initialiseLibrary()
-            self.zwoDev = self.zwoLib.openEFW(self.filterId)
-            # self.zwoDev.setPosition(self.filterNumber)
-            self.filterNumber = self.zwoLib.getPosition(self.filterId)
+        if self.use_zwo_filter_wheel:
+            self.zwo_lib = zwofilterwheel.EFWLibrary()
+            self.zwo_lib.initialiseLibrary()
+            self.zwo_dev = self.zwo_lib.openEFW(self.filter_id)
+            # self.zwo_dev.setPosition(self.filter_number)
+            self.filter_number = self.zwo_lib.getPosition(self.filter_id)
 
-    def getMakeAndModel(self):
+    def get_config_schema(self):
+        return yaml.safe_load(
+            """
+$schema: http://json-schema.org/draft-07/schema#
+description: Schema for ZWO cameras.
+type: object
+properties:
+  id:
+    default: 0
+    type: number
+    description: The ID of the camera to be set in the FITS header.
+  bin_value:
+    default: 1
+    type: number
+    description: The value for how to bin the image pixels.
+  current_image_type:
+    default: raw16
+    type: string
+    description: >
+      The image type to store. This usually provides informtation about the
+      pixel depth, the color space or whether it is a raw image of not.
+    enum:
+      - raw8
+      - rgb24
+      - raw16
+      - y8
+  use_zwo_filter_wheel:
+    default: true
+    type: boolean
+    description: Use the ZWO filter wheel (true) or not (false).
+  filter_id:
+    default: 1
+    type: number
+    description: >
+      The ID of the filter wheel to use. In general this will be 1 unless more
+      than one filter wheel is installed.
+  filter_number:
+    default: 2
+    type: number
+    description: >
+      The ID of the filter to use. Depending on the type of ZWO filter wheel
+      used, this value can have a maximum of 5, 7 or 8.
+"""
+        )
+
+    def get_make_and_model(self):
         """Get the make and model of the camera.
 
         Returns
@@ -79,7 +136,7 @@ class ASICamera(genericcamera.GenericCamera):
         info = self.dev.getCameraInfo()
         return info.Name
 
-    def getValue(self, key):
+    def get_value(self, key):
         """Gets the value of a unique property of the camera.
 
         Parameters
@@ -91,9 +148,9 @@ class ASICamera(genericcamera.GenericCamera):
         str
             The value of the property.
             Returns 'UNDEFINED' if the property doesn't exist."""
-        return super().getValue(key)
+        return super().get_value(key)
 
-    async def setValue(self, key, value):
+    async def set_value(self, key, value):
         """Set a unique property of the camera.
 
         Parameters
@@ -103,14 +160,14 @@ class ASICamera(genericcamera.GenericCamera):
         value : str
             The value of the property."""
         key = key.lower()
-        if key == "filter" and self.useZWOFilterWheel:
-            self.zwoDev.setPosition(int(value))
-            self.filterNumber = int(value)
-            while not self.zwoDev.isInPosition():
+        if key == "filter" and self.use_zwo_filter_wheel:
+            self.zwo_dev.setPosition(int(value))
+            self.filter_number = int(value)
+            while not self.zwo_dev.isInPosition():
                 await asyncio.sleep(0.02)
         await super().setValue(key, value)
 
-    def getROI(self):
+    def get_roi(self):
         """Gets the region of interest.
 
         Returns
@@ -124,10 +181,10 @@ class ASICamera(genericcamera.GenericCamera):
         int
             The height of the region in pixels."""
         left, top = self.dev.getStartPosition()
-        width, height, bin, imgType = self.dev.getROI()
+        width, height, binning, imgType = self.dev.getROI()
         return top, left, width, height
 
-    def setROI(self, top, left, width, height):
+    def set_roi(self, top, left, width, height):
         """Sets the region of interest.
 
         Parameters
@@ -140,45 +197,45 @@ class ASICamera(genericcamera.GenericCamera):
             The width of the region in pixels.
         height : int
             The height of the region in pixels."""
-        print(width, height, self.binValue, self.currentImageType)
-        self.dev.setROI(width, height, self.binValue, self.currentImageType)
+        print(width, height, self.bin_value, self.current_image_type)
+        self.dev.setROI(width, height, self.bin_value, self.current_image_type)
         self.dev.setStartPosition(left, top)
 
-    def setFullFrame(self):
+    def set_full_frame(self):
         """Sets the region of interest to the whole sensor."""
         info = self.dev.getCameraInfo()
-        self.setROI(
+        self.set_roi(
             0,
             0,
-            int(info.MaxWidth / self.binValue),
-            int(info.MaxHeight / self.binValue),
+            int(info.MaxWidth / self.bin_value),
+            int(info.MaxHeight / self.bin_value),
         )
 
-    def startLiveView(self):
+    def start_live_view(self):
         """Configure the camera for live view.
 
         This should change the image format to 8bits per pixel so
         the image can be encoded to JPEG."""
-        # self.currentImageType = ASIImageType.Raw8
+        # self.current_image_type = ASIImageType.Raw8
         top, left, width, height = self.getROI()
-        self.setROI(top, left, width, height)
-        self.isLiveExposure = True
-        super().startLiveView()
+        self.set_roi(top, left, width, height)
+        self.is_live_exposure = True
+        super().start_live_view()
 
-    def stopLiveView(self):
+    def stop_live_view(self):
         """Configure the camera for a standard exposure."""
-        self.currentImageType = self.normalImageType
+        self.current_image_type = self.normal_image_type
         top, left, width, height = self.getROI()
-        self.setROI(top, left, width, height)
-        self.isLiveExposure = False
-        super().stopLiveView()
+        self.set_roi(top, left, width, height)
+        self.is_live_exposure = False
+        super().stop_live_view()
 
-    async def startTakeImage(self, expTime, shutter, science, guide, wfs):
+    async def start_take_image(self, exp_time, shutter, science, guide, wfs):
         """Start taking an image or a set of images.
 
         Parameters
         ----------
-        expTime : float
+        exp_time : float
             The exposure time in seconds.
         shutter : bool
             Should the shutter be opened?
@@ -189,15 +246,17 @@ class ASICamera(genericcamera.GenericCamera):
         wfs : bool
             Should wave front sensor be used?
         """
-        self.dev.setControlValue(ASIControlType.Exposure, int(expTime * 1000000), False)
-        await super().startTakeImage(expTime, shutter, science, guide, wfs)
+        self.dev.setControlValue(
+            ASIControlType.Exposure, int(exp_time * 1000000), False
+        )
+        await super().start_take_image(exp_time, shutter, science, guide, wfs)
 
-    async def startIntegration(self):
+    async def start_integration(self):
         """Start integrating."""
         self.dev.startExposure()
-        await super().startIntegration()
+        await super().start_integration()
 
-    async def endIntegration(self):
+    async def end_integration(self):
         """End integration.
 
         This should wait for the integration period to complete."""
@@ -207,34 +266,34 @@ class ASICamera(genericcamera.GenericCamera):
             result = self.dev.getExposureStatus()
         if result == ASIExposureStatus.Failed:
             raise ASIImageFailed()
-        await super().endIntegration()
+        await super().end_integration()
 
-    async def endReadout(self):
+    async def end_readout(self):
         """Start reading out the image."""
         buffer = self.dev.getExposureData()
         buffer_array = np.frombuffer(buffer, dtype=np.uint16)
-        exposureTime, auto = self.dev.getControlValue(ASIControlType.Exposure)
+        exposure_time, auto = self.dev.getControlValue(ASIControlType.Exposure)
         offset, auto = self.dev.getControlValue(ASIControlType.Offset)
         temperature, auto = self.dev.getControlValue(ASIControlType.Temperature)
-        coolerPowerPercentage, auto = self.dev.getControlValue(
+        cooler_power_percentage, auto = self.dev.getControlValue(
             ASIControlType.CoolerPowerPercentage
         )
-        targetTemperature, auto = self.dev.getControlValue(
+        target_temperature, auto = self.dev.getControlValue(
             ASIControlType.TargetTemperature
         )
-        coolerOn, auto = self.dev.getControlValue(ASIControlType.CoolerOn)
+        cooler_on, auto = self.dev.getControlValue(ASIControlType.CoolerOn)
         top, left, width, height = self.getROI()
         tags = {
             "TOP": top,
             "LEFT": left,
             "WIDTH": width,
             "HEIGHT": height,
-            "EXPOSURE": (exposureTime / 1000000.0),
+            "EXPOSURE": (exposure_time / 1000000.0),
             "OFFSET": offset,
             "TEMPERATURE": (temperature / 10.0),
-            "COOLER_POWER_PERCENTAGE": coolerPowerPercentage,
-            "TARGET_TEMPERATURE": targetTemperature,
-            "COOLER_ON": coolerOn,
+            "COOLER_POWER_PERCENTAGE": cooler_power_percentage,
+            "TARGET_TEMPERATURE": target_temperature,
+            "COOLER_ON": cooler_on,
         }
         await super().startReadout()
         image = exposure.Exposure(buffer_array, width, height, tags)
@@ -1233,8 +1292,8 @@ class ASIDevice(ASIBase):
         self._assertHandle()
         bufferSize = self.getImageSize()
         buffer = self.asi.getStringBuffer(bufferSize)
-        exposureTimeInUs = self.getControlValue(ASIControlType.Exposure)
-        timeoutInMs = int((exposureTimeInUs * 2 + 500000) / 1000)
+        exposure_time_in_us = self.getControlValue(ASIControlType.Exposure)
+        timeoutInMs = int((exposure_time_in_us * 2 + 500000) / 1000)
         result = self.asi.getVideoData(self.handle, buffer, bufferSize, timeoutInMs)
         self._raiseIfBad(result)
         return buffer

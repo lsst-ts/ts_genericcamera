@@ -22,14 +22,17 @@
 __all__ = ["GenericCameraCsc"]
 
 import asyncio
+import inspect
+import logging
+import os
+
+# TODO Use utils.current_tai() instead.
 import time
 import traceback
-import inspect
-import os
-import logging
-import yaml
+import types
 
 import numpy as np
+import yaml
 
 from .config_schema import CONFIG_SCHEMA
 from . import __version__
@@ -84,36 +87,28 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         for member in inspect.getmembers(driver):
             is_class = inspect.isclass(member[1])
             is_subclass = (
-                False if not is_class else issubclass(member[1], driver.GenericCamera)
+                False if not is_class else issubclass(member[1], driver.BaseCamera)
             )
-            not_gencam = member[1] is not driver.GenericCamera
+            not_gencam = member[1] is not driver.BaseCamera
             if is_class and is_subclass and not_gencam:
                 self.drivers[member[1].name()] = member[1]
-
-        # Make sure all options in schema are valid
-        for camera in self.config_validator.final_validator.schema["properties"][
-            "camera"
-        ]["enum"]:
-            assert camera in self.drivers.keys(), (
-                f"{camera} is not a valid option, " f"must one of {self.drivers.keys()}"
-            )
 
         self.ip = None
         self.port = None
         self.directory = os.path.expanduser("~/")
-        self.fileNameFormat = "{timestamp}-{index}-{total}"
+        self.file_name_format = "{timestamp}-{index}-{total}"
         self.config = None
 
         self.camera = None
         self.server = None
 
-        self.isLive = False
-        self.isAutoExposure = False
-        self.isExposing = False
-        self.runLiveTask = False
-        self.liveTask = None
-        self.runAutoExposureTask = False
-        self.autoExposureTask = None
+        self.is_live = False
+        self.is_auto_exposure = False
+        self.is_exposing = False
+        self.run_live_task = False
+        self.live_task = None
+        self.run_auto_exposure_task = False
+        self.auto_exposure_task = None
         self.log.debug("Generic Camera CSC Ready")
 
     async def begin_enable(self, id_data):
@@ -141,7 +136,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         id_data : `CommandIdData`
             Command ID and data
         """
-        if self.isExposing:
+        if self.is_exposing:
             raise RuntimeError("Camera is exposing, cannot disable.")
 
     async def end_disable(self, id_data):
@@ -156,11 +151,11 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         id_data : `CommandIdData`
             Command ID and data
         """
-        if self.isLive:
+        if self.is_live:
             try:
-                self.runLiveTask = False
-                await self.liveTask
-                self.camera.stopLiveView()
+                self.run_live_task = False
+                await self.live_task
+                self.camera.stop_live_view()
             except Exception as e:
                 self.log.error("Exception while stopping live task.")
                 self.log.exception(e)
@@ -176,12 +171,13 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         if self.camera is not None:
             try:
-                self.camera.stop()
+                await self.camera.stop()
             except Exception as e:
                 self.log.error("Exception while stopping camera.")
                 self.log.exception(e)
             finally:
                 self.camera = None
+        self.log.info("end_disable")
 
     async def do_setValue(self, id_data):
         """Set a parameter/value pair.
@@ -200,10 +196,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         self.log.info("setValue - Start")
         tokens = id_data.parametersAndValues.split(",")
-        await self.camera.setValue(tokens[0], tokens[1])
+        await self.camera.set_value(tokens[0], tokens[1])
         self.log.info("setValue - End")
 
-    def do_setROI(self, id_data):
+    async def do_setROI(self, id_data):
         """Set the region of interest.
 
         Parameters
@@ -231,15 +227,15 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             height=id_data.height,
         ):
             self.log.debug("setROI - Start")
-            self.camera.setROI(
+            self.camera.set_roi(
                 id_data.topPixel, id_data.leftPixel, id_data.width, id_data.height
             )
-            self.evt_roi.put()
+            await self.evt_roi.write()
             self.log.debug("setROI - End")
         else:
             self.log.warning("ROI already set with same parameters.")
 
-    def do_setFullFrame(self, id_data):
+    async def do_setFullFrame(self, id_data):
         """Set the region of interest to full frame.
 
         Parameters
@@ -254,7 +250,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.log.info("setFullFrame - Start")
         self.assert_enabled("setFullFrame")
         self._assert_notlive()
-        self.camera.setFullFrame()
+        self.camera.set_full_frame()
         self.log.info("setFullFrame - End")
 
     async def do_startLiveView(self, id_data):
@@ -274,11 +270,11 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self._assert_notautoexposure()
         if id_data.expTime == 0.0:
             raise RuntimeError("LiveView exposure time must be greater than zero.")
-        self.camera.startLiveView()
-        self.runLiveTask = True
+        self.camera.start_live_view()
+        self.run_live_task = True
         await asyncio.wait_for(self.server.start(), timeout=2)
-        self.liveTask = asyncio.ensure_future(self.liveView_loop(id_data.expTime))
-        self.evt_startLiveView.set_put(ip=self.ip, port=self.port)
+        self.live_task = asyncio.ensure_future(self.liveView_loop(id_data.expTime))
+        await self.evt_startLiveView.set_write(ip=self.ip, port=self.port)
         self.log.info("startLiveView - End")
 
     async def do_stopLiveView(self, id_data):
@@ -298,8 +294,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         self.log.info("stopLiveView - Start")
 
-        self.runLiveTask = False
-        await self.liveTask
+        self.run_live_task = False
+        await self.live_task
 
         await self.stop_liveview()
 
@@ -315,12 +311,12 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             self.log.exception(e)
 
         try:
-            self.camera.stopLiveView()
+            self.camera.stop_live_view()
         except Exception as e:
             self.log.error("Exception trying to stop liveview.")
             self.log.exception(e)
 
-        self.evt_endLiveView.put()
+        await self.evt_endLiveView.write()
 
     async def do_takeImages(self, id_data):
         """Start taking images.
@@ -341,47 +337,47 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.assert_enabled("takeImages")
         self._assert_notlive()
         self._assert_notautoexposure()
-        self.isExposing = True
+        self.is_exposing = True
 
         try:
             self.log.info("takeImages - Start")
 
-            imagesInSequence = id_data.numImages
-            exposureTime = id_data.expTime
-            timeStamp = time.time()
+            images_in_sequence = id_data.numImages
+            exposure_time = id_data.expTime
+            time_stamp = time.time()
 
-            self.evt_startTakeImage.put()
-            await self.camera.startTakeImage(
-                exposureTime,
+            await self.evt_startTakeImage.write()
+            await self.camera.start_take_image(
+                exposure_time,
                 id_data.shutter,
                 id_data.sensors,
                 id_data.keyValueMap,
                 id_data.obsNote,
             )
 
-            for imageIndex in range(imagesInSequence):
+            for image_index in range(images_in_sequence):
                 timestamp = time.time()
-                imageName = self.fileNameFormat.format(
+                image_name = self.file_name_format.format(
                     timestamp=int(timestamp),
-                    index=imageIndex,
-                    total=imagesInSequence,
+                    index=image_index,
+                    total=images_in_sequence,
                 )
                 exposure = await self.take_image(
                     shutter=id_data.shutter,
-                    images_in_sequence=imagesInSequence,
-                    image_index=imageIndex,
-                    exposure_time=exposureTime,
-                    timestamp=timeStamp,
-                    image_name=imageName,
+                    images_in_sequence=images_in_sequence,
+                    image_index=image_index,
+                    exposure_time=exposure_time,
+                    timestamp=time_stamp,
+                    image_name=image_name,
                 )
-                exposure.save(os.path.join(self.directory, imageName + ".fits"))
-            await self.camera.endTakeImage()
-            self.evt_endTakeImage.put()
+                exposure.save(os.path.join(self.directory, image_name + ".fits"))
+            await self.camera.end_take_image()
+            await self.evt_endTakeImage.write()
         except Exception as e:
             self.log.exception(e)
             raise e
         finally:
-            self.isExposing = False
+            self.is_exposing = False
         self.log.info("takeImages - End")
 
     async def take_image(
@@ -415,40 +411,40 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             The exposure.
         """
         if shutter:
-            self.evt_startShutterOpen.put()
-            await self.camera.startShutterOpen()
+            await self.evt_startShutterOpen.write()
+            await self.camera.start_shutter_open()
 
-            await self.camera.endShutterOpen()
-            self.evt_endShutterOpen.put()
+            await self.camera.end_shutter_open()
+            await self.evt_endShutterOpen.write()
 
-        self.evt_startIntegration.set_put(
+        await self.evt_startIntegration.set_write(
             imagesInSequence=images_in_sequence,
             imageName=image_name,
             imageIndex=image_index,
             timestampAcquisitionStart=timestamp,
             exposureTime=exposure_time,
         )
-        await self.camera.startIntegration()
-        await self.camera.endIntegration()
-        self.evt_endIntegration.put()
+        await self.camera.start_integration()
+        await self.camera.end_integration()
+        await self.evt_endIntegration.write()
 
         if shutter:
-            self.evt_startShutterClose.put()
-            await self.camera.startShutterClose()
+            await self.evt_startShutterClose.write()
+            await self.camera.start_shutter_close()
 
-            await self.camera.endShutterClose()
-            self.evt_endShutterClose.put()
-        self.evt_startReadout.set_put(
+            await self.camera.end_shutter_close()
+            await self.evt_endShutterClose.write()
+        await self.evt_startReadout.set_write(
             imagesInSequence=images_in_sequence,
             imageName=image_name,
             imageIndex=image_index,
             timestampAcquisitionStart=timestamp,
             exposureTime=exposure_time,
         )
-        await self.camera.startReadout()
+        await self.camera.start_readout()
 
-        exposure = await self.camera.endReadout()
-        self.evt_endReadout.set_put(
+        exposure = await self.camera.end_readout()
+        await self.evt_endReadout.set_write(
             imagesInSequence=images_in_sequence,
             imageName=image_name,
             imageIndex=image_index,
@@ -475,7 +471,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.log.info("startAutoExposure - Start")
         self._assert_notlive()
         self._assert_notautoexposure()
-        self.runAutoExposureTask = True
+        self.run_auto_exposure_task = True
 
         # Prepare potential configuration items for the loop
         configuration = {
@@ -490,12 +486,12 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 if key in loaded_configuration:
                     configuration[key] = loaded_configuration[key]
 
-        self.autoExposureTask = asyncio.ensure_future(
+        self.auto_exposure_task = asyncio.ensure_future(
             self.run_auto_exposure_loop(
                 id_data.minExpTime, id_data.maxExpTime, configuration
             )
         )
-        self.evt_autoExposureStarted.set_put(
+        await self.evt_autoExposureStarted.set_write(
             minExpTime=id_data.minExpTime,
             maxExpTime=id_data.maxExpTime,
             configuration=id_data.configuration,
@@ -515,8 +511,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         self.log.info("stopAutoExposure - Start")
 
-        self.runAutoExposureTask = False
-        await self.autoExposureTask
+        self.run_auto_exposure_task = False
+        await self.auto_exposure_task
 
         await self.stop_autoexposure()
 
@@ -528,7 +524,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         Not much content for now but this may change in the future.
         """
 
-        self.evt_autoExposureStopped.put()
+        await self.evt_autoExposureStopped.write()
 
     async def liveView_loop(self, exposure_time):
         """Run the live view capture loop.
@@ -539,56 +535,58 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             The exposure time of the image (in seconds).
         """
         self.log.debug("liveView_loop - Start")
-        self.isLive = True
+        self.is_live = True
         try:
-            while self.runLiveTask:
-                await self.camera.startTakeImage(exposure_time, True, True, True, True)
+            while self.run_live_task:
+                await self.camera.start_take_image(
+                    exposure_time, True, True, True, True
+                )
 
-                startFrameTime = time.time()
+                start_frame_time = time.time()
 
                 self.log.debug("start shutter open")
-                await self.camera.startShutterOpen()
+                await self.camera.start_shutter_open()
                 self.log.debug("end shutter open")
-                await self.camera.endShutterOpen()
+                await self.camera.end_shutter_open()
                 self.log.debug("start integration")
-                await self.camera.startIntegration()
+                await self.camera.start_integration()
                 self.log.debug("end integration")
-                await self.camera.endIntegration()
+                await self.camera.end_integration()
                 self.log.debug("startShutterClose")
-                await self.camera.startShutterClose()
+                await self.camera.start_shutter_close()
                 self.log.debug("endShutterClose")
-                await self.camera.endShutterClose()
+                await self.camera.end_shutter_close()
                 self.log.debug("startReadout")
-                await self.camera.startReadout()
+                await self.camera.start_readout()
                 self.log.debug("endReadout")
-                exposure = await self.camera.endReadout()
+                exposure = await self.camera.end_readout()
                 self.log.debug("endTakeImage")
-                await self.camera.endTakeImage()
-                exposure.makeJPEG()
+                await self.camera.end_take_image()
+                exposure.make_jpeg()
                 self.log.debug(f"{exposure.buffer}")
                 await self.server.send_exposure(exposure)
-                stopFrameTime = time.time()
-                frameTime = round(stopFrameTime - startFrameTime, 3)
-                self.log.debug(f"liveView_loop - {frameTime}")
+                stop_frame_time = time.time()
+                frame_time = round(stop_frame_time - start_frame_time, 3)
+                self.log.debug(f"liveView_loop - {frame_time}")
         except Exception as e:
             self.log.error("Error in live view loop.")
             self.log.exception(e)
             await self.stop_liveview()
 
-            self.fault(
+            await self.fault(
                 code=LV_ERROR,
                 report="Error in live view loop.",
                 traceback=traceback.format_exc(),
             )
 
-        self.isLive = False
+        self.is_live = False
         self.log.info("liveView_loop - End")
 
     async def run_auto_exposure_loop(self, min_exp_time, max_exp_time, configuration):
         """Prepare and start the auto exposure capture loop.
 
         The cadence of the images is determined by the value of
-        config.autoExposureInterval.
+        config.auto_exposure_nterval.
 
         Parameters
         ----------
@@ -600,7 +598,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             A dict containing additional configuration parameters.
         """
         self.log.info("autoExposure_loop - Start")
-        self.isAutoExposure = True
+        self.is_auto_exposure = True
 
         augmented_configuration = configuration.copy()
         augmented_configuration["images_in_sequence"] = 0
@@ -615,17 +613,17 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             self.log.exception("Error in auto exposure loop.")
             await self.stop_autoexposure()
 
-            self.fault(
+            await self.fault(
                 code=AE_ERROR,
                 report="Error in auto exposure loop.",
                 traceback=traceback.format_exc(),
             )
 
-        self.isAutoExposure = False
+        self.is_auto_exposure = False
         self.log.info("autoExposure_loop - End")
 
     async def run_auto_exposure(self, min_exp_time, max_exp_time, configuration):
-        """Take auto exposures until `runAutoExposureTask` is False.
+        """Take auto exposures until `run_auto_exposure_task` is False.
 
         Parameters
         ----------
@@ -640,7 +638,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         # First determine the exposure time based by taking images
         # starting from the configured minimum exposure time.
         timestamp = time.time()
-        image_name = self.fileNameFormat.format(
+        image_name = self.file_name_format.format(
             timestamp=int(timestamp), index=0, total=1
         )
         exposure_time_auto_current = await self.determine_exposure_time(
@@ -654,16 +652,16 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         # Then loop and take images using the latest exposure time and
         # update the exposure time if necessary on the way.
-        while self.runAutoExposureTask:
+        while self.run_auto_exposure_task:
             timestamp = time.time()
-            image_name = self.fileNameFormat.format(
+            image_name = self.file_name_format.format(
                 timestamp=int(timestamp),
                 index=configuration["image_index"],
                 total=configuration["images_in_sequence"],
             )
 
-            self.evt_startTakeImage.put()
-            await self.camera.startTakeImage(
+            await self.evt_startTakeImage.write()
+            await self.camera.start_take_image(
                 exposure_time_auto_current,
                 configuration["shutter"],
                 configuration["sensors"],
@@ -673,7 +671,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
             # Create a sleep task to wait for while taking the image.
             task_timer = asyncio.create_task(
-                asyncio.sleep(self.config.autoExposureInterval)
+                asyncio.sleep(self.config.auto_exposure_interval)
             )
             # Take an exposure until the background level is within
             # the expected boundaries. This updates the exposure time
@@ -701,8 +699,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 )
                 exposure_time_auto_current = exposure_time_auto_new
 
-            await self.camera.endTakeImage()
-            self.evt_endTakeImage.put()
+            await self.camera.end_take_image()
+            await self.evt_endTakeImage.write()
 
             # Now await the sleep task so either taking images is done
             # or a new one gets scheduled.
@@ -742,7 +740,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         """
         exposure_time = configuration["exposure_time"]
 
-        await self.camera.startTakeImage(
+        await self.camera.start_take_image(
             exposure_time,
             configuration["shutter"],
             configuration["sensors"],
@@ -752,7 +750,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         background_level = 0.0
         while not (
-            self.config.minBackground <= background_level <= self.config.maxBackground
+            self.config.min_background <= background_level <= self.config.max_background
         ):
             self.log.debug("Taking exposure.")
             exposure = await self.take_image(
@@ -767,7 +765,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             background_level = self.establish_exposure_background(exposure)
             self.log.debug(
                 f"Background level is {background_level} and a value between "
-                f"{self.config.minBackground} and {self.config.maxBackground} "
+                f"{self.config.min_background} and {self.config.max_background} "
                 f"is expected."
             )
             new_exposure_time = await self.adjust_exposure_time(
@@ -780,9 +778,9 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
             if (
                 not (
-                    self.config.minBackground
+                    self.config.min_background
                     <= background_level
-                    <= self.config.maxBackground
+                    <= self.config.max_background
                 )
                 and new_exposure_time == exposure_time
             ):
@@ -846,7 +844,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         background_level = self.establish_exposure_background(exposure)
         self.log.debug(
             f"Background level is {background_level} and a value between "
-            f"{self.config.minBackground} and {self.config.maxBackground} "
+            f"{self.config.min_background} and {self.config.max_background} "
             f"is expected."
         )
         new_exposure_time = await self.adjust_exposure_time(
@@ -887,11 +885,11 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             the current exposure time.
         """
         new_exposure_time = exposure_time
-        if background_level > self.config.maxBackground:
+        if background_level > self.config.max_background:
             new_exposure_time = exposure_time / 2.0
             if new_exposure_time < min_exp_time:
                 new_exposure_time = min_exp_time
-        elif background_level < self.config.minBackground:
+        elif background_level < self.config.min_background:
             new_exposure_time = exposure_time * 2.0
             if new_exposure_time > max_exp_time:
                 new_exposure_time = max_exp_time
@@ -920,31 +918,44 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         summary state from `State.STANDBY` to `State.DISABLED`.
         """
 
-        self.ip = config.ip
-        self.port = config.port
-
-        if os.path.exists(os.path.expanduser(config.directory)):
-            self.directory = os.path.expanduser(config.directory)
+        for instance in config.instances:
+            if instance["sal_index"] == self.salinfo.index:
+                break
         else:
-            raise RuntimeError(f"Directory {config.directory} does not exists.")
+            raise salobj.ExpectedError(
+                f"No config found for sal_index={self.salinfo.index}"
+            )
 
-        self.fileNameFormat = config.fileNameFormat
+        settings = types.SimpleNamespace(**instance)
+        self.config = settings
+        self.ip = self.config.ip
+        self.port = self.config.port
 
-        self.camera = self.drivers[config.camera](log=self.log)
-        self.config = config
+        if os.path.exists(os.path.expanduser(self.config.directory)):
+            self.directory = os.path.expanduser(self.config.directory)
+        else:
+            raise RuntimeError(f"Directory {self.config.directory} does not exists.")
+
+        self.file_name_format = self.config.file_name_format
+
+        self.camera = self.drivers[self.config.camera](log=self.log)
+        camera_config = self.config.config
+        config_schema = self.camera.get_config_schema()
+        validator = salobj.DefaultingValidator(config_schema)
+        validator.validate(camera_config)
 
     def _assert_notlive(self):
         """Raise an exception if live view is active."""
-        assert not self.isLive, "Live view is active."
+        assert not self.is_live, "Live view is active."
 
     def _assert_live(self):
         """Raise an exception if live view is not active."""
-        assert self.isLive, "Live view is not active."
+        assert self.is_live, "Live view is not active."
 
     def _assert_notautoexposure(self):
         """Raise an exception if auto exposure is active."""
-        assert not self.isAutoExposure, "Auto exposure is active."
+        assert not self.is_auto_exposure, "Auto exposure is active."
 
     def _assert_autoexposure(self):
         """Raise an exception if auto exposure is not active."""
-        assert self.isAutoExposure, "Auto exposure is not active."
+        assert self.is_auto_exposure, "Auto exposure is not active."

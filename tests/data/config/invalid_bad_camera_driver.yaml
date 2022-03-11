@@ -1,1 +1,3 @@
-camera: Invalid
+instances:
+  - sal_index: 1
+    camera: Invalid

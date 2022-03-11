@@ -67,90 +67,90 @@ class EUI(QDialog):
         # self.sal.subscribeEvent
 
         self.layout = QHBoxLayout()
-        self.controlsLayout = QVBoxLayout()
-        self.imageLayout = QVBoxLayout()
+        self.controls_layout = QVBoxLayout()
+        self.image_layout = QVBoxLayout()
 
         layout = QHBoxLayout()
-        self.startLiveViewButton = QPushButton("Start Live")
-        self.startLiveViewButton.clicked.connect(self.startLiveView)
-        self.stopLiveViewButton = QPushButton("Stop Live")
-        self.stopLiveViewButton.clicked.connect(self.stopLiveView)
-        layout.addWidget(self.startLiveViewButton)
-        layout.addWidget(self.stopLiveViewButton)
-        self.controlsLayout.addLayout(layout)
+        self.start_live_view_button = QPushButton("Start Live")
+        self.start_live_view_button.clicked.connect(self.startLiveView)
+        self.stop_live_view_button = QPushButton("Stop Live")
+        self.stop_live_view_button.clicked.connect(self.stopLiveView)
+        layout.addWidget(self.start_live_view_button)
+        layout.addWidget(self.stop_live_view_button)
+        self.controls_layout.addLayout(layout)
 
         layout = QHBoxLayout()
         layout.addWidget(QLabel("Exposure"))
-        self.exposureTimeEdit = QDoubleSpinBox()
-        self.exposureTimeEdit.setRange(0, 900.0)
-        self.exposureTimeEdit.setDecimals(6)
-        layout.addWidget(self.exposureTimeEdit)
-        self.controlsLayout.addLayout(layout)
+        self.exposure_time_edit = QDoubleSpinBox()
+        self.exposure_time_edit.setRange(0, 900.0)
+        self.exposure_time_edit.setDecimals(6)
+        layout.addWidget(self.exposure_time_edit)
+        self.controls_layout.addLayout(layout)
 
         layout = QVBoxLayout()
-        subLayout = QHBoxLayout()
-        subLayout.addWidget(QLabel("Top"))
-        self.roiTopEdit = QDoubleSpinBox()
-        self.roiTopEdit.setRange(0, 4095)
-        self.roiTopEdit.setDecimals(0)
-        subLayout.addWidget(self.roiTopEdit)
-        layout.addLayout(subLayout)
-        subLayout = QHBoxLayout()
-        subLayout.addWidget(QLabel("Left"))
-        self.roiLeftEdit = QDoubleSpinBox()
-        self.roiLeftEdit.setRange(0, 4095)
-        self.roiLeftEdit.setDecimals(0)
-        subLayout.addWidget(self.roiLeftEdit)
-        layout.addLayout(subLayout)
-        subLayout = QHBoxLayout()
-        subLayout.addWidget(QLabel("Width"))
-        self.roiWidthEdit = QDoubleSpinBox()
-        self.roiWidthEdit.setRange(0, 4095)
-        self.roiWidthEdit.setDecimals(0)
-        subLayout.addWidget(self.roiWidthEdit)
-        layout.addLayout(subLayout)
-        subLayout = QHBoxLayout()
-        subLayout.addWidget(QLabel("Height"))
-        self.roiHeightEdit = QDoubleSpinBox()
-        self.roiHeightEdit.setRange(0, 4095)
-        self.roiHeightEdit.setDecimals(0)
-        subLayout.addWidget(self.roiHeightEdit)
-        layout.addLayout(subLayout)
-        self.setROIButton = QPushButton("Set")
-        self.setROIButton.clicked.connect(self.setROI)
-        layout.addWidget(self.setROIButton)
-        self.setFullFrameButton = QPushButton("Set Full Frame")
-        self.setFullFrameButton.clicked.connect(self.setFullFrame)
-        layout.addWidget(self.setFullFrameButton)
-        self.controlsLayout.addLayout(layout)
+        sub_layout = QHBoxLayout()
+        sub_layout.addWidget(QLabel("Top"))
+        self.roi_top_edit = QDoubleSpinBox()
+        self.roi_top_edit.setRange(0, 4095)
+        self.roi_top_edit.setDecimals(0)
+        sub_layout.addWidget(self.roi_top_edit)
+        layout.addLayout(sub_layout)
+        sub_layout = QHBoxLayout()
+        sub_layout.addWidget(QLabel("Left"))
+        self.roi_left_edit = QDoubleSpinBox()
+        self.roi_left_edit.setRange(0, 4095)
+        self.roi_left_edit.setDecimals(0)
+        sub_layout.addWidget(self.roi_left_edit)
+        layout.addLayout(sub_layout)
+        sub_layout = QHBoxLayout()
+        sub_layout.addWidget(QLabel("Width"))
+        self.roi_width_edit = QDoubleSpinBox()
+        self.roi_width_edit.setRange(0, 4095)
+        self.roi_width_edit.setDecimals(0)
+        sub_layout.addWidget(self.roi_width_edit)
+        layout.addLayout(sub_layout)
+        sub_layout = QHBoxLayout()
+        sub_layout.addWidget(QLabel("Height"))
+        self.roi_height_edit = QDoubleSpinBox()
+        self.roi_height_edit.setRange(0, 4095)
+        self.roi_height_edit.setDecimals(0)
+        sub_layout.addWidget(self.roi_height_edit)
+        layout.addLayout(sub_layout)
+        self.set_roi_button = QPushButton("Set")
+        self.set_roi_button.clicked.connect(self.set_roi)
+        layout.addWidget(self.set_roi_button)
+        self.set_full_frame_button = QPushButton("Set Full Frame")
+        self.set_full_frame_button.clicked.connect(self.set_full_frame)
+        layout.addWidget(self.set_full_frame_button)
+        self.controls_layout.addLayout(layout)
 
         layout = QVBoxLayout()
         layout.addWidget(QLabel("File Path:"))
-        self.filePathEdit = QTextEdit()
-        layout.addWidget(self.filePathEdit)
-        self.takeExposureButton = QPushButton("Take Images")
-        self.takeExposureButton.clicked.connect(self.takeImages)
-        layout.addWidget(self.takeExposureButton)
-        self.controlsLayout.addLayout(layout)
+        self.file_path_edit = QTextEdit()
+        layout.addWidget(self.file_path_edit)
+        self.take_exposure_button = QPushButton("Take Images")
+        self.take_exposure_button.clicked.connect(self.take_images)
+        layout.addWidget(self.take_exposure_button)
+        self.controls_layout.addLayout(layout)
 
         img = Image.fromarray(np.zeros((1024, 1014))).convert("I")
         img.save("/tmp/foo.png")
 
         self.pix = QPixmap("/tmp/foo.png")
 
-        self.imageLabel = QLabel()
-        self.imageLabel.setPixmap(self.pix)
-        self.imageLabel.setGeometry(QtCore.QRect(40, 40, 800, 800))
+        self.image_label = QLabel()
+        self.image_label.setPixmap(self.pix)
+        self.image_label.setGeometry(QtCore.QRect(40, 40, 800, 800))
 
-        self.imageLayout.addWidget(self.imageLabel)
+        self.image_layout.addWidget(self.image_label)
 
-        self.layout.addLayout(self.controlsLayout)
-        self.layout.addLayout(self.imageLayout)
+        self.layout.addLayout(self.controls_layout)
+        self.layout.addLayout(self.image_layout)
 
         self.setLayout(self.layout)
         self.setFixedSize(1000, 880)
 
-    def updateDisplays(self):
+    def update_displays(self):
         print("updateDisplays - Here - 1")
         try:
             if self.client is None or self.client.reader is not None:
@@ -166,7 +166,7 @@ class EUI(QDialog):
                 self.client.receive_exposure()
             )
             print("New exposure.")
-            # exposure.makeJPEG()
+            # exposure.make_jpeg()
             # img = Image.open(BytesIO(exposure.buffer))
             # width = img.size[0]
             # height = img.size[1]
@@ -189,7 +189,7 @@ class EUI(QDialog):
 
             self.pix = QPixmap("/tmp/foo.png")
 
-            self.imageLabel.setPixmap(self.pix)
+            self.image_label.setPixmap(self.pix)
         except liveview.ImageReceiveError as e:
             print("updateDisplays - Exception")
             traceback.format_exc(e)
@@ -198,11 +198,11 @@ class EUI(QDialog):
     def startLiveView(self):
         print("startLiveView - Start")
         # data = self.sal.cmd_startLiveView.DataType()
-        # data.expTime = self.exposureTimeEdit.value()
+        # data.expTime = self.exposure_time_edit.value()
         # asyncio.get_event_loop().run_until_complete(
         #     self.sal.cmd_startLiveView.start(data, timeout=10.0)
         # )
-        self.sal.issueCommand_startLiveView(self.exposureTimeEdit.value())
+        self.sal.issueCommand_startLiveView(self.exposure_time_edit.value())
         print("startLiveView - End")
 
     def stopLiveView(self):
@@ -213,8 +213,8 @@ class EUI(QDialog):
         self.sal.issueCommand_stopLiveView(True)
         print("stopLiveView - End")
 
-    def setROI(self):
-        print("setROI - Start")
+    def set_roi(self):
+        print("set_roi - Start")
         # data = self.sal.cmd_setROI.DataType()
         # data.topPixel = int(self.roiTopEdit.value())
         # data.leftPixel = int(self.roiLeftEdit.value())
@@ -224,31 +224,31 @@ class EUI(QDialog):
         #     self.sal.cmd_setROI.start(data, timeout=5.0)
         # )
         self.sal.issueCommand_setROI(
-            int(self.roiTopEdit.value()),
-            int(self.roiLeftEdit.value()),
-            int(self.roiWidthEdit.value()),
-            int(self.roiHeightEdit.value()),
+            int(self.roi_top_edit.value()),
+            int(self.roi_left_edit.value()),
+            int(self.roi_width_edit.value()),
+            int(self.roi_height_edit.value()),
         )
-        print("setROI - End")
+        print("set_roi - End")
 
-    def setFullFrame(self):
-        print("setFullFrame - Start")
+    def set_full_frame(self):
+        print("set_full_frame - Start")
         # asyncio.get_event_loop().run_until_complete(self.sal.cmd_setFullFrame.start(
         # self.sal.cmd_setFullFrame.DataType(), timeout=5.0))
         self.sal.issueCommand_setFullFrame(True)
-        print("setFullFrame - End")
+        print("set_full_frame - End")
 
-    def takeImages(self):
-        print("takeImages - Start")
+    def take_images(self):
+        print("take_images - Start")
         # data = self.sal.cmd_takeImages.DataType()
         # data.numImages = 1
-        # data.expTime = self.exposureTimeEdit.value()
+        # data.expTime = self.exposure_time_edit.value()
         # data.shutter = 1
         # data.imageSequenceName = "Foo"
         # asyncio.get_event_loop().run_until_complete(self.sal.cmd_takeImages.start(data,
         # timeout=30.0))
-        self.sal.issueCommand_takeImages(1, self.exposureTimeEdit.value(), 1, "Foo")
-        print("takeImages - End")
+        self.sal.issueCommand_takeImages(1, self.exposure_time_edit.value(), 1, "Foo")
+        print("take_images - End")
 
 
 def main(argv):
@@ -276,7 +276,7 @@ def main(argv):
     eui = EUI(args.host, args.port, remote, None)
     eui.show()
     update_timer = QTimer()
-    update_timer.timeout.connect(eui.updateDisplays)
+    update_timer.timeout.connect(eui.update_displays)
     update_timer.start(100)
     sal_timer = QTimer()
     # sal_timer.timeout.connect(sal.runSubscriberChecks())

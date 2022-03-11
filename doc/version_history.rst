@@ -6,6 +6,19 @@
 Version History
 ###############
 
+v0.5.0
+======
+
+* Prepare for salobj 7.
+* Rename the GenericCamera base class to BaseCamera.
+* Replace camelCase names with snake_case where appropriate.
+
+Requires:
+
+* ts_salobj 7
+* ts_idl 3.1
+* IDL file for GenericCamera from ts_xml 11
+
 v0.4.0
 ======
 

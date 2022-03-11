@@ -23,28 +23,30 @@ __all__ = ["SimulatorCamera"]
 
 import asyncio
 import datetime
+
 import numpy as np
+import yaml
 
 from .. import exposure
-from . import genericcamera
+from . import basecamera
 from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
 from .. import utils
 
 
-class SimulatorCamera(genericcamera.GenericCamera):
+class SimulatorCamera(basecamera.BaseCamera):
     def __init__(self, log=None):
 
         super().__init__(log=log)
 
-        self.isLiveExposure = False
-        self.maxWidth = 1024
-        self.maxHeight = 1024
-        self.topPixel = 0
-        self.leftPixel = 0
-        self.width = self.maxWidth
-        self.height = self.maxHeight
-        self.bytesPerPixel = 2
-        self.imageBuffer = None
+        self.is_live_exposure = False
+        self.max_width = 1024
+        self.max_height = 1024
+        self.top_pixel = 0
+        self.left_pixel = 0
+        self.width = self.max_width
+        self.height = self.max_height
+        self.bytes_per_pixel = 2
+        self.image_buffer = None
 
         self.shutter_time = 0.5  # Time to open/close shutter
         self.shutter_steps = 10  # steps on opening shutter
@@ -91,7 +93,29 @@ class SimulatorCamera(genericcamera.GenericCamera):
             The name of the configuration file to load."""
         pass
 
-    def getMakeAndModel(self):
+    def get_config_schema(self):
+        return yaml.safe_load(
+            """
+$schema: http://json-schema.org/draft-07/schema#
+description: Schema for Simulator cameras.
+type: object
+properties:
+  max_width:
+    type: number
+    description: The maximum width of the image to produce in number of pixels.
+    default: 1024
+    minimum: 1024
+    maximum: 2048
+  max_height:
+    type: number
+    description: The maximum height of the image to produce in number of pixels.
+    default: 1024
+    minimum: 1024
+    maximum: 2048
+"""
+        )
+
+    def get_make_and_model(self):
         """Get the make and model of the camera.
 
         Returns
@@ -100,7 +124,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
             The make and model of the camera."""
         return "Simulator"
 
-    def getValue(self, key):
+    def get_value(self, key):
         """Gets the value of a unique property of the camera.
 
         Parameters
@@ -112,9 +136,9 @@ class SimulatorCamera(genericcamera.GenericCamera):
         str
             The value of the property.
             Returns 'UNDEFINED' if the property doesn't exist."""
-        return super().getValue(key)
+        return super().get_value(key)
 
-    async def setValue(self, key, value):
+    async def set_value(self, key, value):
         """Set a unique property of the camera.
 
         Parameters
@@ -124,9 +148,9 @@ class SimulatorCamera(genericcamera.GenericCamera):
         value : str
             The value of the property."""
         key = key.lower()
-        await super().setValue(key, value)
+        await super().set_value(key, value)
 
-    def getROI(self):
+    def get_roi(self):
         """Gets the region of interest.
 
         Returns
@@ -139,9 +163,9 @@ class SimulatorCamera(genericcamera.GenericCamera):
             The width of the region in pixels.
         int
             The height of the region in pixels."""
-        return self.topPixel, self.leftPixel, self.width, self.height
+        return self.top_pixel, self.left_pixel, self.width, self.height
 
-    def setROI(self, top, left, width, height):
+    def set_roi(self, top, left, width, height):
         """Sets the region of interest.
 
         Parameters
@@ -154,31 +178,31 @@ class SimulatorCamera(genericcamera.GenericCamera):
             The width of the region in pixels.
         height : int
             The height of the region in pixels."""
-        self.topPixel = top
-        self.leftPixel = left
+        self.top_pixel = top
+        self.left_pixel = left
         self.width = width
         self.height = height
 
-    def setFullFrame(self):
+    def set_full_frame(self):
         """Sets the region of interest to the whole sensor."""
-        self.setROI(0, 0, self.maxWidth, self.maxHeight)
+        self.set_roi(0, 0, self.max_width, self.max_height)
 
-    def startLiveView(self):
+    def start_live_view(self):
         """Configure the camera for live view.
 
         This should change the image format to 8bits per pixel so
         the image can be encoded to JPEG."""
-        self.bytesPerPixel = 1
-        self.isLiveExposure = True
-        super().startLiveView()
+        self.bytes_per_pixel = 1
+        self.is_live_exposure = True
+        super().start_live_view()
 
-    def stopLiveView(self):
+    def stop_live_view(self):
         """Configure the camera for a standard exposure."""
-        self.bytesPerPixel = 2
-        self.isLiveExposure = False
-        super().stopLiveView()
+        self.bytes_per_pixel = 2
+        self.is_live_exposure = False
+        super().stop_live_view()
 
-    async def startShutterOpen(self):
+    async def start_shutter_open(self):
         """Start opening the shutter.
 
         Check that shutter_task is not running and schedule open_shutter task
@@ -189,9 +213,9 @@ class SimulatorCamera(genericcamera.GenericCamera):
         for f in asyncio.as_completed(tasks):
             await f
             break
-        await super().startShutterOpen()
+        await super().start_shutter_open()
 
-    async def endShutterOpen(self):
+    async def end_shutter_open(self):
         """End opening the shutter.
 
         Check that shutter_task is running and await for it to finish.
@@ -202,7 +226,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
             await f
             break
 
-    async def startShutterClose(self):
+    async def start_shutter_close(self):
         """Start closing the shutter.
 
         Check that shutter_task is not running and schedule close_shutter task
@@ -214,7 +238,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
             await f
             break
 
-    async def endShutterClose(self):
+    async def end_shutter_close(self):
         """End closing the shutter.
 
         If the camera does have a shutter then this should wait for
@@ -227,14 +251,14 @@ class SimulatorCamera(genericcamera.GenericCamera):
         for f in asyncio.as_completed(tasks):
             await f
             break
-        await super().endShutterClose()
+        await super().end_shutter_close()
 
-    async def startTakeImage(self, expTime, shutter, science, guide, wfs):
+    async def start_take_image(self, exp_time, shutter, science, guide, wfs):
         """Start taking an image or a set of images.
 
         Parameters
         ----------
-        expTime : float
+        exp_time : float
             The exposure time in seconds.
         shutter : bool
             Should the shutter be opened?
@@ -248,7 +272,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
         if self.exposure_task is not None and not self.exposure_task.done():
             raise RuntimeError("Exposure task running.")
 
-        self.exposure_time = expTime
+        self.exposure_time = exp_time
         self.use_shutter = shutter
 
         self.log.debug("Cleaning events.")
@@ -264,17 +288,17 @@ class SimulatorCamera(genericcamera.GenericCamera):
         async with self.isbusy_lock:
             self.exposure_task = asyncio.ensure_future(self.simulate_exposure())
 
-        await super().startTakeImage(
-            expTime=expTime, shutter=shutter, science=science, guide=guide, wfs=wfs
+        await super().start_take_image(
+            exp_time=exp_time, shutter=shutter, science=science, guide=guide, wfs=wfs
         )
 
-    async def endTakeImage(self):
+    async def end_take_image(self):
         """End take image or images."""
         await self.exposure_task
 
         self.exposure_task = None
 
-    async def startIntegration(self):
+    async def start_integration(self):
         """Start integrating."""
         tasks = [self.exposure_task, self.exposure_start_event.wait()]
 
@@ -282,9 +306,9 @@ class SimulatorCamera(genericcamera.GenericCamera):
             await f
             break
 
-        await super().startIntegration()
+        await super().start_integration()
 
-    async def endIntegration(self):
+    async def end_integration(self):
         """End integration.
 
         This should wait for the integration period to complete."""
@@ -294,9 +318,9 @@ class SimulatorCamera(genericcamera.GenericCamera):
             await f
             break
 
-        await super().endIntegration()
+        await super().end_integration()
 
-    async def startReadout(self):
+    async def start_readout(self):
         """Start reading out the image."""
         tasks = [self.exposure_task, self.readout_start_event.wait()]
 
@@ -304,9 +328,9 @@ class SimulatorCamera(genericcamera.GenericCamera):
             await f
             break
 
-        await super().startReadout()
+        await super().start_readout()
 
-    async def endReadout(self):
+    async def end_readout(self):
         """Start reading out the image."""
         tasks = [self.exposure_task, self.readout_finish_event.wait()]
 
@@ -315,7 +339,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
             break
 
         await self._set_tag_values()
-        image = exposure.Exposure(self.imageBuffer, self.width, self.height, self.tags)
+        image = exposure.Exposure(self.image_buffer, self.width, self.height, self.tags)
         return image
 
     async def simulate_exposure(self):
@@ -386,7 +410,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
 
             self.exposure_start_event.set()
 
-            # imageByteCount = self.width * self.height * self.bytesPerPixel
+            # imageByteCount = self.width * self.height * self.bytes_per_pixel
             buffer = np.random.randint(
                 low=np.iinfo(np.uint16).min,
                 high=np.iinfo(np.uint16).max,
@@ -395,7 +419,7 @@ class SimulatorCamera(genericcamera.GenericCamera):
             )
             self.log.debug(f"expose: {self.exposure_time}s.")
 
-            self.imageBuffer = buffer
+            self.image_buffer = buffer
 
             while self.exposure_state < self.exposure_steps:
                 self.exposure_state += 1
@@ -409,8 +433,8 @@ class SimulatorCamera(genericcamera.GenericCamera):
         else:
             self.log.debug("Taking zero second exposure.")
             self.exposure_start_event.set()
-            # imageByteCount = self.width * self.height * self.bytesPerPixel
-            self.imageBuffer = np.zeros(self.width * self.height, dtype=np.uint16)
+            # imageByteCount = self.width * self.height * self.bytes_per_pixel
+            self.image_buffer = np.zeros(self.width * self.height, dtype=np.uint16)
             self.exposure_state = self.exposure_steps
             self.exposure_finish_event.set()
 

@@ -20,22 +20,30 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
-import enum
 import ctypes
 from ctypes.util import find_library
+import enum
 import struct
-import numpy as np
 
-from .genericcamera import GenericCamera
+import numpy as np
+import yaml
+
+from .basecamera import BaseCamera
 from ..exposure import Exposure
 
 
-class AndorCamera(GenericCamera):
+class AndorCamera(BaseCamera):
     def __init__(self, log=None):
         super().__init__(log)
         self.lib = ATLibrary()
         self.lib.initialiseLibrary()
-        self.isLiveExposure = False
+        self.is_live_exposure = False
+        self.id = 0
+        self.accumulate_count = 1
+        self.binValue = 1
+        self.normal_image_type = None
+        self.current_image_type = None
+        self.dev = None
 
     @staticmethod
     def name():
@@ -50,13 +58,42 @@ class AndorCamera(GenericCamera):
         config : str
             The name of the configuration file to load."""
         self.id = 0
-        self.accumulateCount = 1
+        self.accumulate_count = 1
         self.binValue = 1
-        self.normalImageType = "Mono16"
-        self.currentImageTYpe = self.normalImageType
+        self.normal_image_type = "mono16"
+        self.current_image_type = self.normal_image_type
         self.dev = self.lib.openZyla(self.id)
 
-    def getMakeAndModel(self):
+    def get_config_schema(self):
+        return yaml.safe_load(
+            """
+$schema: http://json-schema.org/draft-07/schema#
+description: Schema for Andor cameras.
+type: object
+properties:
+  id:
+    default: 0
+    type: number
+    description: The ID of the camera to be set in the FITS header.
+  accumulate_count:
+    default: 1
+    type: number
+    description: The number of images to take.
+  bin_value:
+    default: 1
+    type: number
+  image_type:
+    default: mono16
+    type: string
+    enum:
+      - mono12
+      - mono12_packed
+      - mono16
+      - mono32
+"""
+        )
+
+    def get_make_and_model(self):
         """Get the make and model of the camera.
 
         Returns
@@ -65,7 +102,7 @@ class AndorCamera(GenericCamera):
             The make and model of the camera."""
         return self.dev.getCameraModel() + " " + self.dev.getCameraName()
 
-    def setROI(self, top, left, width, height):
+    def set_roi(self, top, left, width, height):
         """Sets the region of interest.
 
         Parameters
@@ -83,7 +120,7 @@ class AndorCamera(GenericCamera):
         self.dev.setAOIWidth(width)
         self.dev.setAOIHeight(height)
 
-    def getROI(self):
+    def get_roi(self):
         """Gets the region of interest.
 
         Returns
@@ -102,13 +139,13 @@ class AndorCamera(GenericCamera):
         height = self.dev.getAOIHeight()
         return top, left, width, height
 
-    def setFullFrame(self):
+    def set_full_frame(self):
         """Sets the region of interest to the whole sensor."""
         result, width = self.dev.at.getIntMax(self.dev.handle, Features.AOIWidth)
         result, height = self.dev.at.getIntMax(self.dev.handle, Features.AOIHeight)
         self.setROI(0, 0, width, height)
 
-    def setExposureTime(self, duration):
+    def set_exposure_time(self, duration):
         """Sets the exposure time.
 
         Parameters
@@ -117,18 +154,18 @@ class AndorCamera(GenericCamera):
             The exposure time in seconds."""
         self.dev.setExposureTime(duration)
 
-    def configureForLiveView(self):
+    def configure_for_live_view(self):
         """Configure the camera for live view.
 
         This should change the image format to 8bits per pixel so
         the image can be encoded to JPEG."""
-        self.isLiveExposure = True
+        self.is_live_exposure = True
 
-    def configureForExposure(self):
+    def configure_for_exposure(self):
         """Configure the camera for a standard exposure."""
-        self.isLiveExposure = False
+        self.is_live_exposure = False
 
-    async def takeExposure(self):
+    async def take_exposure(self):
         """Take an exposure with the currently configured settings.
 
         The exposure should be the raw image data from the camera which
@@ -148,10 +185,10 @@ class AndorCamera(GenericCamera):
         self.dev.flush()
         buffer = self.dev.queueBuffer()
         self.dev.cmdAcquisitionStart()
-        bytesReceived = 0
-        while bytesReceived == 0:
+        bytes_received = 0
+        while bytes_received == 0:
             try:
-                bytesReceived = self.dev.waitBuffer(buffer, 0)
+                bytes_received = self.dev.waitBuffer(buffer, 0)
                 await asyncio.sleep(0.02)
             except ATError as e:
                 if e.result != Results.TimedOut:
@@ -162,7 +199,7 @@ class AndorCamera(GenericCamera):
         height = self.dev.getAOIHeight()
         exposure = self.dev.getExposureTime()
         temperature = self.dev.getSensorTemperature()
-        if self.isLiveExposure:
+        if self.is_live_exposure:
             ints = struct.unpack("H" * (width * height), buffer)
             pixels16 = np.asarray(ints)
             pixels8 = (pixels16 / 256).astype(np.uint8)
@@ -657,10 +694,10 @@ class AT:
         # int AT_EXP_CONV AT_FinaliseLibrary();
         return self._toResultEnum(self.lib.AT_FinaliseLibrary())
 
-    def open(self, cameraIndex):
+    def open(self, camera_index):
         # int AT_EXP_CONV AT_Open(int CameraIndex, AT_H *Hndl);
         handle = self._getIntPtr(-1)
-        result = self.lib.AT_Open(cameraIndex, handle)
+        result = self.lib.AT_Open(camera_index, handle)
         return self._toResultEnum(result), handle[0]
 
     def close(self, handle):
@@ -897,9 +934,9 @@ class AT:
         result = self.lib.AT_GetStringMaxLength(handle, feature.name, maxStringLength)
         return self._toResultEnum(result), maxStringLength[0]
 
-    def queueBuffer(self, handle, bufferSize):
+    def queueBuffer(self, handle, buffer_size):
         # int AT_EXP_CONV AT_QueueBuffer(AT_H Hndl, AT_U8* Ptr, int PtrSize);
-        buffer = self._getStringBuffer(bufferSize)
+        buffer = self._getStringBuffer(buffer_size)
         result = self.lib.AT_QueueBuffer(handle, buffer, len(buffer))
         return self._toResultEnum(result), buffer
 
@@ -915,17 +952,17 @@ class AT:
         # int AT_EXP_CONV AT_Flush(AT_H Hndl);
         return self._toResultEnum(self.lib.AT_Flush(handle))
 
-    def _getIntPtr(self, defaultValue=0):
-        return self.intPtr(ctypes.c_int(defaultValue))
+    def _getIntPtr(self, default_value=0):
+        return self.intPtr(ctypes.c_int(default_value))
 
-    def _getBoolPtr(self, defaultValue=False):
-        return self.boolPtr(ctypes.c_bool(defaultValue))
+    def _getBoolPtr(self, default_value=False):
+        return self.boolPtr(ctypes.c_bool(default_value))
 
-    def _getLongLongPtr(self, defaultValue=0):
-        return self.longlongPtr(ctypes.c_longlong(defaultValue))
+    def _getLongLongPtr(self, default_value=0):
+        return self.longlongPtr(ctypes.c_longlong(default_value))
 
-    def _getDoublePtr(self, defaultValue=0.0):
-        return self.doublePtr(ctypes.c_double(defaultValue))
+    def _getDoublePtr(self, default_value=0.0):
+        return self.doublePtr(ctypes.c_double(default_value))
 
     def _getBufferPtr(self, buffer):
         return self.bufferPtr(buffer)
@@ -993,18 +1030,18 @@ class ATLibrary(ATBase):
         self._raiseIfBad(result)
         return deviceCount
 
-    def openZyla(self, cameraIndex):
+    def openZyla(self, camera_index):
         if not self.initialised:
             raise ATLibraryNotInitialised()
-        device = ATZylaDevice(cameraIndex, self.at)
+        device = ATZylaDevice(camera_index, self.at)
         return device
 
 
 class ATZylaDevice(ATBase):
-    def __init__(self, cameraIndex, at=None):
+    def __init__(self, camera_index, at=None):
         super().__init__(at)
         self.handle = -1
-        result, handle = self.at.open(cameraIndex)
+        result, handle = self.at.open(camera_index)
         self._raiseIfBad(result)
         self.handle = handle
 
@@ -1676,7 +1713,7 @@ class ATZylaDevice(ATBase):
         """
         return self._getSomethingSimple(self.at.getFloat, Features.ExposureTime)
 
-    def setExposureTime(self, value):
+    def set_exposure_time(self, value):
         """Sets ExposureTime to the specified value.
 
         The value specified must pass a min/max check. The allowed values
@@ -2581,6 +2618,8 @@ class ATZylaDevice(ATBase):
         ----------
         buffer : ctypes.c_char_p
             The buffer that has already been added to the queue.
+        timeout : int
+            The timeout.
 
         Returns
         -------
@@ -2597,11 +2636,11 @@ class ATZylaDevice(ATBase):
         result = self.at.flush(self.handle)
         self._raiseIfBad(result)
 
-    def take(self, frameCount):
+    def take(self, frame_count):
         self.flush()
-        self.setFrameCount(frameCount)
+        self.setFrameCount(frame_count)
         buffers = []
-        for i in range(frameCount):
+        for i in range(frame_count):
             buffers.append(self.queueBuffer())
         self.cmdAcquisitionStart()
         for buffer in buffers:
