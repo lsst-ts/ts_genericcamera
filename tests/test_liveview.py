@@ -32,7 +32,7 @@ class TestLiveView(unittest.IsolatedAsyncioTestCase):
             width = 1024
             height = 1024
 
-            # exp.makeJPEG()
+            # exp.make_jpeg()
 
             server = LiveViewServer(5013)
 

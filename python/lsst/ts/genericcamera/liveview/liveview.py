@@ -101,7 +101,7 @@ class LiveViewServer:
                 writer.write("[START]\r\n".encode())
                 writer.write(f"{self._exposure.width}\r\n".encode())
                 writer.write(f"{self._exposure.height}\r\n".encode())
-                writer.write(f"{int(self._exposure.isJPEG)}\r\n".encode())
+                writer.write(f"{int(self._exposure.is_jpeg)}\r\n".encode())
                 buffer = self._exposure.buffer.tobytes()
                 writer.write(f"{len(buffer)}\r\n".encode())
                 writer.write(buffer)
@@ -132,7 +132,7 @@ class LiveViewServer:
             self.new_exposure_available.set()
 
     def _assertConnected(self):
-        if not self.isConnected:
+        if not self.is_connected:
             raise ConnectionError()
 
 
@@ -155,16 +155,16 @@ class LiveViewClient:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((ip, port))
         self.sock.settimeout(0.02)
-        self.isConnected = True
+        self.is_connected = True
 
     def close(self):
         """Closes this connection to the LiveViewServer."""
-        if self.isConnected:
+        if self.is_connected:
             # self.sock.shutdown(socket.SHUT_RD)
             self.sock.close()
-            self.isConnected = False
+            self.is_connected = False
 
-    def receiveExposure(self):
+    def receive_exposure(self):
         """Attempts to receive an exposure from the LiveViewServer.
 
         If a connection problem occurs then a ConnectionError is raised.
@@ -177,36 +177,36 @@ class LiveViewClient:
         -------
         Exposure
             The exposure received from the LiveViewServer."""
-        self._assertConnected()
+        self._assert_connected()
         try:
             sync = int.from_bytes(self.sock.recv(4), byteorder="big")
             while True:
                 if sync == 0xCAFEF00D:
                     width = int.from_bytes(self.sock.recv(4), byteorder="big")
                     height = int.from_bytes(self.sock.recv(4), byteorder="big")
-                    isJPEG = bool(int.from_bytes(self.sock.recv(4), byteorder="big"))
+                    is_jpeg = bool(int.from_bytes(self.sock.recv(4), byteorder="big"))
                     length = int.from_bytes(self.sock.recv(4), byteorder="big")
                     if length > 0:
-                        imgBuffer = b""
-                        while len(imgBuffer) < length:
-                            packet = self.sock.recv(length - len(imgBuffer))
+                        img_buffer = b""
+                        while len(img_buffer) < length:
+                            packet = self.sock.recv(length - len(img_buffer))
                             if not packet:
                                 break
-                            imgBuffer += packet
-                        if len(imgBuffer) == length:
-                            print("receiveExposure - return")
+                            img_buffer += packet
+                        if len(img_buffer) == length:
+                            print("receive_exposure - return")
                             return exposure.Exposure(
-                                imgBuffer, width, height, {}, isJPEG
+                                img_buffer, width, height, {}, is_jpeg
                             )
                 else:
                     value = int.from_bytes(self.sock.recv(1), byteorder="big")
                     sync = ((sync & 0x00FFFFFF) << 8) | value
         except Exception as e:
-            self.isConnected = False
+            self.is_connected = False
             raise e
 
-    def _assertConnected(self):
-        if not self.isConnected:
+    def _assert_connected(self):
+        if not self.is_connected:
             raise ConnectionError()
 
 
@@ -288,7 +288,7 @@ class AsyncLiveViewClient:
                 height = int(read_bytes.decode().rstrip())
 
                 read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.0)
-                isJPEG = bool(int(read_bytes.decode().rstrip()))
+                is_jpeg = bool(int(read_bytes.decode().rstrip()))
 
                 read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.0)
                 length = int(read_bytes.decode().rstrip())
@@ -302,20 +302,20 @@ class AsyncLiveViewClient:
                     )
                     buffer += read_bytes
 
-                dtype = np.uint8 if isJPEG else np.uint16
+                dtype = np.uint8 if is_jpeg else np.uint16
 
                 return exposure.Exposure(
                     np.frombuffer(buffer.rstrip()[:-5], dtype=dtype),
                     width,
                     height,
                     {},
-                    isJPEG,
+                    is_jpeg,
                 )
             else:
                 self.log.debug(f"Got {read_bytes}. Expecting '>'.")
 
     def _assertConnected(self):
-        if not self.isConnected:
+        if not self.is_connected:
             raise ConnectionError()
 
 
