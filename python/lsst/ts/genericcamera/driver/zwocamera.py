@@ -1097,7 +1097,7 @@ class ASIDevice(ASIBase):
 
     def close(self):
         """Closes this device."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.closeCamera(self.handle)
         self._raiseIfBad(result)
         self.handle = -1
@@ -1109,7 +1109,7 @@ class ASIDevice(ASIBase):
         -------
         ASICameraInfo
             The camera information."""
-        self._assertHandle()
+        self._assert_handle()
         result, cameraInfo = self.asi.getCameraPropertyByID(self.handle)
         self._raiseIfBad(result)
         return cameraInfo
@@ -1121,7 +1121,7 @@ class ASIDevice(ASIBase):
         -------
         int
             The number of controls available."""
-        self._assertHandle()
+        self._assert_handle()
         result, controlCount = self.asi.getNumberOfControls(self.handle)
         self._raiseIfBad(result)
         return controlCount
@@ -1138,7 +1138,7 @@ class ASIDevice(ASIBase):
         -------
         ASIControlCaps
             The information on the specified control."""
-        self._assertHandle()
+        self._assert_handle()
         result, controlInfo = self.asi.getControlCaps(self.handle, index)
         self._raiseIfBad(result)
         return controlInfo
@@ -1157,7 +1157,7 @@ class ASIDevice(ASIBase):
             The value of the control.
         bool
             True if the control is set to auto."""
-        self._assertHandle()
+        self._assert_handle()
         result, value, auto = self.asi.getControlValue(self.handle, controlType.value)
         self._raiseIfBad(result)
         return value, auto
@@ -1173,7 +1173,7 @@ class ASIDevice(ASIBase):
             The new value of the control.
         auto : bool
             True if the control should be set automatically."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.setControlValue(
             self.handle, controlType.value, value, self.bool_to_int(auto)
         )
@@ -1192,7 +1192,7 @@ class ASIDevice(ASIBase):
             The bin size for the region.
         imgType : ASIImageType
             The image format."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.setROIFormat(self.handle, width, height, bin, imgType.value)
         self._raiseIfBad(result)
 
@@ -1209,7 +1209,7 @@ class ASIDevice(ASIBase):
             The pixel binning of the region.
         ASIImageType
             The image type."""
-        self._assertHandle()
+        self._assert_handle()
         result, width, height, bin, imgType = self.asi.getROIFormat(self.handle)
         self._raiseIfBad(result)
         return width, height, bin, ASIImageType(imgType)
@@ -1223,7 +1223,7 @@ class ASIDevice(ASIBase):
             The x position.
         y : int
             The y position."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.setStartPosition(self.handle, x, y)
         self._raiseIfBad(result)
 
@@ -1236,7 +1236,7 @@ class ASIDevice(ASIBase):
             The x position.
         int
             The y position."""
-        self._assertHandle()
+        self._assert_handle()
         result, x, y = self.asi.getStartPosition(self.handle)
         self._raiseIfBad(result)
         return x, y
@@ -1248,7 +1248,7 @@ class ASIDevice(ASIBase):
         -------
         int
             The number of dropped frames."""
-        self._assertHandle()
+        self._assert_handle()
         result, droppedFrames = self.asi.getDroppedFrames(self.handle)
         self._raiseIfBad(result)
         return droppedFrames
@@ -1260,25 +1260,25 @@ class ASIDevice(ASIBase):
         ----------
         pathToBMP : str
             The path to the dark image as a bitmap."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.enableDarkSubtract(self.handle, pathToBMP)
         self._raiseIfBad(result)
 
     def disableDarkSubtract(self):
         """Disables the automatic subtraction of a dark frame."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.disableDarkSubtract(self.handle)
         self._raiseIfBad(result)
 
     def startVideoCapture(self):
         """Starts capturing video."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.startVideoCapture(self.handle)
         self._raiseIfBad(result)
 
     def stopVideoCapture(self):
         """Stops capturing video."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.stopVideoCapture(self.handle)
         self._raiseIfBad(result)
 
@@ -1289,7 +1289,7 @@ class ASIDevice(ASIBase):
         -------
         buffer
             The image data."""
-        self._assertHandle()
+        self._assert_handle()
         bufferSize = self.getImageSize()
         buffer = self.asi.getStringBuffer(bufferSize)
         exposure_time_in_us = self.getControlValue(ASIControlType.Exposure)
@@ -1306,7 +1306,7 @@ class ASIDevice(ASIBase):
         ----------
         direction : ASIGuideDirection
             The direction to start the pulse."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.pulseGuideOn(self.handle, direction.value)
         self._raiseIfBad(result)
 
@@ -1318,7 +1318,7 @@ class ASIDevice(ASIBase):
         ----------
         direction : ASIGuideDirection
             The direction to start the pulse."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.pulseGuideOff(self.handle, direction.value)
         self._raiseIfBad(result)
 
@@ -1330,13 +1330,13 @@ class ASIDevice(ASIBase):
         isDark : bool (optional)
             If true uses the mechanical shutter to take a dark (if available).
         """
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.startExposure(self.handle, self.bool_to_int(isDark))
         self._raiseIfBad(result)
 
     def stopExposure(self):
         """Stops an exposure."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.stopExposure(self.handle)
         self._raiseIfBad(result)
 
@@ -1347,7 +1347,7 @@ class ASIDevice(ASIBase):
         -------
         ASIExposureStatus
             The status of the exposure."""
-        self._assertHandle()
+        self._assert_handle()
         result, exposureStatus = self.asi.getExposureStatus(self.handle)
         self._raiseIfBad(result)
         return ASIExposureStatus(exposureStatus)
@@ -1359,7 +1359,7 @@ class ASIDevice(ASIBase):
         -------
         buffer
             The image data."""
-        self._assertHandle()
+        self._assert_handle()
         bufferSize = self.getImageSize()
         buffer = self.asi.getStringBuffer(bufferSize)
         result = self.asi.getDataAfterExposure(self.handle, buffer, bufferSize)
@@ -1373,7 +1373,7 @@ class ASIDevice(ASIBase):
         -------
         ASIID
             The id of the camera."""
-        self._assertHandle()
+        self._assert_handle()
         result, id = self.asi.getID(self.handle)
         self._raiseIfBad(result)
         return id
@@ -1385,7 +1385,7 @@ class ASIDevice(ASIBase):
         ----------
         id : ASIIDCtypes
             The new ID of the camera."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.setID(self.handle, id)
         self._raiseIfBad(result)
 
@@ -1402,7 +1402,7 @@ class ASIDevice(ASIBase):
             The gain for the lowest read noise.
         int
             The offset for the lowest read noise."""
-        self._assertHandle()
+        self._assert_handle()
         (
             result,
             highestDROffset,
@@ -1420,7 +1420,7 @@ class ASIDevice(ASIBase):
         -------
         ASISupportedMode
             The modes the camera supports."""
-        self._assertHandle()
+        self._assert_handle()
         result, modes = self.asi.getCameraSupportMode(self.handle)
         self._raiseIfBad(result)
         return modes
@@ -1432,7 +1432,7 @@ class ASIDevice(ASIBase):
         -------
         ASICameraMode
             The current mode of the camera."""
-        self._assertHandle()
+        self._assert_handle()
         result, mode = self.asi.getCameraMode(self.handle)
         self._raiseIfBad(result)
         return mode
@@ -1444,19 +1444,19 @@ class ASIDevice(ASIBase):
         ----------
         mode : ASICameraMode
             The new mode of the camera."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.setCameraMode(self.handle, mode)
         self._raiseIfBad(result)
 
     def sendSoftwareTrigger(self, start):
         """Sends a software trigger to the camera."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.asi.sendSoftwareTrigger(self.handle, self.bool_to_int(start))
         self._raiseIfBad(result)
 
     def getSerialNumber(self):
         """Gets the serial number of the camera."""
-        self._assertHandle()
+        self._assert_handle()
         result, serialNumber = self.asi.getSerialNumber(self.handle)
         self._raiseIfBad(result)
         return serialNumber
@@ -1486,6 +1486,6 @@ class ASIDevice(ASIBase):
             return 1
         return 0
 
-    def _assertHandle(self):
+    def _assert_handle(self):
         if self.handle == -1:
             raise ASIDeviceNotOpenError()
