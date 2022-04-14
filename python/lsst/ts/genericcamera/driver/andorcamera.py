@@ -1046,7 +1046,7 @@ class ATZylaDevice(ATBase):
         self.handle = handle
 
     def close(self):
-        self._assertHandle()
+        self._assert_handle()
         result = self.at.close(self.handle)
         self._raiseIfBad(result)
         self.handle = -1
@@ -1059,7 +1059,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of AccumulateCount.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.AccumulateCount)
+        return self._get_something_simple(self.at.getInt, Features.AccumulateCount)
 
     def setAccumulateCount(self, value):
         """Sets AccumulateCount to the specified value.
@@ -1079,15 +1079,15 @@ class ATZylaDevice(ATBase):
                 f"Value ({value}) for AccumulateCount must be "
                 f"between {minValue} and {maxValue}."
             )
-        self._setSomethingSimple(self.at.setInt, Features.AccumulateCount, value)
+        self._set_something_simple(self.at.setInt, Features.AccumulateCount, value)
 
     def cmdAcquisitionStart(self):
         """Send the AcquisitionStart command."""
-        self._sendCommand(Features.AcquisitionStart)
+        self._send_command(Features.AcquisitionStart)
 
     def cmdAcquisitionStop(self):
         """Send the AcquisitionStop command."""
-        self._sendCommand(Features.AcquisitionStop)
+        self._send_command(Features.AcquisitionStop)
 
     def getAOIBinning(self):
         """Gets the current value of AOIBinning.
@@ -1097,8 +1097,8 @@ class ATZylaDevice(ATBase):
         str
             The current value of AOIBinning.
         """
-        index = self._getSomethingSimple(self.at.getEnumerated, Features.AOIBinning)
-        return self._getSomethingWithIndex(
+        index = self._get_something_simple(self.at.getEnumerated, Features.AOIBinning)
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.AOIBinning, index
         )
 
@@ -1110,11 +1110,11 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of AOIBinning.
         """
-        count = self._getSomethingSimple(self.at.getEnumCount, Features.AOIBinning)
+        count = self._get_something_simple(self.at.getEnumCount, Features.AOIBinning)
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.AOIBinning, i
                 )
             )
@@ -1136,7 +1136,7 @@ class ATZylaDevice(ATBase):
                 f"The value {value} is not a valid value for AOIBinning. "
                 f"Valid values are {validValues}."
             )
-        self._setSomethingSimple(
+        self._set_something_simple(
             self.at.setEnumeratedString, Features.AOIBinning, value
         )
 
@@ -1148,7 +1148,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of AOIHBin.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.AOIHBin)
+        return self._get_something_simple(self.at.getInt, Features.AOIHBin)
 
     def setAOIHBin(self, value):
         """Sets AOIHBin to the specified value.
@@ -1168,7 +1168,7 @@ class ATZylaDevice(ATBase):
                 f"Value ({value}) for AOIHBin must be between "
                 f"{minValue} and {maxValue}."
             )
-        self._setSomethingSimple(self.at.setInt, Features.AOIHBin, value)
+        self._set_something_simple(self.at.setInt, Features.AOIHBin, value)
 
     def getAOIHeight(self):
         """Gets the current value of AOIHeight.
@@ -1178,7 +1178,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of AOIHeight.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.AOIHeight)
+        return self._get_something_simple(self.at.getInt, Features.AOIHeight)
 
     def setAOIHeight(self, value):
         """Sets AOIHeight to the specified value.
@@ -1198,7 +1198,7 @@ class ATZylaDevice(ATBase):
                 f"Value ({value}) for AOIHeight must be between "
                 f"{minValue} and {maxValue}."
             )
-        self._setSomethingSimple(self.at.setInt, Features.AOIHeight, value)
+        self._set_something_simple(self.at.setInt, Features.AOIHeight, value)
 
     def getAOILeft(self):
         """Gets the current value of AOILeft.
@@ -1208,7 +1208,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of AOILeft.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.AOILeft)
+        return self._get_something_simple(self.at.getInt, Features.AOILeft)
 
     def setAOILeft(self, value):
         """Sets AOILeft to the specified value.
@@ -1228,7 +1228,7 @@ class ATZylaDevice(ATBase):
                 f"Value ({value}) for AOILeft must be between "
                 f"{minValue} and {maxValue}."
             )
-        self._setSomethingSimple(self.at.setInt, Features.AOILeft, value)
+        self._set_something_simple(self.at.setInt, Features.AOILeft, value)
 
     def getAOIStride(self):
         """Gets the current value of AOIStride.
@@ -1238,7 +1238,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of AOIStride.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.AOIStride)
+        return self._get_something_simple(self.at.getInt, Features.AOIStride)
 
     def getAOITop(self):
         """Gets the current value of AOITop.
@@ -1248,7 +1248,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of AOITop.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.AOITop)
+        return self._get_something_simple(self.at.getInt, Features.AOITop)
 
     def setAOITop(self, value):
         """Sets AOITop to the specified value.
@@ -1268,7 +1268,7 @@ class ATZylaDevice(ATBase):
                 f"Value ({value}) for AOITop must be between "
                 f"{minValue} and {maxValue}."
             )
-        self._setSomethingSimple(self.at.setInt, Features.AOITop, value)
+        self._set_something_simple(self.at.setInt, Features.AOITop, value)
 
     def getAOIVBin(self):
         """Gets the current value of AOIVBin.
@@ -1278,7 +1278,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of AOIVBin.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.AOIVBin)
+        return self._get_something_simple(self.at.getInt, Features.AOIVBin)
 
     def setAOIVBin(self, value):
         """Sets AOIVBin to the specified value.
@@ -1298,7 +1298,7 @@ class ATZylaDevice(ATBase):
                 f"Value ({value}) for AOIVBin must be between "
                 f"{minValue} and {maxValue}."
             )
-        self._setSomethingSimple(self.at.setInt, Features.AOIVBin, value)
+        self._set_something_simple(self.at.setInt, Features.AOIVBin, value)
 
     def getAOIWidth(self):
         """Gets the current value of AOIWidth.
@@ -1308,7 +1308,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of AOIWidth.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.AOIWidth)
+        return self._get_something_simple(self.at.getInt, Features.AOIWidth)
 
     def setAOIWidth(self, value):
         """Sets AOIWidth to the specified value.
@@ -1328,7 +1328,7 @@ class ATZylaDevice(ATBase):
                 f"Value ({value}) for AOIWidth must be between "
                 f"{minValue} and {maxValue}."
             )
-        self._setSomethingSimple(self.at.setInt, Features.AOIWidth, value)
+        self._set_something_simple(self.at.setInt, Features.AOIWidth, value)
 
     def getAuxiliaryOutSource(self):
         """Gets the current value of AuxiliaryOutSource.
@@ -1338,10 +1338,10 @@ class ATZylaDevice(ATBase):
         str
             The current value of AuxiliaryOutSource.
         """
-        index = self._getSomethingSimple(
+        index = self._get_something_simple(
             self.at.getEnumerated, Features.AuxiliaryOutSource
         )
-        return self._getSomethingWithIndex(
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.AuxiliaryOutSource, index
         )
 
@@ -1353,13 +1353,13 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of AuxiliaryOutSource.
         """
-        count = self._getSomethingSimple(
+        count = self._get_something_simple(
             self.at.getEnumCount, Features.AuxiliaryOutSource
         )
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.AuxiliaryOutSource, i
                 )
             )
@@ -1381,7 +1381,7 @@ class ATZylaDevice(ATBase):
                 f"The value {value} is not a valid value for "
                 f"AuxiliaryOutSource. Valid values are {validValues}."
             )
-        self._setSomethingSimple(
+        self._set_something_simple(
             self.at.setEnumeratedString, Features.AuxiliaryOutSource, value
         )
 
@@ -1393,10 +1393,10 @@ class ATZylaDevice(ATBase):
         str
             The current value of AuxOutSourceTwo.
         """
-        index = self._getSomethingSimple(
+        index = self._get_something_simple(
             self.at.getEnumerated, Features.AuxOutSourceTwo
         )
-        return self._getSomethingWithIndex(
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.AuxOutSourceTwo, index
         )
 
@@ -1408,11 +1408,11 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of AuxOutSourceTwo.
         """
-        count = self._getSomethingSimple(self.at.getEnumCount, Features.AuxOutSourceTwo)
+        count = self._get_something_simple(self.at.getEnumCount, Features.AuxOutSourceTwo)
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.AuxOutSourceTwo, i
                 )
             )
@@ -1434,7 +1434,7 @@ class ATZylaDevice(ATBase):
                 f"The value {value} is not a valid value for "
                 f"AuxOutSourceTwo. Valid values are {validValues}."
             )
-        self._setSomethingSimple(
+        self._set_something_simple(
             self.at.setEnumeratedString, Features.AuxOutSourceTwo, value
         )
 
@@ -1446,7 +1446,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of Baseline.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.Baseline)
+        return self._get_something_simple(self.at.getInt, Features.Baseline)
 
     def getBitDepth(self):
         """Gets the current value of BitDepth.
@@ -1456,8 +1456,8 @@ class ATZylaDevice(ATBase):
         str
             The current value of BitDepth.
         """
-        index = self._getSomethingSimple(self.at.getEnumerated, Features.BitDepth)
-        return self._getSomethingWithIndex(
+        index = self._get_something_simple(self.at.getEnumerated, Features.BitDepth)
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.BitDepth, index
         )
 
@@ -1469,11 +1469,11 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of BitDepth.
         """
-        count = self._getSomethingSimple(self.at.getEnumCount, Features.BitDepth)
+        count = self._get_something_simple(self.at.getEnumCount, Features.BitDepth)
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.BitDepth, i
                 )
             )
@@ -1487,7 +1487,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of BytesPerPixel.
         """
-        return self._getSomethingSimple(self.at.getFloat, Features.BytesPerPixel)
+        return self._get_something_simple(self.at.getFloat, Features.BytesPerPixel)
 
     def getCameraAcquiring(self):
         """Gets the current value of CameraAcquiring.
@@ -1497,7 +1497,7 @@ class ATZylaDevice(ATBase):
         bool
             The current value of CameraAcquiring.
         """
-        return self._getSomethingSimple(self.at.getBool, Features.CameraAcquiring)
+        return self._get_something_simple(self.at.getBool, Features.CameraAcquiring)
 
     def getCameraModel(self):
         """Gets the current value of CameraModel.
@@ -1507,7 +1507,7 @@ class ATZylaDevice(ATBase):
         str
             The current value of CameraModel.
         """
-        return self._getSomethingSimple(self.at.getString, Features.CameraModel)
+        return self._get_something_simple(self.at.getString, Features.CameraModel)
 
     def getCameraName(self):
         """Gets the current value of CameraName.
@@ -1517,7 +1517,7 @@ class ATZylaDevice(ATBase):
         str
             The current value of CameraName.
         """
-        return self._getSomethingSimple(self.at.getString, Features.CameraName)
+        return self._get_something_simple(self.at.getString, Features.CameraName)
 
     def getCameraPresent(self):
         """Gets the current value of CameraPresent.
@@ -1527,7 +1527,7 @@ class ATZylaDevice(ATBase):
         bool
             The current value of CameraPresent.
         """
-        return self._getSomethingSimple(self.at.getBool, Features.CameraPresent)
+        return self._get_something_simple(self.at.getBool, Features.CameraPresent)
 
     def getControllerID(self):
         """Gets the current value of ControllerID.
@@ -1537,7 +1537,7 @@ class ATZylaDevice(ATBase):
         str
             The current value of ControllerID.
         """
-        return self._getSomethingSimple(self.at.getString, Features.ControllerID)
+        return self._get_something_simple(self.at.getString, Features.ControllerID)
 
     def getFrameCount(self):
         """Gets the current value of FrameCount.
@@ -1547,7 +1547,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of FrameCount.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.FrameCount)
+        return self._get_something_simple(self.at.getInt, Features.FrameCount)
 
     def setFrameCount(self, value):
         """Sets FrameCount to the specified value.
@@ -1567,7 +1567,7 @@ class ATZylaDevice(ATBase):
                 f"Value ({value}) for FrameCount must be between "
                 f"{minValue} and {maxValue}."
             )
-        self._setSomethingSimple(self.at.setInt, Features.FrameCount, value)
+        self._set_something_simple(self.at.setInt, Features.FrameCount, value)
 
     def getCycleMode(self):
         """Gets the current value of CycleMode.
@@ -1577,8 +1577,8 @@ class ATZylaDevice(ATBase):
         str
             The current value of CycleMode.
         """
-        index = self._getSomethingSimple(self.at.getEnumerated, Features.CycleMode)
-        return self._getSomethingWithIndex(
+        index = self._get_something_simple(self.at.getEnumerated, Features.CycleMode)
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.CycleMode, index
         )
 
@@ -1590,11 +1590,11 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of CycleMode.
         """
-        count = self._getSomethingSimple(self.at.getEnumCount, Features.CycleMode)
+        count = self._get_something_simple(self.at.getEnumCount, Features.CycleMode)
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.CycleMode, i
                 )
             )
@@ -1616,7 +1616,7 @@ class ATZylaDevice(ATBase):
                 f"The value {value} is not a valid value for CycleMode. "
                 f"Valid values are {validValues}."
             )
-        self._setSomethingSimple(self.at.setEnumeratedString, Features.CycleMode, value)
+        self._set_something_simple(self.at.setEnumeratedString, Features.CycleMode, value)
 
     def getElectronicShutteringMode(self):
         """Gets the current value of ElectronicShutteringMode.
@@ -1626,10 +1626,10 @@ class ATZylaDevice(ATBase):
         str
             The current value of ElectronicShutteringMode.
         """
-        index = self._getSomethingSimple(
+        index = self._get_something_simple(
             self.at.getEnumerated, Features.ElectronicShutteringMode
         )
-        return self._getSomethingWithIndex(
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.ElectronicShutteringMode, index
         )
 
@@ -1641,13 +1641,13 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of ElectronicShutteringMode.
         """
-        count = self._getSomethingSimple(
+        count = self._get_something_simple(
             self.at.getEnumCount, Features.ElectronicShutteringMode
         )
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.ElectronicShutteringMode, i
                 )
             )
@@ -1669,7 +1669,7 @@ class ATZylaDevice(ATBase):
                 f"The value {value} is not a valid value for "
                 f"ElectronicShutteringMode. Valid values are {validValues}."
             )
-        self._setSomethingSimple(
+        self._set_something_simple(
             self.at.setEnumeratedString, Features.ElectronicShutteringMode, value
         )
 
@@ -1681,7 +1681,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of ExposedPixelHeight.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.ExposedPixelHeight)
+        return self._get_something_simple(self.at.getInt, Features.ExposedPixelHeight)
 
     def setExposedPixelHeight(self, value):
         """Sets ExposedPixelHeight to the specified value.
@@ -1701,7 +1701,7 @@ class ATZylaDevice(ATBase):
                 f"Value ({value}) for ExposedPixelHeight must be "
                 f"between {minValue} and {maxValue}."
             )
-        self._setSomethingSimple(self.at.setInt, Features.ExposedPixelHeight, value)
+        self._set_something_simple(self.at.setInt, Features.ExposedPixelHeight, value)
 
     def getExposureTime(self):
         """Gets the current value of ExposureTime.
@@ -1711,7 +1711,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of ExposureTime.
         """
-        return self._getSomethingSimple(self.at.getFloat, Features.ExposureTime)
+        return self._get_something_simple(self.at.getFloat, Features.ExposureTime)
 
     def set_exposure_time(self, value):
         """Sets ExposureTime to the specified value.
@@ -1731,7 +1731,7 @@ class ATZylaDevice(ATBase):
                 f"Value ({value}) for ExposureTime must be between "
                 f"{minValue} and {maxValue}."
             )
-        self._setSomethingSimple(self.at.setFloat, Features.ExposureTime, value)
+        self._set_something_simple(self.at.setFloat, Features.ExposureTime, value)
 
     def getExternalTriggerDelay(self):
         """Gets the current value of ExternalTriggerDelay.
@@ -1741,7 +1741,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of ExternalTriggerDelay.
         """
-        return self._getSomethingSimple(self.at.getFloat, Features.ExternalTriggerDelay)
+        return self._get_something_simple(self.at.getFloat, Features.ExternalTriggerDelay)
 
     def getFanSpeed(self):
         """Gets the current value of FanSpeed.
@@ -1751,8 +1751,8 @@ class ATZylaDevice(ATBase):
         str
             The current value of FanSpeed.
         """
-        index = self._getSomethingSimple(self.at.getEnumerated, Features.FanSpeed)
-        return self._getSomethingWithIndex(
+        index = self._get_something_simple(self.at.getEnumerated, Features.FanSpeed)
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.FanSpeed, index
         )
 
@@ -1764,11 +1764,11 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of FanSpeed.
         """
-        count = self._getSomethingSimple(self.at.getEnumCount, Features.FanSpeed)
+        count = self._get_something_simple(self.at.getEnumCount, Features.FanSpeed)
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.FanSpeed, i
                 )
             )
@@ -1790,7 +1790,7 @@ class ATZylaDevice(ATBase):
                 f"The value {value} is not a valid value for FanSpeed. "
                 f"Valid values are {validValues}."
             )
-        self._setSomethingSimple(self.at.setEnumeratedString, Features.FanSpeed, value)
+        self._set_something_simple(self.at.setEnumeratedString, Features.FanSpeed, value)
 
     def getFirmwareVersion(self):
         """Gets the current value of FirmwareVersion.
@@ -1800,7 +1800,7 @@ class ATZylaDevice(ATBase):
         str
             The current value of FirmwareVersion.
         """
-        return self._getSomethingSimple(self.at.getString, Features.FirmwareVersion)
+        return self._get_something_simple(self.at.getString, Features.FirmwareVersion)
 
     def getFrameRate(self):
         """Gets the current value of FrameRate.
@@ -1810,7 +1810,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of FrameRate.
         """
-        return self._getSomethingSimple(self.at.getFloat, Features.FrameRate)
+        return self._get_something_simple(self.at.getFloat, Features.FrameRate)
 
     def setFrameRate(self, value):
         """Sets FrameRate to the specified value.
@@ -1830,7 +1830,7 @@ class ATZylaDevice(ATBase):
                 f"Value ({value}) for FrameRate must be between "
                 f"{minValue} and {maxValue}."
             )
-        self._setSomethingSimple(self.at.setFloat, Features.FrameRate, value)
+        self._set_something_simple(self.at.setFloat, Features.FrameRate, value)
 
     def getFullAOIControl(self):
         """Gets the current value of FullAOIControl.
@@ -1840,7 +1840,7 @@ class ATZylaDevice(ATBase):
         bool
             The current value of FullAOIControl.
         """
-        return self._getSomethingSimple(self.at.getBool, Features.FullAOIControl)
+        return self._get_something_simple(self.at.getBool, Features.FullAOIControl)
 
     def getImageSizeBytes(self):
         """Gets the current value of ImageSizeBytes.
@@ -1850,7 +1850,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of ImageSizeBytes.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.ImageSizeBytes)
+        return self._get_something_simple(self.at.getInt, Features.ImageSizeBytes)
 
     def getInterfaceType(self):
         """Gets the current value of InterfaceType.
@@ -1860,7 +1860,7 @@ class ATZylaDevice(ATBase):
         str
             The current value of InterfaceType.
         """
-        return self._getSomethingSimple(self.at.getString, Features.InterfaceType)
+        return self._get_something_simple(self.at.getString, Features.InterfaceType)
 
     def getIOInvert(self):
         """Gets the current value of IOInvert.
@@ -1870,7 +1870,7 @@ class ATZylaDevice(ATBase):
         bool
             The current value of IOInvert.
         """
-        return self._getSomethingSimple(self.at.getBool, Features.IOInvert)
+        return self._get_something_simple(self.at.getBool, Features.IOInvert)
 
     def setIOInvert(self, value):
         """Sets IOInvert to the specified value.
@@ -1880,7 +1880,7 @@ class ATZylaDevice(ATBase):
         value : bool
             The value to apply to IOInvert.
         """
-        self._setSomethingSimple(self.at.setBool, Features.IOInvert, value)
+        self._set_something_simple(self.at.setBool, Features.IOInvert, value)
 
     def getIOSelector(self):
         """Gets the current value of IOSelector.
@@ -1890,8 +1890,8 @@ class ATZylaDevice(ATBase):
         str
             The current value of IOSelector.
         """
-        index = self._getSomethingSimple(self.at.getEnumerated, Features.IOSelector)
-        return self._getSomethingWithIndex(
+        index = self._get_something_simple(self.at.getEnumerated, Features.IOSelector)
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.IOSelector, index
         )
 
@@ -1903,11 +1903,11 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of IOSelector.
         """
-        count = self._getSomethingSimple(self.at.getEnumCount, Features.IOSelector)
+        count = self._get_something_simple(self.at.getEnumCount, Features.IOSelector)
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.IOSelector, i
                 )
             )
@@ -1929,7 +1929,7 @@ class ATZylaDevice(ATBase):
                 f"The value {value} is not a valid value for IOSelector. "
                 f"Valid values are {validValues}."
             )
-        self._setSomethingSimple(
+        self._set_something_simple(
             self.at.setEnumeratedString, Features.IOSelector, value
         )
 
@@ -1941,7 +1941,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of LineScanSpeed.
         """
-        return self._getSomethingSimple(self.at.getFloat, Features.LineScanSpeed)
+        return self._get_something_simple(self.at.getFloat, Features.LineScanSpeed)
 
     def getMaxInterfaceTransferRate(self):
         """Gets the current value of MaxInterfaceTransferRate.
@@ -1951,7 +1951,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of MaxInterfaceTransferRate.
         """
-        return self._getSomethingSimple(
+        return self._get_something_simple(
             self.at.getFloat, Features.MaxInterfaceTransferRate
         )
 
@@ -1963,7 +1963,7 @@ class ATZylaDevice(ATBase):
         bool
             The current value of MetadataEnable.
         """
-        return self._getSomethingSimple(self.at.getBool, Features.MetadataEnable)
+        return self._get_something_simple(self.at.getBool, Features.MetadataEnable)
 
     def setMetadataEnable(self, value):
         """Sets MetadataEnable to the specified value.
@@ -1973,7 +1973,7 @@ class ATZylaDevice(ATBase):
         value : bool
             The value to apply to MetadataEnable.
         """
-        self._setSomethingSimple(self.at.setBool, Features.MetadataEnable, value)
+        self._set_something_simple(self.at.setBool, Features.MetadataEnable, value)
 
     def getMetadataTimestamp(self):
         """Gets the current value of MetadataTimestamp.
@@ -1983,7 +1983,7 @@ class ATZylaDevice(ATBase):
         bool
             The current value of MetadataTimestamp.
         """
-        return self._getSomethingSimple(self.at.getBool, Features.MetadataTimestamp)
+        return self._get_something_simple(self.at.getBool, Features.MetadataTimestamp)
 
     def setMetadataTimestamp(self, value):
         """Sets MetadataTimestamp to the specified value.
@@ -1993,7 +1993,7 @@ class ATZylaDevice(ATBase):
         value : bool
             The value to apply to MetadataTimestamp.
         """
-        self._setSomethingSimple(self.at.setBool, Features.MetadataTimestamp, value)
+        self._set_something_simple(self.at.setBool, Features.MetadataTimestamp, value)
 
     def getMetadataFrame(self):
         """Gets the current value of MetadataFrame.
@@ -2003,7 +2003,7 @@ class ATZylaDevice(ATBase):
         bool
             The current value of MetadataFrame.
         """
-        return self._getSomethingSimple(self.at.getBool, Features.MetadataFrame)
+        return self._get_something_simple(self.at.getBool, Features.MetadataFrame)
 
     def getOverlap(self):
         """Gets the current value of Overlap.
@@ -2013,7 +2013,7 @@ class ATZylaDevice(ATBase):
         bool
             The current value of Overlap.
         """
-        return self._getSomethingSimple(self.at.getBool, Features.Overlap)
+        return self._get_something_simple(self.at.getBool, Features.Overlap)
 
     def setOverlap(self, value):
         """Sets Overlap to the specified value.
@@ -2023,7 +2023,7 @@ class ATZylaDevice(ATBase):
         value : bool
             The value to apply to Overlap.
         """
-        self._setSomethingSimple(self.at.setBool, Features.Overlap, value)
+        self._set_something_simple(self.at.setBool, Features.Overlap, value)
 
     def getPixelEncoding(self):
         """Gets the current value of PixelEncoding.
@@ -2033,8 +2033,8 @@ class ATZylaDevice(ATBase):
         str
             The current value of PixelEncoding.
         """
-        index = self._getSomethingSimple(self.at.getEnumerated, Features.PixelEncoding)
-        return self._getSomethingWithIndex(
+        index = self._get_something_simple(self.at.getEnumerated, Features.PixelEncoding)
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.PixelEncoding, index
         )
 
@@ -2046,11 +2046,11 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of PixelEncoding.
         """
-        count = self._getSomethingSimple(self.at.getEnumCount, Features.PixelEncoding)
+        count = self._get_something_simple(self.at.getEnumCount, Features.PixelEncoding)
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.PixelEncoding, i
                 )
             )
@@ -2072,7 +2072,7 @@ class ATZylaDevice(ATBase):
                 f"The value {value} is not a valid value for "
                 f"PixelEncoding. Valid values are {validValues}."
             )
-        self._setSomethingSimple(
+        self._set_something_simple(
             self.at.setEnumeratedString, Features.PixelEncoding, value
         )
 
@@ -2084,7 +2084,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of PixelHeight.
         """
-        return self._getSomethingSimple(self.at.getFloat, Features.PixelHeight)
+        return self._get_something_simple(self.at.getFloat, Features.PixelHeight)
 
     def getPixelReadoutRate(self):
         """Gets the current value of PixelReadoutRate.
@@ -2094,10 +2094,10 @@ class ATZylaDevice(ATBase):
         str
             The current value of PixelReadoutRate.
         """
-        index = self._getSomethingSimple(
+        index = self._get_something_simple(
             self.at.getEnumerated, Features.PixelReadoutRate
         )
-        return self._getSomethingWithIndex(
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.PixelReadoutRate, index
         )
 
@@ -2109,13 +2109,13 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of PixelReadoutRate.
         """
-        count = self._getSomethingSimple(
+        count = self._get_something_simple(
             self.at.getEnumCount, Features.PixelReadoutRate
         )
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.PixelReadoutRate, i
                 )
             )
@@ -2137,7 +2137,7 @@ class ATZylaDevice(ATBase):
                 f"The value {value} is not a valid value for "
                 f"PixelReadoutRate. Valid values are {validValues}."
             )
-        self._setSomethingSimple(
+        self._set_something_simple(
             self.at.setEnumeratedString, Features.PixelReadoutRate, value
         )
 
@@ -2149,7 +2149,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of PixelWidth.
         """
-        return self._getSomethingSimple(self.at.getFloat, Features.PixelWidth)
+        return self._get_something_simple(self.at.getFloat, Features.PixelWidth)
 
     def getReadoutTime(self):
         """Gets the current value of ReadoutTime.
@@ -2159,7 +2159,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of ReadoutTime.
         """
-        return self._getSomethingSimple(self.at.getFloat, Features.ReadoutTime)
+        return self._get_something_simple(self.at.getFloat, Features.ReadoutTime)
 
     def getRowReadTime(self):
         """Gets the current value of RowReadTime.
@@ -2169,7 +2169,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of RowReadTime.
         """
-        return self._getSomethingSimple(self.at.getFloat, Features.RowReadTime)
+        return self._get_something_simple(self.at.getFloat, Features.RowReadTime)
 
     def getSensorCooling(self):
         """Gets the current value of SensorCooling.
@@ -2179,7 +2179,7 @@ class ATZylaDevice(ATBase):
         bool
             The current value of SensorCooling.
         """
-        return self._getSomethingSimple(self.at.getBool, Features.SensorCooling)
+        return self._get_something_simple(self.at.getBool, Features.SensorCooling)
 
     def setSensorCooling(self, value):
         """Sets SensorCooling to the specified value.
@@ -2189,7 +2189,7 @@ class ATZylaDevice(ATBase):
         value : bool
             The value to apply to SensorCooling.
         """
-        self._setSomethingSimple(self.at.setBool, Features.SensorCooling, value)
+        self._set_something_simple(self.at.setBool, Features.SensorCooling, value)
 
     def getSensorHeight(self):
         """Gets the current value of SensorHeight.
@@ -2199,7 +2199,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of SensorHeight.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.SensorHeight)
+        return self._get_something_simple(self.at.getInt, Features.SensorHeight)
 
     def getSensorTemperature(self):
         """Gets the current value of SensorTemperature.
@@ -2209,7 +2209,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of SensorTemperature.
         """
-        return self._getSomethingSimple(self.at.getFloat, Features.SensorTemperature)
+        return self._get_something_simple(self.at.getFloat, Features.SensorTemperature)
 
     def getSensorWidth(self):
         """Gets the current value of SensorWidth.
@@ -2219,7 +2219,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of SensorWidth.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.SensorWidth)
+        return self._get_something_simple(self.at.getInt, Features.SensorWidth)
 
     def getSerialNumber(self):
         """Gets the current value of SerialNumber.
@@ -2229,7 +2229,7 @@ class ATZylaDevice(ATBase):
         str
             The current value of SerialNumber.
         """
-        return self._getSomethingSimple(self.at.getString, Features.SerialNumber)
+        return self._get_something_simple(self.at.getString, Features.SerialNumber)
 
     def getShutterOutputMode(self):
         """Gets the current value of ShutterOutputMode.
@@ -2239,10 +2239,10 @@ class ATZylaDevice(ATBase):
         str
             The current value of ShutterOutputMode.
         """
-        index = self._getSomethingSimple(
+        index = self._get_something_simple(
             self.at.getEnumerated, Features.ShutterOutputMode
         )
-        return self._getSomethingWithIndex(
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.ShutterOutputMode, index
         )
 
@@ -2254,13 +2254,13 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of ShutterOutputMode.
         """
-        count = self._getSomethingSimple(
+        count = self._get_something_simple(
             self.at.getEnumCount, Features.ShutterOutputMode
         )
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.ShutterOutputMode, i
                 )
             )
@@ -2282,7 +2282,7 @@ class ATZylaDevice(ATBase):
                 f"The value {value} is not a valid value for ShutterOutputMode. Valid "
                 f"values are {validValues}."
             )
-        self._setSomethingSimple(
+        self._set_something_simple(
             self.at.setEnumeratedString, Features.ShutterOutputMode, value
         )
 
@@ -2294,10 +2294,10 @@ class ATZylaDevice(ATBase):
         str
             The current value of SimplePreAmpGainControl.
         """
-        index = self._getSomethingSimple(
+        index = self._get_something_simple(
             self.at.getEnumerated, Features.SimplePreAmpGainControl
         )
-        return self._getSomethingWithIndex(
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.SimplePreAmpGainControl, index
         )
 
@@ -2309,13 +2309,13 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of SimplePreAmpGainControl.
         """
-        count = self._getSomethingSimple(
+        count = self._get_something_simple(
             self.at.getEnumCount, Features.SimplePreAmpGainControl
         )
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.SimplePreAmpGainControl, i
                 )
             )
@@ -2337,7 +2337,7 @@ class ATZylaDevice(ATBase):
                 f"The value {value} is not a valid value for "
                 f"SimplePreAmpGainControl. Valid values are {validValues}."
             )
-        self._setSomethingSimple(
+        self._set_something_simple(
             self.at.setEnumeratedString, Features.SimplePreAmpGainControl, value
         )
 
@@ -2349,7 +2349,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of ShutterTransferTime.
         """
-        return self._getSomethingSimple(self.at.getFloat, Features.ShutterTransferTime)
+        return self._get_something_simple(self.at.getFloat, Features.ShutterTransferTime)
 
     def setShutterTransferTime(self, value):
         """Sets ShutterTransferTime to the specified value.
@@ -2373,11 +2373,11 @@ class ATZylaDevice(ATBase):
                 f"Value ({value}) for ShutterTransferTime must be"
                 f" between {minValue} and {maxValue}."
             )
-        self._setSomethingSimple(self.at.setFloat, Features.ShutterTransferTime, value)
+        self._set_something_simple(self.at.setFloat, Features.ShutterTransferTime, value)
 
     def cmdSoftwareTrigger(self):
         """Send the SoftwareTrigger command."""
-        self._sendCommand(Features.SoftwareTrigger)
+        self._send_command(Features.SoftwareTrigger)
 
     def getStaticBlemishCorrection(self):
         """Gets the current value of StaticBlemishCorrection.
@@ -2387,7 +2387,7 @@ class ATZylaDevice(ATBase):
         bool
             The current value of StaticBlemishCorrection.
         """
-        return self._getSomethingSimple(
+        return self._get_something_simple(
             self.at.getBool, Features.StaticBlemishCorrection
         )
 
@@ -2399,7 +2399,7 @@ class ATZylaDevice(ATBase):
         value : bool
             The value to apply to StaticBlemishCorrection.
         """
-        self._setSomethingSimple(
+        self._set_something_simple(
             self.at.setBool, Features.StaticBlemishCorrection, value
         )
 
@@ -2411,7 +2411,7 @@ class ATZylaDevice(ATBase):
         bool
             The current value of SpuriousNoiseFilter.
         """
-        return self._getSomethingSimple(self.at.getBool, Features.SpuriousNoiseFilter)
+        return self._get_something_simple(self.at.getBool, Features.SpuriousNoiseFilter)
 
     def setSpuriousNoiseFilter(self, value):
         """Sets SpuriousNoiseFilter to the specified value.
@@ -2421,7 +2421,7 @@ class ATZylaDevice(ATBase):
         value : bool
             The value to apply to SpuriousNoiseFilter.
         """
-        self._setSomethingSimple(self.at.setBool, Features.SpuriousNoiseFilter, value)
+        self._set_something_simple(self.at.setBool, Features.SpuriousNoiseFilter, value)
 
     def getTargetSensorTemperature(self):
         """Gets the current value of TargetSensorTemperature.
@@ -2431,7 +2431,7 @@ class ATZylaDevice(ATBase):
         float
             The current value of TargetSensorTemperature.
         """
-        return self._getSomethingSimple(
+        return self._get_something_simple(
             self.at.getFloat, Features.TargetSensorTemperature
         )
 
@@ -2443,10 +2443,10 @@ class ATZylaDevice(ATBase):
         str
             The current value of TemperatureControl.
         """
-        index = self._getSomethingSimple(
+        index = self._get_something_simple(
             self.at.getEnumerated, Features.TemperatureControl
         )
-        return self._getSomethingWithIndex(
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.TemperatureControl, index
         )
 
@@ -2458,13 +2458,13 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of TemperatureControl.
         """
-        count = self._getSomethingSimple(
+        count = self._get_something_simple(
             self.at.getEnumCount, Features.TemperatureControl
         )
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.TemperatureControl, i
                 )
             )
@@ -2478,10 +2478,10 @@ class ATZylaDevice(ATBase):
         str
             The current value of TemperatureStatus.
         """
-        index = self._getSomethingSimple(
+        index = self._get_something_simple(
             self.at.getEnumerated, Features.TemperatureStatus
         )
-        return self._getSomethingWithIndex(
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.TemperatureStatus, index
         )
 
@@ -2493,13 +2493,13 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of TemperatureStatus.
         """
-        count = self._getSomethingSimple(
+        count = self._get_something_simple(
             self.at.getEnumCount, Features.TemperatureStatus
         )
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.TemperatureStatus, i
                 )
             )
@@ -2513,7 +2513,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of TimestampClock.
         """
-        return self._getSomethingSimple(self.at.getInt, Features.TimestampClock)
+        return self._get_something_simple(self.at.getInt, Features.TimestampClock)
 
     def getTimestampClockFrequency(self):
         """Gets the current value of TimestampClockFrequency.
@@ -2523,7 +2523,7 @@ class ATZylaDevice(ATBase):
         int
             The current value of TimestampClockFrequency.
         """
-        return self._getSomethingSimple(
+        return self._get_something_simple(
             self.at.getInt, Features.TimestampClockFrequency
         )
 
@@ -2535,8 +2535,8 @@ class ATZylaDevice(ATBase):
         str
             The current value of TriggerMode.
         """
-        index = self._getSomethingSimple(self.at.getEnumerated, Features.TriggerMode)
-        return self._getSomethingWithIndex(
+        index = self._get_something_simple(self.at.getEnumerated, Features.TriggerMode)
+        return self._get_something_with_index(
             self.at.getEnumStringByIndex, Features.TriggerMode, index
         )
 
@@ -2548,11 +2548,11 @@ class ATZylaDevice(ATBase):
         str[]
             The possible values of TriggerMode.
         """
-        count = self._getSomethingSimple(self.at.getEnumCount, Features.TriggerMode)
+        count = self._get_something_simple(self.at.getEnumCount, Features.TriggerMode)
         values = []
         for i in range(count):
             values.append(
-                self._getSomethingWithIndex(
+                self._get_something_with_index(
                     self.at.getEnumStringByIndex, Features.TriggerMode, i
                 )
             )
@@ -2574,7 +2574,7 @@ class ATZylaDevice(ATBase):
                 f"The value {value} is not a valid value for TriggerMode. "
                 f"Valid values are {validValues}."
             )
-        self._setSomethingSimple(
+        self._set_something_simple(
             self.at.setEnumeratedString, Features.TriggerMode, value
         )
 
@@ -2586,7 +2586,7 @@ class ATZylaDevice(ATBase):
         bool
             The current value of VerticallyCentreAOI.
         """
-        return self._getSomethingSimple(self.at.getBool, Features.VerticallyCentreAOI)
+        return self._get_something_simple(self.at.getBool, Features.VerticallyCentreAOI)
 
     def setVerticallyCentreAOI(self, value):
         """Sets VerticallyCentreAOI to the specified value.
@@ -2596,7 +2596,7 @@ class ATZylaDevice(ATBase):
         value : bool
             The value to apply to VerticallyCentreAOI.
         """
-        self._setSomethingSimple(self.at.setBool, Features.VerticallyCentreAOI, value)
+        self._set_something_simple(self.at.setBool, Features.VerticallyCentreAOI, value)
 
     def queueBuffer(self):
         """Adds a data buffer to the internal driver queue.
@@ -2606,7 +2606,7 @@ class ATZylaDevice(ATBase):
         ctypes.c_char_p
             The buffer added to the queue.
         """
-        self._assertHandle()
+        self._assert_handle()
         result, buffer = self.at.queueBuffer(self.handle, self.getImageSizeBytes())
         self._raiseIfBad(result)
         return buffer
@@ -2625,14 +2625,14 @@ class ATZylaDevice(ATBase):
         -------
         int
             The number of bytes populated in the buffer."""
-        self._assertHandle()
+        self._assert_handle()
         result, bytesPopulated = self.at.waitBuffer(self.handle, buffer, timeout)
         self._raiseIfBad(result)
         return bytesPopulated
 
     def flush(self):
         """Flushes the current data buffer queue."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.at.flush(self.handle)
         self._raiseIfBad(result)
 
@@ -2647,35 +2647,35 @@ class ATZylaDevice(ATBase):
             self.waitBuffer(buffer)
         return buffers
 
-    def takeOne(self):
+    def take_one(self):
         self.flush()
         buffer = self.queueBuffer()
         self.cmdAcquisitionStart()
         self.waitBuffer(buffer)
         return buffer
 
-    def _setSomethingSimple(self, action, feature, value):
-        self._assertHandle()
+    def _set_something_simple(self, action, feature, value):
+        self._assert_handle()
         result = action(self.handle, feature, value)
         self._raiseIfBad(result)
 
-    def _getSomethingSimple(self, action, feature):
-        self._assertHandle()
+    def _get_something_simple(self, action, feature):
+        self._assert_handle()
         result, something = action(self.handle, feature)
         self._raiseIfBad(result)
         return something
 
-    def _getSomethingWithIndex(self, action, feature, index):
-        self._assertHandle()
+    def _get_something_with_index(self, action, feature, index):
+        self._assert_handle()
         result, something = action(self.handle, feature, index)
         self._raiseIfBad(result)
         return something
 
-    def _sendCommand(self, feature):
-        self._assertHandle()
+    def _send_command(self, feature):
+        self._assert_handle()
         result = self.at.command(self.handle, feature)
         self._raiseIfBad(result)
 
-    def _assertHandle(self):
+    def _assert_handle(self):
         if self.handle == -1:
             raise ATDeviceNotOpenError()

@@ -94,35 +94,35 @@ class EFW:
 
     def getProductID(self, index):
         # EFW_API EFW_ERROR_CODE EFWGetID(int index, int* ID);
-        productID = self._getIntPtr()
+        productID = self._get_int_ptr()
         result = self.lib.EFWGetID(index, productID)
-        return self._toResultEnum(result), productID[0]
+        return self._to_result_enum(result), productID[0]
 
     def open(self, id):
         # EFW_API	EFW_ERROR_CODE EFWOpen(int ID);
         result = self.lib.EFWOpen(id)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
     def getPosition(self, id):
         # EFW_API	EFW_ERROR_CODE EFWGetPosition(int ID, int *pPosition);
-        position = self._getIntPtr()
+        position = self._get_int_ptr()
         result = self.lib.EFWGetPosition(id, position)
-        return self._toResultEnum(result), position[0]
+        return self._to_result_enum(result), position[0]
 
     def setPosition(self, id, position):
         # EFW_API	EFW_ERROR_CODE EFWSetPosition(int ID, int Position);
         result = self.lib.EFWSetPosition(id, position)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
     def close(self, id):
         # EFW_API	EFW_ERROR_CODE EFWClose(int ID);
         result = self.lib.EFWClose(id)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def _getIntPtr(self, defaultValue=0):
+    def _get_int_ptr(self, defaultValue=0):
         return self.intPtr(ctypes.c_int(defaultValue))
 
-    def _toResultEnum(self, result):
+    def _to_result_enum(self, result):
         return Results(result)
 
 
@@ -162,7 +162,7 @@ class EFWLibrary(EFWBase):
         super().__init__(efw)
         self.initialised = False
 
-    def initialiseLibrary(self):
+    def initialise(self):
         """Initialise the ZWO SDK Library."""
         if not self.initialised:
             self.efw.getNumberOfDevices()
@@ -221,7 +221,7 @@ class EFWDevice(EFWBase):
 
     def close(self):
         """Closes this device."""
-        self._assertHandle()
+        self._assert_handle()
         result = self.efw.close(self.handle)
         self._raiseIfBad(result)
         self.handle = -1
@@ -260,6 +260,6 @@ class EFWDevice(EFWBase):
         result = self.efw.setPosition(self.handle, position)
         self._raiseIfBad(result)
 
-    def _assertHandle(self):
+    def _assert_handle(self):
         if self.handle == -1:
             raise EFWDeviceNotOpenError()
