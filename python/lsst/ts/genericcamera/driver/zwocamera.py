@@ -295,7 +295,7 @@ properties:
             "TARGET_TEMPERATURE": target_temperature,
             "COOLER_ON": cooler_on,
         }
-        await super().startReadout()
+        await super().start_readout()
         image = exposure.Exposure(buffer_array, width, height, tags)
         return image
 
@@ -1175,7 +1175,7 @@ class ASIDevice(ASIBase):
             True if the control should be set automatically."""
         self._assertHandle()
         result = self.asi.setControlValue(
-            self.handle, controlType.value, value, self.boolToInt(auto)
+            self.handle, controlType.value, value, self.bool_to_int(auto)
         )
         self._raiseIfBad(result)
 
@@ -1331,7 +1331,7 @@ class ASIDevice(ASIBase):
             If true uses the mechanical shutter to take a dark (if available).
         """
         self._assertHandle()
-        result = self.asi.startExposure(self.handle, self.boolToInt(isDark))
+        result = self.asi.startExposure(self.handle, self.bool_to_int(isDark))
         self._raiseIfBad(result)
 
     def stopExposure(self):
@@ -1451,7 +1451,7 @@ class ASIDevice(ASIBase):
     def sendSoftwareTrigger(self, start):
         """Sends a software trigger to the camera."""
         self._assertHandle()
-        result = self.asi.sendSoftwareTrigger(self.handle, self.boolToInt(start))
+        result = self.asi.sendSoftwareTrigger(self.handle, self.bool_to_int(start))
         self._raiseIfBad(result)
 
     def getSerialNumber(self):
@@ -1481,7 +1481,7 @@ class ASIDevice(ASIBase):
             bytesPerPixel = 1
         return width * height * bytesPerPixel
 
-    def boolToInt(self, value):
+    def bool_to_int(self, value):
         if value:
             return 1
         return 0
