@@ -62,7 +62,7 @@ class AndorCamera(BaseCamera):
         self.binValue = 1
         self.normal_image_type = "mono16"
         self.current_image_type = self.normal_image_type
-        self.dev = self.lib.openZyla(self.id)
+        self.dev = self.lib.open_zyla(self.id)
 
     def get_config_schema(self):
         return yaml.safe_load(
@@ -680,29 +680,31 @@ class AT:
         lib.AT_Flush.restype = ctypes.c_int
 
         self.lib = lib
-        self.intPtr = ctypes.POINTER(ctypes.c_int)
-        self.boolPtr = ctypes.POINTER(ctypes.c_bool)
-        self.longlongPtr = ctypes.POINTER(ctypes.c_longlong)
-        self.doublePtr = ctypes.POINTER(ctypes.c_double)
-        self.bufferPtr = ctypes.POINTER(ctypes.c_char_p)
+        self.int_ptr = ctypes.POINTER(ctypes.c_int)
+        self.bool_ptr = ctypes.POINTER(ctypes.c_bool)
+        self.long_long_ptr = ctypes.POINTER(ctypes.c_longlong)
+        self.double_ptr = ctypes.POINTER(ctypes.c_double)
+        self.buffer_ptr = ctypes.POINTER(ctypes.c_char_p)
 
+    @api
     def initialiseLibrary(self):
         # int AT_EXP_CONV AT_InitialiseLibrary();
-        return self._toResultEnum(self.lib.AT_InitialiseLibrary())
+        return self._to_result_enum(self.lib.AT_InitialiseLibrary())
 
+    @api
     def finaliseLibrary(self):
         # int AT_EXP_CONV AT_FinaliseLibrary();
-        return self._toResultEnum(self.lib.AT_FinaliseLibrary())
+        return self._to_result_enum(self.lib.AT_FinaliseLibrary())
 
     def open(self, camera_index):
         # int AT_EXP_CONV AT_Open(int CameraIndex, AT_H *Hndl);
-        handle = self._getIntPtr(-1)
+        handle = self._get_int_ptr(-1)
         result = self.lib.AT_Open(camera_index, handle)
-        return self._toResultEnum(result), handle[0]
+        return self._to_result_enum(result), handle[0]
 
     def close(self, handle):
         # int AT_EXP_CONV AT_Close(AT_H Hndl);
-        return self._toResultEnum(self.lib.AT_Close(handle))
+        return self._to_result_enum(self.lib.AT_Close(handle))
 
     # typedef int (AT_EXP_CONV *FeatureCallback)(AT_H Hndl,
     # const AT_WC* Feature, void* Context);
@@ -711,269 +713,302 @@ class AT:
     # int AT_EXP_CONV AT_UnregisterFeatureCallback(AT_H Hndl,
     # const AT_WC* Feature, FeatureCallback EvCallback, void* Context);
 
+    @api
     def isImplemented(self, handle, feature):
         # int AT_EXP_CONV AT_IsImplemented(AT_H Hndl, const AT_WC* Feature,
         # AT_BOOL* Implemented);
-        implemented = self._getBoolPtr()
+        implemented = self._get_bool_ptr()
         result = self.lib.AT_IsImplemented(handle, feature.name, implemented)
-        return self._toResultEnum(result), implemented[0]
+        return self._to_result_enum(result), implemented[0]
 
+    @api
     def isReadable(self, handle, feature):
         # int AT_EXP_CONV AT_IsReadable(AT_H Hndl, const AT_WC* Feature,
         # AT_BOOL* Readable);
-        readable = self._getBoolPtr()
+        readable = self._get_bool_ptr()
         result = self.lib.AT_IsReadable(handle, feature.name, readable)
-        return self._toResultEnum(result), readable[0]
+        return self._to_result_enum(result), readable[0]
 
+    @api
     def isWritable(self, handle, feature):
         # int AT_EXP_CONV AT_IsWritable(AT_H Hndl, const AT_WC* Feature,
         # AT_BOOL* Writable);
-        writable = self._getBoolPtr()
+        writable = self._get_bool_ptr()
         result = self.lib.AT_IsWritable(handle, feature.name, writable)
-        return self._toResultEnum(result), writable[0]
+        return self._to_result_enum(result), writable[0]
 
+    @api
     def isReadOnly(self, handle, feature):
         # int AT_EXP_CONV AT_IsReadOnly(AT_H Hndl, const AT_WC* Feature,
         # AT_BOOL* ReadOnly);
-        readOnly = self._getBoolPtr()
+        readOnly = self._get_bool_ptr()
         result = self.lib.AT_IsReadOnly(handle, feature.name, readOnly)
-        return self._toResultEnum(result), readOnly[0]
+        return self._to_result_enum(result), readOnly[0]
 
+    @api
     def setInt(self, handle, feature, value):
         # int AT_EXP_CONV AT_SetInt(AT_H Hndl, const AT_WC* Feature, AT_64
         # Value);
-        return self._toResultEnum(self.lib.AT_SetInt(handle, feature.name, value))
+        return self._to_result_enum(self.lib.AT_SetInt(handle, feature.name, value))
 
+    @api
     def getInt(self, handle, feature):
         # int AT_EXP_CONV AT_GetInt(AT_H Hndl, const AT_WC* Feature, AT_64*
         # Value);
-        value = self._getLongLongPtr()
+        value = self._get_long_long_ptr()
         result = self.lib.AT_GetInt(handle, feature.name, value)
-        return self._toResultEnum(result), value[0]
+        return self._to_result_enum(result), value[0]
 
+    @api
     def getIntMax(self, handle, feature):
         # int AT_EXP_CONV AT_GetIntMax(AT_H Hndl, const AT_WC* Feature, AT_64*
         # MaxValue);
-        maxValue = self._getLongLongPtr()
+        maxValue = self._get_long_long_ptr()
         result = self.lib.AT_GetIntMax(handle, feature.name, maxValue)
-        return self._toResultEnum(result), maxValue[0]
+        return self._to_result_enum(result), maxValue[0]
 
+    @api
     def getIntMin(self, handle, feature):
         # int AT_EXP_CONV AT_GetIntMin(AT_H Hndl, const AT_WC* Feature, AT_64*
         # MinValue);
-        minValue = self._getLongLongPtr()
+        minValue = self._get_long_long_ptr()
         result = self.lib.AT_GetIntMin(handle, feature.name, minValue)
-        return self._toResultEnum(result), minValue[0]
+        return self._to_result_enum(result), minValue[0]
 
+    @api
     def setFloat(self, handle, feature, value):
         # int AT_EXP_CONV AT_SetFloat(AT_H Hndl, const AT_WC* Feature, double
         # Value);
-        return self._toResultEnum(self.lib.AT_SetFloat(handle, feature.name, value))
+        return self._to_result_enum(self.lib.AT_SetFloat(handle, feature.name, value))
 
+    @api
     def getFloat(self, handle, feature):
         # int AT_EXP_CONV AT_GetFloat(AT_H Hndl, const AT_WC* Feature, double*
         # Value);
-        value = self._getDoublePtr()
+        value = self._get_double_ptr()
         result = self.lib.AT_GetFloat(handle, feature.name, value)
-        return self._toResultEnum(result), value[0]
+        return self._to_result_enum(result), value[0]
 
+    @api
     def getFloatMax(self, handle, feature):
         # int AT_EXP_CONV AT_GetFloatMax(AT_H Hndl, const AT_WC* Feature,
         # double* MaxValue);
-        maxValue = self._getDoublePtr()
+        maxValue = self._get_double_ptr()
         result = self.lib.AT_GetFloatMax(handle, feature.name, maxValue)
-        return self._toResultEnum(result), maxValue[0]
+        return self._to_result_enum(result), maxValue[0]
 
+    @api
     def getFloatMin(self, handle, feature):
         # int AT_EXP_CONV AT_GetFloatMin(AT_H Hndl, const AT_WC* Feature,
         # double* MinValue);
-        minValue = self._getDoublePtr()
+        minValue = self._get_double_ptr()
         result = self.lib.AT_GetFloatMin(handle, feature.name, minValue)
-        return self._toResultEnum(result), minValue[0]
+        return self._to_result_enum(result), minValue[0]
 
+    @api
     def setBool(self, handle, feature, value):
         # int AT_EXP_CONV AT_SetBool(AT_H Hndl, const AT_WC* Feature, AT_BOOL
         # Value);
-        return self._toResultEnum(self.lib.AT_SetBool(handle, feature.name, value))
+        return self._to_result_enum(self.lib.AT_SetBool(handle, feature.name, value))
 
+    @api
     def getBool(self, handle, feature):
         # int AT_EXP_CONV AT_GetBool(AT_H Hndl, const AT_WC* Feature, AT_BOOL*
         # Value);
-        value = self._getBoolPtr()
+        value = self._get_bool_ptr()
         result = self.lib.AT_GetBool(handle, feature.name, value)
-        return self._toResultEnum(result), value[0]
+        return self._to_result_enum(result), value[0]
 
+    @api
     def setEnumerated(self, handle, feature, value):
         # int AT_EXP_CONV AT_SetEnumerated(AT_H Hndl, const AT_WC* Feature, int
         # Value);
-        return self._toResultEnum(
+        return self._to_result_enum(
             self.lib.AT_SetEnumerated(handle, feature.name, value)
         )
 
+    @api
     def setEnumeratedString(self, handle, feature, string):
         # int AT_EXP_CONV AT_SetEnumeratedString(AT_H Hndl,
         # const AT_WC* Feature, const AT_WC* String);
-        return self._toResultEnum(
+        return self._to_result_enum(
             self.lib.AT_SetEnumeratedString(handle, feature.name, string)
         )
 
+    @api
     def getEnumerated(self, handle, feature):
         # int AT_EXP_CONV AT_GetEnumerated(AT_H Hndl, const AT_WC* Feature,
         # int* Value);
-        value = self._getIntPtr()
+        value = self._get_int_ptr()
         result = self.lib.AT_GetEnumerated(handle, feature.name, value)
-        return self._toResultEnum(result), value[0]
+        return self._to_result_enum(result), value[0]
 
+    @api
     def getEnumeratedCount(self, handle, feature):
         # int AT_EXP_CONV AT_GetEnumeratedCount(AT_H Hndl,const  AT_WC*
         # Feature, int* Count);
-        count = self._getIntPtr()
+        count = self._get_int_ptr()
         result = self.lib.AT_GetEnumeratedCount(handle, feature.name, count)
-        return self._toResultEnum(result), count[0]
+        return self._to_result_enum(result), count[0]
 
+    @api
     def isEnumeratedIndexAvailabe(self, handle, feature, index):
         # int AT_EXP_CONV AT_IsEnumeratedIndexAvailable(AT_H Hndl,
         # const AT_WC* Feature, int Index, AT_BOOL* Available);
-        available = self._getBoolPtr()
+        available = self._get_bool_ptr()
         result = self.lib.AT_IsEnumeratedIndexAvailable(
             handle, feature.name, index, available
         )
-        return self._toResultEnum(result), available[0]
+        return self._to_result_enum(result), available[0]
 
+    @api
     def isEnumeratedIndexImplemented(self, handle, feature, index):
         # int AT_EXP_CONV AT_IsEnumeratedIndexImplemented(AT_H Hndl,
         #  const AT_WC* Feature, int Index, AT_BOOL* Implemented);
-        implemented = self._getBoolPtr()
+        implemented = self._get_bool_ptr()
         result = self.lib.AT_IsEnumeratedIndexImplemented(
             handle, feature.name, index, implemented
         )
-        return self._toResultEnum(result), implemented[0]
+        return self._to_result_enum(result), implemented[0]
 
+    @api
     def getEnumeratedString(self, handle, feature, index):
         # int AT_EXP_CONV AT_GetEnumeratedString(AT_H Hndl,
         # const AT_WC* Feature, int Index, AT_WC* String, int StringLength);
-        string = self._getUnicodeBuffer()
+        string = self._get_unicode_buffer()
         result = self.lib.AT_GetEnumeratedString(
             handle, feature.name, index, string, len(string)
         )
-        return self._toResultEnum(result), string.value
+        return self._to_result_enum(result), string.value
 
+    @api
     def setEnumIndex(self, handle, feature, value):
         # int AT_EXP_CONV AT_SetEnumIndex(AT_H Hndl, const AT_WC* Feature,
         # int Value);
-        return self._toResultEnum(self.lib.AT_SetEnumIndex(handle, feature.name, value))
+        return self._to_result_enum(self.lib.AT_SetEnumIndex(handle, feature.name, value))
 
+    @api
     def setEnumString(self, handle, feature, string):
         # int AT_EXP_CONV AT_SetEnumString(AT_H Hndl, const AT_WC* Feature,
         # const AT_WC* String);
-        return self._toResultEnum(
+        return self._to_result_enum(
             self.lib.AT_SetEnumString(handle, feature.name, string)
         )
 
+    @api
     def getEnumIndex(self, handle, feature):
         # int AT_EXP_CONV AT_GetEnumIndex(AT_H Hndl, const AT_WC* Feature,
         # int* Value);
-        value = self._getIntPtr()
+        value = self._get_int_ptr()
         result = self.lib.AT_GetEnumIndex(handle, feature.name, value)
-        return self._toResultEnum(result), value[0]
+        return self._to_result_enum(result), value[0]
 
+    @api
     def getEnumCount(self, handle, feature):
         # int AT_EXP_CONV AT_GetEnumCount(AT_H Hndl,const  AT_WC* Feature,
         # int* Count);
-        count = self._getIntPtr()
+        count = self._get_int_ptr()
         result = self.lib.AT_GetEnumCount(handle, feature.name, count)
-        return self._toResultEnum(result), count[0]
+        return self._to_result_enum(result), count[0]
 
+    @api
     def isEnumIndexAvailable(self, handle, feature, index):
         # int AT_EXP_CONV AT_IsEnumIndexAvailable(AT_H Hndl,
         # const AT_WC* Feature, int Index, AT_BOOL* Available);
-        available = self._getBoolPtr()
+        available = self._get_bool_ptr()
         result = self.lib.AT_IsEnumIndexAvailable(
             handle, feature.name, index, available
         )
-        return self._toResultEnum(result), available[0]
+        return self._to_result_enum(result), available[0]
 
+    @api
     def isEnumIndexImplemented(self, handle, feature, index):
         # int AT_EXP_CONV AT_IsEnumIndexImplemented(AT_H Hndl,
         # const AT_WC* Feature, int Index, AT_BOOL* Implemented);
-        implemented = self._getBoolPtr()
+        implemented = self._get_bool_ptr()
         result = self.lib.AT_IsEnumIndexImplemented(
             handle, feature.name, index, implemented
         )
-        return self._toResultEnum(result), implemented[0]
+        return self._to_result_enum(result), implemented[0]
 
+    @api
     def getEnumStringByIndex(self, handle, feature, index):
         # int AT_EXP_CONV AT_GetEnumStringByIndex(AT_H Hndl,
         # const AT_WC* Feature, int Index, AT_WC* String, int StringLength);
-        string = self._getUnicodeBuffer()
+        string = self._get_unicode_buffer()
         result = self.lib.AT_GetEnumStringByIndex(
             handle, feature.name, index, string, len(string)
         )
-        return self._toResultEnum(result), string.value
+        return self._to_result_enum(result), string.value
 
     def command(self, handle, feature):
         # int AT_EXP_CONV AT_Command(AT_H Hndl, const AT_WC* Feature);
-        return self._toResultEnum(self.lib.AT_Command(handle, feature.name))
+        return self._to_result_enum(self.lib.AT_Command(handle, feature.name))
 
+    @api
     def setString(self, handle, feature, string):
         # int AT_EXP_CONV AT_SetString(AT_H Hndl, const AT_WC* Feature, const
         # AT_WC* String);
-        return self._toResultEnum(self.lib.AT_SetString(handle, feature.name, string))
+        return self._to_result_enum(self.lib.AT_SetString(handle, feature.name, string))
 
+    @api
     def getString(self, handle, feature):
         # int AT_EXP_CONV AT_GetString(AT_H Hndl, const AT_WC* Feature,
         # AT_WC* String, int StringLength);
-        string = self._getUnicodeBuffer()
+        string = self._get_unicode_buffer()
         result = self.lib.AT_GetString(handle, feature.name, string, len(string))
-        return self._toResultEnum(result), string.value
+        return self._to_result_enum(result), string.value
 
+    @api
     def getStringMaxLength(self, handle, feature):
         # int AT_EXP_CONV AT_GetStringMaxLength(AT_H Hndl,
         # const AT_WC* Feature, int* MaxStringLength);
-        maxStringLength = self._getIntPtr()
+        maxStringLength = self._get_int_ptr()
         result = self.lib.AT_GetStringMaxLength(handle, feature.name, maxStringLength)
-        return self._toResultEnum(result), maxStringLength[0]
+        return self._to_result_enum(result), maxStringLength[0]
 
+    @api
     def queueBuffer(self, handle, buffer_size):
         # int AT_EXP_CONV AT_QueueBuffer(AT_H Hndl, AT_U8* Ptr, int PtrSize);
-        buffer = self._getStringBuffer(buffer_size)
+        buffer = self._get_string_buffer(buffer_size)
         result = self.lib.AT_QueueBuffer(handle, buffer, len(buffer))
-        return self._toResultEnum(result), buffer
+        return self._to_result_enum(result), buffer
 
+    @api
     def waitBuffer(self, handle, buffer, timeout=60):
         # int AT_EXP_CONV AT_WaitBuffer(AT_H Hndl, AT_U8** Ptr,
         # int* PtrSize, unsigned int Timeout);
-        ctypes.POINTERSize = self._getIntPtr()
-        bufferPtr = self._getBufferPtr(buffer)
-        result = self.lib.AT_WaitBuffer(handle, bufferPtr, ctypes.POINTERSize, timeout)
-        return self._toResultEnum(result), ctypes.POINTERSize[0]
+        ctypes.POINTERSize = self._get_int_ptr()
+        buffer_ptr = self._get_buffer_ptr(buffer)
+        result = self.lib.AT_WaitBuffer(handle, buffer_ptr, ctypes.POINTERSize, timeout)
+        return self._to_result_enum(result), ctypes.POINTERSize[0]
 
     def flush(self, handle):
         # int AT_EXP_CONV AT_Flush(AT_H Hndl);
-        return self._toResultEnum(self.lib.AT_Flush(handle))
+        return self._to_result_enum(self.lib.AT_Flush(handle))
 
-    def _getIntPtr(self, default_value=0):
-        return self.intPtr(ctypes.c_int(default_value))
+    def _get_int_ptr(self, default_value=0):
+        return self.int_ptr(ctypes.c_int(default_value))
 
-    def _getBoolPtr(self, default_value=False):
-        return self.boolPtr(ctypes.c_bool(default_value))
+    def _get_bool_ptr(self, default_value=False):
+        return self.bool_ptr(ctypes.c_bool(default_value))
 
-    def _getLongLongPtr(self, default_value=0):
-        return self.longlongPtr(ctypes.c_longlong(default_value))
+    def _get_long_long_ptr(self, default_value=0):
+        return self.long_long_ptr(ctypes.c_longlong(default_value))
 
-    def _getDoublePtr(self, default_value=0.0):
-        return self.doublePtr(ctypes.c_double(default_value))
+    def _get_double_ptr(self, default_value=0.0):
+        return self.double_ptr(ctypes.c_double(default_value))
 
-    def _getBufferPtr(self, buffer):
-        return self.bufferPtr(buffer)
+    def _get_buffer_ptr(self, buffer):
+        return self.buffer_ptr(buffer)
 
-    def _getUnicodeBuffer(self, size=128):
+    def _get_unicode_buffer(self, size=128):
         return ctypes.create_unicode_buffer(size)
 
-    def _toResultEnum(self, result):
+    def _to_result_enum(self, result):
         return Results(result)
 
-    def _getStringBuffer(self, size=128):
+    def _get_string_buffer(self, size=128):
         return ctypes.create_string_buffer(size)
 
 
@@ -1003,7 +1038,7 @@ class ATBase(object):
         else:
             self.at = at
 
-    def _raiseIfBad(self, result: Results):
+    def _raise_if_bad(self, result: Results):
         if result != Results.Success:
             raise ATError(result)
 
@@ -1013,24 +1048,27 @@ class ATLibrary(ATBase):
         super().__init__(at)
         self.initialised = False
 
+    @api
     def initialiseLibrary(self):
         if not self.initialised:
             self.at.initialiseLibrary()
             self.initialised = True
 
+    @api
     def finaliseLibrary(self):
         if self.initialised:
             self.at.finaliseLibrary()
             self.initialised = False
 
+    @api
     def getDeviceCount(self):
         if not self.initialised:
             raise ATLibraryNotInitialised()
         result, deviceCount = self.at.getInt(1, Features.DeviceCount)
-        self._raiseIfBad(result)
+        self._raise_if_bad(result)
         return deviceCount
 
-    def openZyla(self, camera_index):
+    def open_zyla(self, camera_index):
         if not self.initialised:
             raise ATLibraryNotInitialised()
         device = ATZylaDevice(camera_index, self.at)
@@ -1042,15 +1080,16 @@ class ATZylaDevice(ATBase):
         super().__init__(at)
         self.handle = -1
         result, handle = self.at.open(camera_index)
-        self._raiseIfBad(result)
+        self._raise_if_bad(result)
         self.handle = handle
 
     def close(self):
         self._assert_handle()
         result = self.at.close(self.handle)
-        self._raiseIfBad(result)
+        self._raise_if_bad(result)
         self.handle = -1
 
+    @api
     def getAccumulateCount(self):
         """Gets the current value of AccumulateCount.
 
@@ -1061,6 +1100,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.AccumulateCount)
 
+    @api
     def setAccumulateCount(self, value):
         """Sets AccumulateCount to the specified value.
 
@@ -1081,14 +1121,17 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setInt, Features.AccumulateCount, value)
 
+    @api
     def cmdAcquisitionStart(self):
         """Send the AcquisitionStart command."""
         self._send_command(Features.AcquisitionStart)
 
+    @api
     def cmdAcquisitionStop(self):
         """Send the AcquisitionStop command."""
         self._send_command(Features.AcquisitionStop)
 
+    @api
     def getAOIBinning(self):
         """Gets the current value of AOIBinning.
 
@@ -1102,6 +1145,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.AOIBinning, index
         )
 
+    @api
     def getAOIBinningValues(self):
         """Gets the possible values of AOIBinning.
 
@@ -1120,6 +1164,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def setAOIBinning(self, value):
         """Sets AOIBinning to the specified value.
 
@@ -1140,6 +1185,7 @@ class ATZylaDevice(ATBase):
             self.at.setEnumeratedString, Features.AOIBinning, value
         )
 
+    @api
     def getAOIHBin(self):
         """Gets the current value of AOIHBin.
 
@@ -1150,6 +1196,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.AOIHBin)
 
+    @api
     def setAOIHBin(self, value):
         """Sets AOIHBin to the specified value.
 
@@ -1170,6 +1217,7 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setInt, Features.AOIHBin, value)
 
+    @api
     def getAOIHeight(self):
         """Gets the current value of AOIHeight.
 
@@ -1180,6 +1228,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.AOIHeight)
 
+    @api
     def setAOIHeight(self, value):
         """Sets AOIHeight to the specified value.
 
@@ -1200,6 +1249,7 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setInt, Features.AOIHeight, value)
 
+    @api
     def getAOILeft(self):
         """Gets the current value of AOILeft.
 
@@ -1210,6 +1260,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.AOILeft)
 
+    @api
     def setAOILeft(self, value):
         """Sets AOILeft to the specified value.
 
@@ -1230,6 +1281,7 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setInt, Features.AOILeft, value)
 
+    @api
     def getAOIStride(self):
         """Gets the current value of AOIStride.
 
@@ -1240,6 +1292,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.AOIStride)
 
+    @api
     def getAOITop(self):
         """Gets the current value of AOITop.
 
@@ -1250,6 +1303,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.AOITop)
 
+    @api
     def setAOITop(self, value):
         """Sets AOITop to the specified value.
 
@@ -1270,6 +1324,7 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setInt, Features.AOITop, value)
 
+    @api
     def getAOIVBin(self):
         """Gets the current value of AOIVBin.
 
@@ -1280,6 +1335,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.AOIVBin)
 
+    @api
     def setAOIVBin(self, value):
         """Sets AOIVBin to the specified value.
 
@@ -1300,6 +1356,7 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setInt, Features.AOIVBin, value)
 
+    @api
     def getAOIWidth(self):
         """Gets the current value of AOIWidth.
 
@@ -1310,6 +1367,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.AOIWidth)
 
+    @api
     def setAOIWidth(self, value):
         """Sets AOIWidth to the specified value.
 
@@ -1330,6 +1388,7 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setInt, Features.AOIWidth, value)
 
+    @api
     def getAuxiliaryOutSource(self):
         """Gets the current value of AuxiliaryOutSource.
 
@@ -1345,6 +1404,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.AuxiliaryOutSource, index
         )
 
+    @api
     def getAuxiliaryOutSourceValues(self):
         """Gets the possible values of AuxiliaryOutSource.
 
@@ -1365,6 +1425,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def setAuxiliaryOutSource(self, value):
         """Sets AuxiliaryOutSource to the specified value.
 
@@ -1385,6 +1446,7 @@ class ATZylaDevice(ATBase):
             self.at.setEnumeratedString, Features.AuxiliaryOutSource, value
         )
 
+    @api
     def getAuxOutSourceTwo(self):
         """Gets the current value of AuxOutSourceTwo.
 
@@ -1400,6 +1462,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.AuxOutSourceTwo, index
         )
 
+    @api
     def getAuxOutSourceTwoValues(self):
         """Gets the possible values of AuxOutSourceTwo.
 
@@ -1418,6 +1481,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def setAuxOutSourceTwo(self, value):
         """Sets AuxOutSourceTwo to the specified value.
 
@@ -1438,6 +1502,7 @@ class ATZylaDevice(ATBase):
             self.at.setEnumeratedString, Features.AuxOutSourceTwo, value
         )
 
+    @api
     def getBaseline(self):
         """Gets the current value of Baseline.
 
@@ -1448,6 +1513,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.Baseline)
 
+    @api
     def getBitDepth(self):
         """Gets the current value of BitDepth.
 
@@ -1461,6 +1527,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.BitDepth, index
         )
 
+    @api
     def getBitDepthValues(self):
         """Gets the possible values of BitDepth.
 
@@ -1479,6 +1546,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def getBytesPerPixel(self):
         """Gets the current value of BytesPerPixel.
 
@@ -1489,6 +1557,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getFloat, Features.BytesPerPixel)
 
+    @api
     def getCameraAcquiring(self):
         """Gets the current value of CameraAcquiring.
 
@@ -1499,6 +1568,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getBool, Features.CameraAcquiring)
 
+    @api
     def getCameraModel(self):
         """Gets the current value of CameraModel.
 
@@ -1509,6 +1579,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getString, Features.CameraModel)
 
+    @api
     def getCameraName(self):
         """Gets the current value of CameraName.
 
@@ -1519,6 +1590,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getString, Features.CameraName)
 
+    @api
     def getCameraPresent(self):
         """Gets the current value of CameraPresent.
 
@@ -1529,6 +1601,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getBool, Features.CameraPresent)
 
+    @api
     def getControllerID(self):
         """Gets the current value of ControllerID.
 
@@ -1539,6 +1612,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getString, Features.ControllerID)
 
+    @api
     def getFrameCount(self):
         """Gets the current value of FrameCount.
 
@@ -1549,6 +1623,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.FrameCount)
 
+    @api
     def setFrameCount(self, value):
         """Sets FrameCount to the specified value.
 
@@ -1569,6 +1644,7 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setInt, Features.FrameCount, value)
 
+    @api
     def getCycleMode(self):
         """Gets the current value of CycleMode.
 
@@ -1582,6 +1658,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.CycleMode, index
         )
 
+    @api
     def getCycleModeValues(self):
         """Gets the possible values of CycleMode.
 
@@ -1600,6 +1677,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def setCycleMode(self, value):
         """Sets CycleMode to the specified value.
 
@@ -1618,6 +1696,7 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setEnumeratedString, Features.CycleMode, value)
 
+    @api
     def getElectronicShutteringMode(self):
         """Gets the current value of ElectronicShutteringMode.
 
@@ -1633,6 +1712,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.ElectronicShutteringMode, index
         )
 
+    @api
     def getElectronicShutteringModeValues(self):
         """Gets the possible values of ElectronicShutteringMode.
 
@@ -1653,6 +1733,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def setElectronicShutteringMode(self, value):
         """Sets ElectronicShutteringMode to the specified value.
 
@@ -1673,6 +1754,7 @@ class ATZylaDevice(ATBase):
             self.at.setEnumeratedString, Features.ElectronicShutteringMode, value
         )
 
+    @api
     def getExposedPixelHeight(self):
         """Gets the current value of ExposedPixelHeight.
 
@@ -1683,6 +1765,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.ExposedPixelHeight)
 
+    @api
     def setExposedPixelHeight(self, value):
         """Sets ExposedPixelHeight to the specified value.
 
@@ -1703,6 +1786,7 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setInt, Features.ExposedPixelHeight, value)
 
+    @api
     def getExposureTime(self):
         """Gets the current value of ExposureTime.
 
@@ -1713,7 +1797,8 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getFloat, Features.ExposureTime)
 
-    def set_exposure_time(self, value):
+    @api
+    def setExposureTime(self, value):
         """Sets ExposureTime to the specified value.
 
         The value specified must pass a min/max check. The allowed values
@@ -1733,6 +1818,7 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setFloat, Features.ExposureTime, value)
 
+    @api
     def getExternalTriggerDelay(self):
         """Gets the current value of ExternalTriggerDelay.
 
@@ -1743,6 +1829,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getFloat, Features.ExternalTriggerDelay)
 
+    @api
     def getFanSpeed(self):
         """Gets the current value of FanSpeed.
 
@@ -1756,6 +1843,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.FanSpeed, index
         )
 
+    @api
     def getFanSpeedValues(self):
         """Gets the possible values of FanSpeed.
 
@@ -1774,6 +1862,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def setFanSpeed(self, value):
         """Sets FanSpeed to the specified value.
 
@@ -1792,6 +1881,7 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setEnumeratedString, Features.FanSpeed, value)
 
+    @api
     def getFirmwareVersion(self):
         """Gets the current value of FirmwareVersion.
 
@@ -1802,6 +1892,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getString, Features.FirmwareVersion)
 
+    @api
     def getFrameRate(self):
         """Gets the current value of FrameRate.
 
@@ -1812,6 +1903,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getFloat, Features.FrameRate)
 
+    @api
     def setFrameRate(self, value):
         """Sets FrameRate to the specified value.
 
@@ -1832,6 +1924,7 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setFloat, Features.FrameRate, value)
 
+    @api
     def getFullAOIControl(self):
         """Gets the current value of FullAOIControl.
 
@@ -1842,6 +1935,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getBool, Features.FullAOIControl)
 
+    @api
     def getImageSizeBytes(self):
         """Gets the current value of ImageSizeBytes.
 
@@ -1852,6 +1946,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.ImageSizeBytes)
 
+    @api
     def getInterfaceType(self):
         """Gets the current value of InterfaceType.
 
@@ -1862,6 +1957,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getString, Features.InterfaceType)
 
+    @api
     def getIOInvert(self):
         """Gets the current value of IOInvert.
 
@@ -1872,6 +1968,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getBool, Features.IOInvert)
 
+    @api
     def setIOInvert(self, value):
         """Sets IOInvert to the specified value.
 
@@ -1882,6 +1979,7 @@ class ATZylaDevice(ATBase):
         """
         self._set_something_simple(self.at.setBool, Features.IOInvert, value)
 
+    @api
     def getIOSelector(self):
         """Gets the current value of IOSelector.
 
@@ -1895,6 +1993,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.IOSelector, index
         )
 
+    @api
     def getIOSelectorValues(self):
         """Gets the possible values of IOSelector.
 
@@ -1913,6 +2012,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def setIOSelector(self, value):
         """Sets IOSelector to the specified value.
 
@@ -1933,6 +2033,7 @@ class ATZylaDevice(ATBase):
             self.at.setEnumeratedString, Features.IOSelector, value
         )
 
+    @api
     def getLineScanSpeed(self):
         """Gets the current value of LineScanSpeed.
 
@@ -1943,6 +2044,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getFloat, Features.LineScanSpeed)
 
+    @api
     def getMaxInterfaceTransferRate(self):
         """Gets the current value of MaxInterfaceTransferRate.
 
@@ -1955,6 +2057,7 @@ class ATZylaDevice(ATBase):
             self.at.getFloat, Features.MaxInterfaceTransferRate
         )
 
+    @api
     def getMetadataEnable(self):
         """Gets the current value of MetadataEnable.
 
@@ -1965,6 +2068,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getBool, Features.MetadataEnable)
 
+    @api
     def setMetadataEnable(self, value):
         """Sets MetadataEnable to the specified value.
 
@@ -1975,6 +2079,7 @@ class ATZylaDevice(ATBase):
         """
         self._set_something_simple(self.at.setBool, Features.MetadataEnable, value)
 
+    @api
     def getMetadataTimestamp(self):
         """Gets the current value of MetadataTimestamp.
 
@@ -1985,6 +2090,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getBool, Features.MetadataTimestamp)
 
+    @api
     def setMetadataTimestamp(self, value):
         """Sets MetadataTimestamp to the specified value.
 
@@ -1995,6 +2101,7 @@ class ATZylaDevice(ATBase):
         """
         self._set_something_simple(self.at.setBool, Features.MetadataTimestamp, value)
 
+    @api
     def getMetadataFrame(self):
         """Gets the current value of MetadataFrame.
 
@@ -2005,6 +2112,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getBool, Features.MetadataFrame)
 
+    @api
     def getOverlap(self):
         """Gets the current value of Overlap.
 
@@ -2015,6 +2123,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getBool, Features.Overlap)
 
+    @api
     def setOverlap(self, value):
         """Sets Overlap to the specified value.
 
@@ -2025,6 +2134,7 @@ class ATZylaDevice(ATBase):
         """
         self._set_something_simple(self.at.setBool, Features.Overlap, value)
 
+    @api
     def getPixelEncoding(self):
         """Gets the current value of PixelEncoding.
 
@@ -2038,6 +2148,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.PixelEncoding, index
         )
 
+    @api
     def getPixelEncodingValues(self):
         """Gets the possible values of PixelEncoding.
 
@@ -2056,6 +2167,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def setPixelEncoding(self, value):
         """Sets PixelEncoding to the specified value.
 
@@ -2076,6 +2188,7 @@ class ATZylaDevice(ATBase):
             self.at.setEnumeratedString, Features.PixelEncoding, value
         )
 
+    @api
     def getPixelHeight(self):
         """Gets the current value of PixelHeight.
 
@@ -2086,6 +2199,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getFloat, Features.PixelHeight)
 
+    @api
     def getPixelReadoutRate(self):
         """Gets the current value of PixelReadoutRate.
 
@@ -2101,6 +2215,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.PixelReadoutRate, index
         )
 
+    @api
     def getPixelReadoutRateValues(self):
         """Gets the possible values of PixelReadoutRate.
 
@@ -2121,6 +2236,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def setPixelReadoutRate(self, value):
         """Sets PixelReadoutRate to the specified value.
 
@@ -2141,6 +2257,7 @@ class ATZylaDevice(ATBase):
             self.at.setEnumeratedString, Features.PixelReadoutRate, value
         )
 
+    @api
     def getPixelWidth(self):
         """Gets the current value of PixelWidth.
 
@@ -2151,6 +2268,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getFloat, Features.PixelWidth)
 
+    @api
     def getReadoutTime(self):
         """Gets the current value of ReadoutTime.
 
@@ -2161,6 +2279,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getFloat, Features.ReadoutTime)
 
+    @api
     def getRowReadTime(self):
         """Gets the current value of RowReadTime.
 
@@ -2171,6 +2290,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getFloat, Features.RowReadTime)
 
+    @api
     def getSensorCooling(self):
         """Gets the current value of SensorCooling.
 
@@ -2191,6 +2311,7 @@ class ATZylaDevice(ATBase):
         """
         self._set_something_simple(self.at.setBool, Features.SensorCooling, value)
 
+    @api
     def getSensorHeight(self):
         """Gets the current value of SensorHeight.
 
@@ -2201,6 +2322,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.SensorHeight)
 
+    @api
     def getSensorTemperature(self):
         """Gets the current value of SensorTemperature.
 
@@ -2211,6 +2333,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getFloat, Features.SensorTemperature)
 
+    @api
     def getSensorWidth(self):
         """Gets the current value of SensorWidth.
 
@@ -2221,6 +2344,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.SensorWidth)
 
+    @api
     def getSerialNumber(self):
         """Gets the current value of SerialNumber.
 
@@ -2231,6 +2355,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getString, Features.SerialNumber)
 
+    @api
     def getShutterOutputMode(self):
         """Gets the current value of ShutterOutputMode.
 
@@ -2246,6 +2371,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.ShutterOutputMode, index
         )
 
+    @api
     def getShutterOutputModeValues(self):
         """Gets the possible values of ShutterOutputMode.
 
@@ -2266,6 +2392,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def setShutterOutputMode(self, value):
         """Sets ShutterOutputMode to the specified value.
 
@@ -2286,6 +2413,7 @@ class ATZylaDevice(ATBase):
             self.at.setEnumeratedString, Features.ShutterOutputMode, value
         )
 
+    @api
     def getSimplePreAmpGainControl(self):
         """Gets the current value of SimplePreAmpGainControl.
 
@@ -2301,6 +2429,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.SimplePreAmpGainControl, index
         )
 
+    @api
     def getSimplePreAmpGainControlValues(self):
         """Gets the possible values of SimplePreAmpGainControl.
 
@@ -2321,6 +2450,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def setSimplePreAmpGainControl(self, value):
         """Sets SimplePreAmpGainControl to the specified value.
 
@@ -2341,6 +2471,7 @@ class ATZylaDevice(ATBase):
             self.at.setEnumeratedString, Features.SimplePreAmpGainControl, value
         )
 
+    @api
     def getShutterTransferTime(self):
         """Gets the current value of ShutterTransferTime.
 
@@ -2351,6 +2482,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getFloat, Features.ShutterTransferTime)
 
+    @api
     def setShutterTransferTime(self, value):
         """Sets ShutterTransferTime to the specified value.
 
@@ -2375,10 +2507,12 @@ class ATZylaDevice(ATBase):
             )
         self._set_something_simple(self.at.setFloat, Features.ShutterTransferTime, value)
 
+    @api
     def cmdSoftwareTrigger(self):
         """Send the SoftwareTrigger command."""
         self._send_command(Features.SoftwareTrigger)
 
+    @api
     def getStaticBlemishCorrection(self):
         """Gets the current value of StaticBlemishCorrection.
 
@@ -2391,6 +2525,7 @@ class ATZylaDevice(ATBase):
             self.at.getBool, Features.StaticBlemishCorrection
         )
 
+    @api
     def setStaticBlemishCorrection(self, value):
         """Sets StaticBlemishCorrection to the specified value.
 
@@ -2403,6 +2538,7 @@ class ATZylaDevice(ATBase):
             self.at.setBool, Features.StaticBlemishCorrection, value
         )
 
+    @api
     def getSpuriousNoiseFilter(self):
         """Gets the current value of SpuriousNoiseFilter.
 
@@ -2413,6 +2549,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getBool, Features.SpuriousNoiseFilter)
 
+    @api
     def setSpuriousNoiseFilter(self, value):
         """Sets SpuriousNoiseFilter to the specified value.
 
@@ -2423,6 +2560,7 @@ class ATZylaDevice(ATBase):
         """
         self._set_something_simple(self.at.setBool, Features.SpuriousNoiseFilter, value)
 
+    @api
     def getTargetSensorTemperature(self):
         """Gets the current value of TargetSensorTemperature.
 
@@ -2435,6 +2573,7 @@ class ATZylaDevice(ATBase):
             self.at.getFloat, Features.TargetSensorTemperature
         )
 
+    @api
     def getTemperatureControl(self):
         """Gets the current value of TemperatureControl.
 
@@ -2450,6 +2589,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.TemperatureControl, index
         )
 
+    @api
     def getTemperatureControlValues(self):
         """Gets the possible values of TemperatureControl.
 
@@ -2470,6 +2610,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def getTemperatureStatus(self):
         """Gets the current value of TemperatureStatus.
 
@@ -2485,6 +2626,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.TemperatureStatus, index
         )
 
+    @api
     def getTemperatureStatusValues(self):
         """Gets the possible values of TemperatureStatus.
 
@@ -2505,6 +2647,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def getTimestampClock(self):
         """Gets the current value of TimestampClock.
 
@@ -2515,6 +2658,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getInt, Features.TimestampClock)
 
+    @api
     def getTimestampClockFrequency(self):
         """Gets the current value of TimestampClockFrequency.
 
@@ -2527,6 +2671,7 @@ class ATZylaDevice(ATBase):
             self.at.getInt, Features.TimestampClockFrequency
         )
 
+    @api
     def getTriggerMode(self):
         """Gets the current value of TriggerMode.
 
@@ -2540,6 +2685,7 @@ class ATZylaDevice(ATBase):
             self.at.getEnumStringByIndex, Features.TriggerMode, index
         )
 
+    @api
     def getTriggerModeValues(self):
         """Gets the possible values of TriggerMode.
 
@@ -2558,6 +2704,7 @@ class ATZylaDevice(ATBase):
             )
         return values
 
+    @api
     def setTriggerMode(self, value):
         """Sets TriggerMode to the specified value.
 
@@ -2578,6 +2725,7 @@ class ATZylaDevice(ATBase):
             self.at.setEnumeratedString, Features.TriggerMode, value
         )
 
+    @api
     def getVerticallyCentreAOI(self):
         """Gets the current value of VerticallyCentreAOI.
 
@@ -2588,6 +2736,7 @@ class ATZylaDevice(ATBase):
         """
         return self._get_something_simple(self.at.getBool, Features.VerticallyCentreAOI)
 
+    @api
     def setVerticallyCentreAOI(self, value):
         """Sets VerticallyCentreAOI to the specified value.
 
@@ -2598,6 +2747,7 @@ class ATZylaDevice(ATBase):
         """
         self._set_something_simple(self.at.setBool, Features.VerticallyCentreAOI, value)
 
+    @api
     def queueBuffer(self):
         """Adds a data buffer to the internal driver queue.
 
@@ -2608,9 +2758,10 @@ class ATZylaDevice(ATBase):
         """
         self._assert_handle()
         result, buffer = self.at.queueBuffer(self.handle, self.getImageSizeBytes())
-        self._raiseIfBad(result)
+        self._raise_if_bad(result)
         return buffer
 
+    @api
     def waitBuffer(self, buffer, timeout=60000):
         """Waits for a data buffer to be populated during image acquisition.
 
@@ -2627,14 +2778,14 @@ class ATZylaDevice(ATBase):
             The number of bytes populated in the buffer."""
         self._assert_handle()
         result, bytesPopulated = self.at.waitBuffer(self.handle, buffer, timeout)
-        self._raiseIfBad(result)
+        self._raise_if_bad(result)
         return bytesPopulated
 
     def flush(self):
         """Flushes the current data buffer queue."""
         self._assert_handle()
         result = self.at.flush(self.handle)
-        self._raiseIfBad(result)
+        self._raise_if_bad(result)
 
     def take(self, frame_count):
         self.flush()
@@ -2657,24 +2808,24 @@ class ATZylaDevice(ATBase):
     def _set_something_simple(self, action, feature, value):
         self._assert_handle()
         result = action(self.handle, feature, value)
-        self._raiseIfBad(result)
+        self._raise_if_bad(result)
 
     def _get_something_simple(self, action, feature):
         self._assert_handle()
         result, something = action(self.handle, feature)
-        self._raiseIfBad(result)
+        self._raise_if_bad(result)
         return something
 
     def _get_something_with_index(self, action, feature, index):
         self._assert_handle()
         result, something = action(self.handle, feature, index)
-        self._raiseIfBad(result)
+        self._raise_if_bad(result)
         return something
 
     def _send_command(self, feature):
         self._assert_handle()
         result = self.at.command(self.handle, feature)
-        self._raiseIfBad(result)
+        self._raise_if_bad(result)
 
     def _assert_handle(self):
         if self.handle == -1:
