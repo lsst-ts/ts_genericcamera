@@ -69,6 +69,7 @@ properties:
           - Andor
           - Zwo
           - Canon
+          - AlliedVision
         auto_exposure_interval:
           description: The interval [sec] at which exposures are taken in auto exposure mode.
           type: number

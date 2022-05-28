@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from .basecamera import *
+from .alliedvisioncamera import *
 from .andorcamera import *
 from .canoncamera import *
 from .simulatorcamera import *
