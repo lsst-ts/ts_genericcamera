@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from time import time
 import vimba
 import yaml
 
@@ -46,8 +45,8 @@ class AlliedVisionCamera(basecamera.BaseCamera):
         self.is_live_exposure = False
 
         self.tags = FitsHeaderItemsGenerator().generate_fits_header_items(
-                        FitsHeaderTemplate.STARTRACKER
-                    )
+            FitsHeaderTemplate.STARTRACKER
+        )
         self.log.debug(f"Tags: {self.tags}")
 
     @staticmethod
@@ -74,7 +73,9 @@ class AlliedVisionCamera(basecamera.BaseCamera):
                     while not self.camera.GVSPAdjustPacketSize.is_done():
                         pass
                 except (AttributeError, vimba.VimbaFeatureError):
-                    self.log.warning("Camera is not GigE or packet size adjustment failed.")
+                    self.log.warning(
+                        "Camera is not GigE or packet size adjustment failed."
+                    )
                 # Try to enable ChunkMode
                 try:
                     self.camera.ChunkModeActive.set(True)
@@ -153,7 +154,9 @@ properties:
         """Sets the region of interest to the whole sensor."""
         with vimba.Vimba.get_instance():
             with self.camera:
-                self.set_roi(0, 0, self.camera.WidthMax.get(), self.camera.HeightMax.get())
+                self.set_roi(
+                    0, 0, self.camera.WidthMax.get(), self.camera.HeightMax.get()
+                )
 
     def start_live_view(self):
         """Configure the camera for live view.
@@ -203,36 +206,24 @@ properties:
                     self.camera.ExposureTimeAbs.set(self.exposure_time * MICROSECONDS)
         await super().start_take_image(exp_time, shutter, science, guide, wfs)
 
-    # async def start_integration(self):
-    #     """Start integrating."""
-    #     with vimba.Vimba.get_instance():
-    #         with self.camera:
-    #             self.camera.AcquisitionStart.run()
-    #     await super().start_integration()
-
-    # async def end_integration(self):
-    #     """End integration.
-
-    #     This should wait for the integration period to complete."""
-    #     with vimba.Vimba.get_instance():
-    #         with self.camera:
-    #             self.camera.AcquisitionStop.run()
-    #     await super().end_integration()
-
     async def end_readout(self):
         """Start reading out the image."""
-        with vimba.Vimba.get_instance() as v:
+        with vimba.Vimba.get_instance():
             # v.enable_log(vimba.LOG_CONFIG_INFO)
             with self.camera:
                 timeout = int(self.exposure_time + 2)
                 self.log.info(f"Exposure timeout = {timeout} seconds")
-                frame = self.camera.get_frame(timeout_ms=timeout*MILLISECONDS)
+                frame = self.camera.get_frame(timeout_ms=timeout * MILLISECONDS)
                 buffer_array = frame.as_numpy_ndarray()
                 anc_data = frame.get_ancillary_data()
                 if anc_data:
                     with anc_data:
-                        actual_exp_time = anc_data.get_feature_by_name("ChunkExposureTime").get()
-                self.log.info(f"Actual Exposure Time: {actual_exp_time / MICROSECONDS} seconds")
+                        actual_exp_time = anc_data.get_feature_by_name(
+                            "ChunkExposureTime"
+                        ).get()
+                self.log.info(
+                    f"Actual Exposure Time: {actual_exp_time / MICROSECONDS} seconds"
+                )
         top, left, width, height = self.get_roi()
 
         self.get_tag(name="TOP").value = top
