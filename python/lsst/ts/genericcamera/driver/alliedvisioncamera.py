@@ -19,6 +19,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import asyncio
+import concurrent.futures
+import functools
+
 import vimba
 import yaml
 
@@ -41,8 +45,10 @@ class AlliedVisionCamera(basecamera.BaseCamera):
         self.camera = None
         self.frame = None
         self.exposure_time = None
-        self.done_init = False
         self.is_live_exposure = False
+        self.liveview_use_autoexposure = True
+        self.loop = asyncio.get_running_loop()
+        self.executor = concurrent.futures.ThreadPoolExecutor()
 
         self.tags = FitsHeaderItemsGenerator().generate_fits_header_items(
             FitsHeaderTemplate.STARTRACKER
@@ -62,6 +68,7 @@ class AlliedVisionCamera(basecamera.BaseCamera):
         config : str
             The name of the configuration file to load."""
         self.id = config.config["id"]
+        self.liveview_use_autoexposure = config.config["liveview_use_autoexposure"]
 
         with vimba.Vimba.get_instance() as v:
             self.camera = v.get_camera_by_id(self.id)
@@ -93,10 +100,10 @@ properties:
     default: DEV
     type: string
     description: The ID of the camera to be set in the FITS header.
-  bin_value:
-    default: 1
-    type: number
-    description: The value for how to bin the image pixels.
+  liveview_use_autoexposure:
+    default: true
+    type: boolean
+    description: Flag to set if live view uses autoexposure or exposure time from takeImages.
 """
         )
 
@@ -182,6 +189,14 @@ properties:
                 self.camera.set_pixel_format(vimba.PixelFormat.Mono12)
         super().stop_live_view()
 
+    def _set_camera_exposure_time(self):
+        with vimba.Vimba.get_instance():
+            with self.camera:
+                if not self.is_live_exposure or not self.liveview_use_autoexposure:
+                    self.log.info("Setting camera exposure time")
+                    self.camera.ExposureAuto.set("Off")
+                    self.camera.ExposureTimeAbs.set(self.exposure_time * MICROSECONDS)
+
     async def start_take_image(self, exp_time, shutter, science, guide, wfs):
         """Start taking an image or a set of images.
 
@@ -199,11 +214,7 @@ properties:
             Should wave front sensor be used?
         """
         self.exposure_time = exp_time
-        with vimba.Vimba.get_instance():
-            with self.camera:
-                if not self.is_live_exposure:
-                    self.camera.ExposureAuto.set("Off")
-                    self.camera.ExposureTimeAbs.set(self.exposure_time * MICROSECONDS)
+        await self.loop.run_in_executor(self.executor, self._set_camera_exposure_time)
         await super().start_take_image(exp_time, shutter, science, guide, wfs)
 
     async def end_readout(self):
@@ -211,27 +222,40 @@ properties:
         with vimba.Vimba.get_instance():
             # v.enable_log(vimba.LOG_CONFIG_INFO)
             with self.camera:
-                timeout = int(self.exposure_time + 2)
-                self.log.info(f"Exposure timeout = {timeout} seconds")
-                frame = self.camera.get_frame(timeout_ms=timeout * MILLISECONDS)
+                if self.liveview_use_autoexposure:
+                    timeout = int(
+                        (self.camera.ExposureTimeAbs.get() / MILLISECONDS)
+                        + 2 * MILLISECONDS
+                    )
+                else:
+                    timeout = int(self.exposure_time + 2) * MILLISECONDS
+                self.log.debug(f"Exposure timeout = {timeout} ms")
+                frame = await self.loop.run_in_executor(
+                    self.executor,
+                    functools.partial(self.camera.get_frame, timeout_ms=timeout),
+                )
+                await super().start_readout()
+                self.log.info("Starting buffer conversion")
                 buffer_array = frame.as_numpy_ndarray()
+                self.log.info("Finished converting buffer")
                 anc_data = frame.get_ancillary_data()
                 if anc_data:
                     with anc_data:
                         actual_exp_time = anc_data.get_feature_by_name(
                             "ChunkExposureTime"
                         ).get()
-                self.log.info(
+                self.log.debug(
                     f"Actual Exposure Time: {actual_exp_time / MICROSECONDS} seconds"
                 )
+                self.log.info("Finished gettins ancillary data")
         top, left, width, height = self.get_roi()
-
+        self.log.info("Finished getting ROI info")
         self.get_tag(name="TOP").value = top
         self.get_tag(name="LEFT").value = left
         self.get_tag(name="WIDTH").value = width
         self.get_tag(name="HEIGHT").value = height
         self.get_tag(name="EXPTIME").value = actual_exp_time / MICROSECONDS
-
-        await super().start_readout()
+        self.log.info("Finished setting header tags")
         image = exposure.Exposure(buffer_array, width, height, self.tags)
+        self.log.info("Finished creating exposure")
         return image
