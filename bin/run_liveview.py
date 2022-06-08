@@ -21,9 +21,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
-import sys
-
 from lsst.ts.genericcamera.liveview.liveview_server import main
 
 main()

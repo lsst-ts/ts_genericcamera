@@ -36,6 +36,7 @@ from PIL import Image
 
 from lsst.ts.genericcamera import AsyncLiveViewClient
 
+
 def main():
 
     parser = argparse.ArgumentParser(description="Start the PyImageStream server.")
@@ -49,9 +50,7 @@ def main():
     )
     parser.add_argument("--c-host", default="0.0.0.0", type=str, help="Host")
 
-
     args = parser.parse_args()
-
 
     class Camera:
         def __init__(self, host, port):
@@ -60,29 +59,27 @@ def main():
             self.event_loop = asyncio.get_event_loop()
             self.event_loop.run_until_complete(self.client.start())
 
-
         async def get_jpeg_image_bytes(self):
-            exposure =  await self.client.receive_exposure()
+            exposure = await self.client.receive_exposure()
             print("got Exposure!")
             as8 = exposure.buffer.astype(np.uint8)
             pimg = Image.fromarray(as8.reshape(exposure.height, exposure.width))
             pimg.save("/tmp/foo.jpeg")
             return "/tmp/foo.jpeg"
 
-
     camera = Camera(args.c_host, args.c_port)
-
 
     class MJPEGHandler(tornado.web.RequestHandler):
         async def get(self):
-            ioloop = tornado.ioloop.IOLoop.current()
+            # ioloop = tornado.ioloop.IOLoop.current()
             self.set_header(
                 "Cache-Control",
                 "no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0",
             )
             self.set_header("Connection", "close")
             self.set_header(
-                "Content-Type", "multipart/x-mixed-replace;boundary=--boundarydonotcross"
+                "Content-Type",
+                "multipart/x-mixed-replace;boundary=--boundarydonotcross",
             )
             self.set_header("Expires", "Mon, 3 Jan 2000 12:34:56 GMT")
             self.set_header("Pragma", "no-cache")
@@ -101,8 +98,8 @@ def main():
                     await self.flush()
                 else:
                     pass
-                    # This doesn't work without a callback and self.get causes weird
-                    # things to happen.
+                    # This doesn't work without a callback and self.get causes
+                    # weird things to happen.
                     # ioloop.add_timeout(ioloop.time() + interval, self.get)
 
     script_path = os.path.dirname(os.path.realpath(__file__))
