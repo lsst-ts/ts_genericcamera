@@ -10,6 +10,9 @@ source:
 build:
   noarch: generic
   script: python -m pip install --no-deps --ignore-installed .
+  entry_points:
+    - run_genericcamera = lsst.ts.genericcamera.genericcameracsc:run_genericcamera
+    - run_liveviewui = lsst.ts.genericcamera.liveview.liveviewui:run_liveviewui
   script_env:
     - PATH
     - PYTHONPATH
