@@ -6,6 +6,17 @@
 Version History
 ###############
 
+v0.6.0
+======
+
+* Switch to pyproject.toml.
+
+Requires:
+
+* ts_salobj 7
+* ts_idl 4.0
+* IDL file for GenericCamera from ts_xml 12
+
 v0.5.0
 ======
 

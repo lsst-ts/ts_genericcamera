@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["main", "EUI"]
+__all__ = ["EUI", "run_liveviewui"]
 
 import os
 
@@ -52,6 +52,10 @@ from lsst.ts.salobj import Remote, Domain
 from lsst.ts.genericcamera import version
 
 os.environ["PYQTGRAPH_QT_LIB"] = "PySide2"
+
+
+def run_liveviewui():
+    main(sys.argv)
 
 
 class EUI(QDialog):
