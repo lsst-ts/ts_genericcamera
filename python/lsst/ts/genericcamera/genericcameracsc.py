@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["GenericCameraCsc"]
+__all__ = ["GenericCameraCsc", "run_genericcamera"]
 
 import asyncio
 import inspect
@@ -51,6 +51,10 @@ AE_ERROR = 2000
 """Error code for when the auto exposure loop dies and the CSC is in
 enable state.
 """
+
+
+def run_genericcamera():
+    asyncio.run(GenericCameraCsc.amain(index=True))
 
 
 class GenericCameraCsc(salobj.ConfigurableCsc):
