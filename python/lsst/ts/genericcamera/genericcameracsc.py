@@ -52,6 +52,14 @@ AE_ERROR = 2000
 enable state.
 """
 
+DEFAULT_SHUTTER_TIME = 1
+"""The assumed total shutter open and close time (seconds) for calculating the
+IN_PROGRESS ack timeout."""
+
+DEFAULT_READOUT_TIME = 1
+"""The assumed readout time (seconds) for calculating the IN_PROGRESS ack
+timeout."""
+
 
 def run_genericcamera():
     asyncio.run(GenericCameraCsc.amain(index=True))
@@ -85,6 +93,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         )
         ch.setFormatter(logging.Formatter(console_format))
         self.log.addHandler(ch)
+
+        logging.getLogger("asyncio").setLevel(logging.DEBUG)
 
         # Create dictionary of camera options.
         self.drivers = {}
@@ -349,6 +359,19 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             images_in_sequence = id_data.numImages
             exposure_time = id_data.expTime
             time_stamp = time.time()
+
+            # Calculate expected time for IN_PROGRESS ack
+            SHUTTER_TIME = (
+                images_in_sequence * DEFAULT_SHUTTER_TIME if id_data.shutter else 0
+            )
+            EXPOSURE_TIME = images_in_sequence * exposure_time
+            READOUT_TIME = images_in_sequence * DEFAULT_READOUT_TIME
+            EXPECTED_TIMEOUT = EXPOSURE_TIME + SHUTTER_TIME + READOUT_TIME
+            self.log.debug(f"In progress timeout: {EXPECTED_TIMEOUT} seconds")
+
+            await self.cmd_takeImages.ack_in_progress(
+                data=id_data, timeout=EXPECTED_TIMEOUT
+            )
 
             await self.evt_startTakeImage.write()
             await self.camera.start_take_image(
