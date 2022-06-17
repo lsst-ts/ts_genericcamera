@@ -190,10 +190,11 @@ properties:
         super().stop_live_view()
 
     def _set_camera_exposure_time(self):
+        """Set the exposure time on the camera."""
         with vimba.Vimba.get_instance():
             with self.camera:
                 if not self.is_live_exposure or not self.liveview_use_autoexposure:
-                    self.log.info("Setting camera exposure time")
+                    self.log.debug("Setting camera exposure time")
                     self.camera.ExposureAuto.set("Off")
                     self.camera.ExposureTimeAbs.set(self.exposure_time * MICROSECONDS)
 
@@ -217,8 +218,14 @@ properties:
         await self.loop.run_in_executor(self.executor, self._set_camera_exposure_time)
         await super().start_take_image(exp_time, shutter, science, guide, wfs)
 
-    async def end_readout(self):
-        """Start reading out the image."""
+    def _get_frame(self):
+        """Wait for the frame to arrive from the camera.
+
+        Returns
+        -------
+        Vimba.Frame
+            The frame captured from the camera.
+        """
         with vimba.Vimba.get_instance():
             # v.enable_log(vimba.LOG_CONFIG_INFO)
             with self.camera:
@@ -230,32 +237,59 @@ properties:
                 else:
                     timeout = int(self.exposure_time + 2) * MILLISECONDS
                 self.log.debug(f"Exposure timeout = {timeout} ms")
-                frame = await self.loop.run_in_executor(
-                    self.executor,
-                    functools.partial(self.camera.get_frame, timeout_ms=timeout),
-                )
-                await super().start_readout()
-                self.log.info("Starting buffer conversion")
-                buffer_array = frame.as_numpy_ndarray()
-                self.log.info("Finished converting buffer")
-                anc_data = frame.get_ancillary_data()
-                if anc_data:
-                    with anc_data:
-                        actual_exp_time = anc_data.get_feature_by_name(
-                            "ChunkExposureTime"
-                        ).get()
-                self.log.debug(
-                    f"Actual Exposure Time: {actual_exp_time / MICROSECONDS} seconds"
-                )
-                self.log.info("Finished gettins ancillary data")
-        top, left, width, height = self.get_roi()
-        self.log.info("Finished getting ROI info")
+                frame = self.camera.get_frame(timeout_ms=timeout)
+        return frame
+
+    def _get_buffer_and_ancillary_data(self, frame):
+        """Convert the frame and get the real exposure time.
+
+        Parameters
+        ----------
+        frame : Vimba.Frame
+            The frame from the camera.
+
+        Returns
+        -------
+        numpy.ndarray
+            The converted camera frame.
+        float
+            The actual frame exposure time.
+        """
+        with vimba.Vimba.get_instance():
+            self.log.debug("Starting buffer conversion")
+            buffer_array = frame.as_numpy_ndarray()
+            self.log.debug("Finished converting buffer")
+            anc_data = frame.get_ancillary_data()
+            if anc_data:
+                with anc_data:
+                    actual_exp_time = anc_data.get_feature_by_name(
+                        "ChunkExposureTime"
+                    ).get()
+            self.log.debug(
+                f"Actual Exposure Time: {actual_exp_time / MICROSECONDS} seconds"
+            )
+            self.log.debug("Finished getting ancillary data")
+        return buffer_array, actual_exp_time
+
+    async def end_readout(self):
+        """Start reading out the image."""
+        self.log.debug("Start end_readout")
+        frame = await self.loop.run_in_executor(self.executor, self._get_frame)
+        await super().start_readout()
+        buffer_array, actual_exp_time = await self.loop.run_in_executor(
+            self.executor,
+            functools.partial(self._get_buffer_and_ancillary_data, frame),
+        )
+        top, left, width, height = await self.loop.run_in_executor(
+            self.executor, self.get_roi
+        )
+        self.log.debug("Finished getting ROI info")
         self.get_tag(name="TOP").value = top
         self.get_tag(name="LEFT").value = left
         self.get_tag(name="WIDTH").value = width
         self.get_tag(name="HEIGHT").value = height
         self.get_tag(name="EXPTIME").value = actual_exp_time / MICROSECONDS
-        self.log.info("Finished setting header tags")
+        self.log.debug("Finished setting header tags")
         image = exposure.Exposure(buffer_array, width, height, self.tags)
-        self.log.info("Finished creating exposure")
+        self.log.debug("Finished creating exposure")
         return image
