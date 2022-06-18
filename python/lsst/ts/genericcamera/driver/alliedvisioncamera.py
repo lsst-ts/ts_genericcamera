@@ -47,6 +47,7 @@ class AlliedVisionCamera(basecamera.BaseCamera):
         self.exposure_time = None
         self.is_live_exposure = False
         self.liveview_use_autoexposure = True
+        self.normal_image_type = None
         self.loop = asyncio.get_running_loop()
         self.executor = concurrent.futures.ThreadPoolExecutor()
 
@@ -69,6 +70,7 @@ class AlliedVisionCamera(basecamera.BaseCamera):
             The name of the configuration file to load."""
         self.id = config.config["id"]
         self.liveview_use_autoexposure = config.config["liveview_use_autoexposure"]
+        self.normal_image_type = getattr(vimba.PixelFormat, config.config["image_type"])
 
         with vimba.Vimba.get_instance() as v:
             self.camera = v.get_camera_by_id(self.id)
@@ -104,6 +106,11 @@ properties:
     default: true
     type: boolean
     description: Flag to set if live view uses autoexposure or exposure time from takeImages.
+  image_type:
+    type: string
+    description: >
+      The image type to store. This usually provides information about the
+      pixel depth.
 """
         )
 
@@ -186,7 +193,7 @@ properties:
         self.is_live_exposure = False
         with vimba.Vimba.get_instance():
             with self.camera:
-                self.camera.set_pixel_format(vimba.PixelFormat.Mono12)
+                self.camera.set_pixel_format(self.normal_image_type)
         super().stop_live_view()
 
     def _set_camera_exposure_time(self):
@@ -258,7 +265,7 @@ properties:
         with vimba.Vimba.get_instance():
             self.log.debug("Starting buffer conversion")
             buffer_array = frame.as_numpy_ndarray()
-            self.log.debug("Finished converting buffer")
+            self.log.debug(f"Finished converting buffer to {buffer_array.dtype}")
             anc_data = frame.get_ancillary_data()
             if anc_data:
                 with anc_data:
