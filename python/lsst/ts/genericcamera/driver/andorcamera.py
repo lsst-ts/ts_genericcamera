@@ -988,7 +988,7 @@ class ATError(Exception):
         return self.result.name
 
 
-class ATLibraryNotInitialised(Exception):
+class ATLibraryNotInitialisedError(Exception):
     def __init__(self):
         super().__init__()
 
@@ -1027,14 +1027,14 @@ class ATLibrary(ATBase):
 
     def get_device_count(self):
         if not self.initialised:
-            raise ATLibraryNotInitialised()
+            raise ATLibraryNotInitialisedError()
         result, device_count = self.at.get_int(1, Features.DeviceCount)
         self._raise_if_bad(result)
         return device_count
 
     def open_zyla(self, camera_index):
         if not self.initialised:
-            raise ATLibraryNotInitialised()
+            raise ATLibraryNotInitialisedError()
         device = ATZylaDevice(camera_index, self.at)
         return device
 

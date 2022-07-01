@@ -265,7 +265,7 @@ properties:
             await asyncio.sleep(0.02)
             result = self.dev.get_exposure_status()
         if result == ASIExposureStatus.Failed:
-            raise ASIImageFailed()
+            raise ASIImageFailedError()
         await super().end_integration()
 
     async def end_readout(self):
@@ -977,7 +977,7 @@ class ASIError(Exception):
         return self.result.name
 
 
-class ASILibraryNotInitialised(Exception):
+class ASILibraryNotInitialisedError(Exception):
     def __init__(self):
         super().__init__()
 
@@ -987,7 +987,7 @@ class ASIDeviceNotOpenError(Exception):
         super().__init__()
 
 
-class ASIImageFailed(Exception):
+class ASIImageFailedError(Exception):
     def __init__(self):
         super().__init__()
 
@@ -1083,7 +1083,7 @@ class ASILibrary(ASIBase):
 
     def _assert_initialised(self):
         if not self.initialised:
-            raise ASILibraryNotInitialised()
+            raise ASILibraryNotInitialisedError()
 
 
 class ASIDevice(ASIBase):

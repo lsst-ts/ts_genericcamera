@@ -135,7 +135,7 @@ class EFWError(Exception):
         return self.result.name
 
 
-class EFWLibraryNotInitialised(Exception):
+class EFWLibraryNotInitialisedError(Exception):
     def __init__(self):
         super().__init__()
 
@@ -176,7 +176,7 @@ class EFWLibrary(EFWBase):
         int
             The number of filter wheels attached to this machine."""
         if not self.initialised:
-            raise EFWLibraryNotInitialised()
+            raise EFWLibraryNotInitialisedError()
         device_count = self.efw.get_number_of_devices()
         return device_count
 
@@ -189,7 +189,7 @@ class EFWLibrary(EFWBase):
         int list
             The product IDs of the filter wheels attached to this machine."""
         if not self.initialised:
-            raise EFWLibraryNotInitialised()
+            raise EFWLibraryNotInitialisedError()
         product_IDs = self.efw.get_productIDs()
         return product_IDs
 
@@ -206,7 +206,7 @@ class EFWLibrary(EFWBase):
         EFWDevice
             The filter wheel device."""
         if not self.initialised:
-            raise EFWLibraryNotInitialised()
+            raise EFWLibraryNotInitialisedError()
         device = EFWDevice(index, self.efw)
         return device
 
