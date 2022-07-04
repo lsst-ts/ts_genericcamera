@@ -76,9 +76,9 @@ class EUI(QDialog):
 
         layout = QHBoxLayout()
         self.start_live_view_button = QPushButton("Start Live")
-        self.start_live_view_button.clicked.connect(self.startLiveView)
+        self.start_live_view_button.clicked.connect(self.start_live_view)
         self.stop_live_view_button = QPushButton("Stop Live")
-        self.stop_live_view_button.clicked.connect(self.stopLiveView)
+        self.stop_live_view_button.clicked.connect(self.stop_live_view)
         layout.addWidget(self.start_live_view_button)
         layout.addWidget(self.stop_live_view_button)
         self.controls_layout.addLayout(layout)
@@ -199,23 +199,23 @@ class EUI(QDialog):
             traceback.format_exc(e)
             pass
 
-    def startLiveView(self):
-        print("startLiveView - Start")
+    def start_live_view(self):
+        print("start_live_view - Start")
         # data = self.sal.cmd_startLiveView.DataType()
         # data.expTime = self.exposure_time_edit.value()
         # asyncio.get_event_loop().run_until_complete(
         #     self.sal.cmd_startLiveView.start(data, timeout=10.0)
         # )
         self.sal.issueCommand_startLiveView(self.exposure_time_edit.value())
-        print("startLiveView - End")
+        print("start_live_view - End")
 
-    def stopLiveView(self):
-        print("stopLiveView - Start")
+    def stop_live_view(self):
+        print("stop_live_view - Start")
         # asyncio.get_event_loop().run_until_complete(
         #     self.sal.cmd_stopLiveView.start(
         # self.sal.cmd_stopLiveView.DataType(), timeout=10.0))
         self.sal.issueCommand_stopLiveView(True)
-        print("stopLiveView - End")
+        print("stop_live_view - End")
 
     def set_roi(self):
         print("set_roi - Start")

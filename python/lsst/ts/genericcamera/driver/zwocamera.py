@@ -37,7 +37,7 @@ class ASICamera(basecamera.BaseCamera):
         super().__init__(log=log)
 
         self.lib = ASILibrary()
-        self.lib.initialiseLibrary()
+        self.lib.initialise()
         self.is_live_exposure = False
         self.id = 0
         self.bin_value = 0
@@ -66,7 +66,7 @@ class ASICamera(basecamera.BaseCamera):
         self.bin_value = config.bin_value
         self.normal_image_type = getattr(ASIImageType, config.current_image_type)
         self.current_image_type = self.normal_image_type
-        self.dev = self.lib.openASI(self.id)
+        self.dev = self.lib.open_ASI(self.id)
         self.set_full_frame()
 
         self.use_zwo_filter_wheel = config.use_zwo_filter_wheel
@@ -76,10 +76,10 @@ class ASICamera(basecamera.BaseCamera):
 
         if self.use_zwo_filter_wheel:
             self.zwo_lib = zwofilterwheel.EFWLibrary()
-            self.zwo_lib.initialiseLibrary()
-            self.zwo_dev = self.zwo_lib.openEFW(self.filter_id)
-            # self.zwo_dev.setPosition(self.filter_number)
-            self.filter_number = self.zwo_lib.getPosition(self.filter_id)
+            self.zwo_lib.initialise()
+            self.zwo_dev = self.zwo_lib.open_EFW(self.filter_id)
+            # self.zwo_dev.set_position(self.filter_number)
+            self.filter_number = self.zwo_lib.get_position(self.filter_id)
 
     def get_config_schema(self):
         return yaml.safe_load(
@@ -133,8 +133,8 @@ properties:
         -------
         str
             The make and model of the camera."""
-        info = self.dev.getCameraInfo()
-        return info.Name
+        info = self.dev.get_camera_info()
+        return info.name
 
     def get_value(self, key):
         """Gets the value of a unique property of the camera.
@@ -161,13 +161,13 @@ properties:
             The value of the property."""
         key = key.lower()
         if key == "filter" and self.use_zwo_filter_wheel:
-            self.zwo_dev.setPosition(int(value))
+            self.zwo_dev.set_position(int(value))
             self.filter_number = int(value)
-            while not self.zwo_dev.isInPosition():
+            while not self.zwo_dev.is_in_position():
                 await asyncio.sleep(0.02)
-        await super().setValue(key, value)
+        await super().set_value(key, value)
 
-    def get_roi(self):
+    def get_ROI(self):
         """Gets the region of interest.
 
         Returns
@@ -180,11 +180,11 @@ properties:
             The width of the region in pixels.
         int
             The height of the region in pixels."""
-        left, top = self.dev.getStartPosition()
-        width, height, binning, imgType = self.dev.getROI()
+        left, top = self.dev.get_start_position()
+        width, height, binning, img_type = self.dev.get_ROI()
         return top, left, width, height
 
-    def set_roi(self, top, left, width, height):
+    def set_ROI(self, top, left, width, height):
         """Sets the region of interest.
 
         Parameters
@@ -198,17 +198,17 @@ properties:
         height : int
             The height of the region in pixels."""
         print(width, height, self.bin_value, self.current_image_type)
-        self.dev.setROI(width, height, self.bin_value, self.current_image_type)
-        self.dev.setStartPosition(left, top)
+        self.dev.set_ROI(width, height, self.bin_value, self.current_image_type)
+        self.dev.set_start_position(left, top)
 
     def set_full_frame(self):
         """Sets the region of interest to the whole sensor."""
-        info = self.dev.getCameraInfo()
+        info = self.dev.get_camera_info()
         self.set_roi(
             0,
             0,
-            int(info.MaxWidth / self.bin_value),
-            int(info.MaxHeight / self.bin_value),
+            int(info.max_width / self.bin_value),
+            int(info.max_height / self.bin_value),
         )
 
     def start_live_view(self):
@@ -217,7 +217,7 @@ properties:
         This should change the image format to 8bits per pixel so
         the image can be encoded to JPEG."""
         # self.current_image_type = ASIImageType.Raw8
-        top, left, width, height = self.getROI()
+        top, left, width, height = self.get_ROI()
         self.set_roi(top, left, width, height)
         self.is_live_exposure = True
         super().start_live_view()
@@ -225,7 +225,7 @@ properties:
     def stop_live_view(self):
         """Configure the camera for a standard exposure."""
         self.current_image_type = self.normal_image_type
-        top, left, width, height = self.getROI()
+        top, left, width, height = self.get_ROI()
         self.set_roi(top, left, width, height)
         self.is_live_exposure = False
         super().stop_live_view()
@@ -246,43 +246,43 @@ properties:
         wfs : bool
             Should wave front sensor be used?
         """
-        self.dev.setControlValue(
+        self.dev.set_control_value(
             ASIControlType.Exposure, int(exp_time * 1000000), False
         )
         await super().start_take_image(exp_time, shutter, science, guide, wfs)
 
     async def start_integration(self):
         """Start integrating."""
-        self.dev.startExposure()
+        self.dev.start_exposure()
         await super().start_integration()
 
     async def end_integration(self):
         """End integration.
 
         This should wait for the integration period to complete."""
-        result = self.dev.getExposureStatus()
+        result = self.dev.get_exposure_status()
         while result == ASIExposureStatus.Working:
             await asyncio.sleep(0.02)
-            result = self.dev.getExposureStatus()
+            result = self.dev.get_exposure_status()
         if result == ASIExposureStatus.Failed:
-            raise ASIImageFailed()
+            raise ASIImageFailedError()
         await super().end_integration()
 
     async def end_readout(self):
         """Start reading out the image."""
-        buffer = self.dev.getExposureData()
+        buffer = self.dev.get_exposure_data()
         buffer_array = np.frombuffer(buffer, dtype=np.uint16)
-        exposure_time, auto = self.dev.getControlValue(ASIControlType.Exposure)
-        offset, auto = self.dev.getControlValue(ASIControlType.Offset)
-        temperature, auto = self.dev.getControlValue(ASIControlType.Temperature)
-        cooler_power_percentage, auto = self.dev.getControlValue(
+        exposure_time, auto = self.dev.get_control_value(ASIControlType.Exposure)
+        offset, auto = self.dev.get_control_value(ASIControlType.Offset)
+        temperature, auto = self.dev.get_control_value(ASIControlType.Temperature)
+        cooler_power_percentage, auto = self.dev.get_control_value(
             ASIControlType.CoolerPowerPercentage
         )
-        target_temperature, auto = self.dev.getControlValue(
+        target_temperature, auto = self.dev.get_control_value(
             ASIControlType.TargetTemperature
         )
-        cooler_on, auto = self.dev.getControlValue(ASIControlType.CoolerOn)
-        top, left, width, height = self.getROI()
+        cooler_on, auto = self.dev.get_control_value(ASIControlType.CoolerOn)
+        top, left, width, height = self.get_ROI()
         tags = {
             "TOP": top,
             "LEFT": left,
@@ -295,7 +295,7 @@ properties:
             "TARGET_TEMPERATURE": target_temperature,
             "COOLER_ON": cooler_on,
         }
-        await super().startReadout()
+        await super().start_readout()
         image = exposure.Exposure(buffer_array, width, height, tags)
         return image
 
@@ -364,28 +364,27 @@ class Results(enum.Enum):
 
 class ASICameraInfo:
     def __init__(self, info):
-        self.Name = info.Name.decode("ascii")
-        self.CameraID = int(info.CameraID)
-        self.MaxHeight = int(info.MaxHeight)
-        self.MaxWidth = int(info.MaxWidth)
-        self.IsColorCam = bool(info.IsColorCam)
-        self.BayerPattern = ASIBayerPattern(info.BayerPattern)
-        self.SupportedBins = [x for x in info.SupportedBins if x != 0]
-        videoFormats = []
+        self.name = info.Name.decode("ascii")
+        self.camera_ID = int(info.CameraID)
+        self.max_height = int(info.MaxHeight)
+        self.max_width = int(info.MaxWidth)
+        self.is_color_cam = bool(info.IsColorCam)
+        self.bayer_pattern = ASIBayerPattern(info.BayerPattern)
+        self.supported_bins = [x for x in info.SupportedBins if x != 0]
+        video_formats = []
         for x in info.SupportedVideoFormat:
             if x == -1:
                 break
-            videoFormats.append(ASIImageType(x))
-        self.SupportedVideoFormat = videoFormats
-        self.PixelSize = float(info.PixelSize)
-        self.MechanicalShutter = bool(info.MechanicalShutter)
-        self.ST4Port = bool(info.ST4Port)
-        self.IsColorCam = bool(info.IsColorCam)
-        self.IsUSB3Host = bool(info.IsUSB3Host)
-        self.IsUSB3Camera = bool(info.IsUSB3Camera)
-        self.ElecPerADU = float(info.ElecPerADU)
-        self.BitDepth = int(info.BitDepth)
-        self.IsTriggerCam = bool(info.IsTriggerCam)
+            video_formats.append(ASIImageType(x))
+        self.supported_video_format = video_formats
+        self.pixel_size = float(info.PixelSize)
+        self.mechanical_shutter = bool(info.MechanicalShutter)
+        self.ST4_port = bool(info.ST4Port)
+        self.is_USB3_host = bool(info.IsUSB3Host)
+        self.is_USB3_camera = bool(info.IsUSB3Camera)
+        self.elec_per_ADU = float(info.ElecPerADU)
+        self.bit_depth = int(info.BitDepth)
+        self.is_trigger_cam = bool(info.IsTriggerCam)
 
 
 # This class was taken from https://github.com/stevemarple/python-zwoasi
@@ -402,7 +401,6 @@ class ASICameraInfoCtypes(ctypes.Structure):
         ("PixelSize", ctypes.c_double),  # in um
         ("MechanicalShutter", ctypes.c_int),
         ("ST4Port", ctypes.c_int),
-        ("IsCoolerCam", ctypes.c_int),
         ("IsUSB3Host", ctypes.c_int),
         ("IsUSB3Camera", ctypes.c_int),
         ("ElecPerADU", ctypes.c_float),
@@ -439,14 +437,14 @@ class ASIControlType(enum.Enum):
 
 class ASIControlCaps:
     def __init__(self, caps):
-        self.Name = caps.Name.decode("ascii")
-        self.Description = caps.Description.decode("ascii")
-        self.MaxValue = int(caps.MaxValue)
-        self.MinValue = int(caps.MinValue)
-        self.DefaultValue = int(caps.DefaultValue)
-        self.IsAutoSupported = bool(caps.IsAutoSupported)
-        self.IsWritable = bool(caps.IsWritable)
-        self.ControlType = ASIControlType(caps.ControlType)
+        self.name = caps.Name.decode("ascii")
+        self.description = caps.Description.decode("ascii")
+        self.max_value = int(caps.MaxValue)
+        self.min_value = int(caps.MinValue)
+        self.default_value = int(caps.DefaultValue)
+        self.is_auto_supported = bool(caps.IsAutoSupported)
+        self.is_writable = bool(caps.IsWritable)
+        self.control_type = ASIControlType(caps.ControlType)
 
 
 # This class was taken from https://github.com/stevemarple/python-zwoasi
@@ -716,255 +714,255 @@ class ASI:
         lib.ASIGetSerialNumber.restype = ctypes.c_int
 
         self.lib = lib
-        self.intPtr = ctypes.POINTER(ctypes.c_int)
-        self.longPtr = ctypes.POINTER(ctypes.c_long)
+        self.int_ptr = ctypes.POINTER(ctypes.c_int)
+        self.long_ptr = ctypes.POINTER(ctypes.c_long)
 
-    def getNumOfConnectedCameras(self):
+    def get_num_of_connected_cameras(self):
         # ASICAMERA_API  int ASIGetNumOfConnectedCameras();
         return self.lib.ASIGetNumOfConnectedCameras()
 
-    def getProductIDs(self):
+    def get_product_IDs(self):
         # ASICAMERA_API int ASIGetProductIDs(int* pPIDs);
-        dataType = ctypes.c_int * 256
-        productIDs = dataType()
-        count = self.lib.ASIGetProductIDs(productIDs)
-        return [productIDs[i] for i in range(count)]
+        data_type = ctypes.c_int * 256
+        product_IDs = data_type()
+        count = self.lib.ASIGetProductIDs(product_IDs)
+        return [product_IDs[i] for i in range(count)]
 
-    def getCameraProperty(self, index):
+    def get_camera_property(self, index):
         # ASICAMERA_API ASI_ERROR_CODE ASIGetCameraProperty(ASI_CAMERA_INFO
         # *pASICameraInfo, int iCameraIndex);
-        cameraProperty = ASICameraInfoCtypes()
-        result = self.lib.ASIGetCameraProperty(cameraProperty, index)
-        return self._toResultEnum(result), ASICameraInfo(cameraProperty)
+        camera_property = ASICameraInfoCtypes()
+        result = self.lib.ASIGetCameraProperty(camera_property, index)
+        return self._to_result_enum(result), ASICameraInfo(camera_property)
 
-    def getCameraPropertyByID(self, id):
+    def get_camera_property_by_ID(self, id):
         # ASICAMERA_API ASI_ERROR_CODE ASIGetCameraPropertyByID(int iCameraID,
         # ASI_CAMERA_INFO *pASICameraInfo);
-        cameraProperty = ASICameraInfoCtypes()
-        result = self.lib.ASIGetCameraPropertyByID(id, cameraProperty)
-        return self._toResultEnum(result), ASICameraInfo(cameraProperty)
+        camera_property = ASICameraInfoCtypes()
+        result = self.lib.ASIGetCameraPropertyByID(id, camera_property)
+        return self._to_result_enum(result), ASICameraInfo(camera_property)
 
-    def openCamera(self, id):
+    def open_camera(self, id):
         # ASICAMERA_API  ASI_ERROR_CODE ASIOpenCamera(int iCameraID);
         result = self.lib.ASIOpenCamera(id)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def initCamera(self, id):
+    def init_camera(self, id):
         # ASICAMERA_API  ASI_ERROR_CODE ASIInitCamera(int iCameraID);
         result = self.lib.ASIInitCamera(id)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def closeCamera(self, id):
+    def close_camera(self, id):
         # ASICAMERA_API  ASI_ERROR_CODE ASICloseCamera(int iCameraID);
         result = self.lib.ASICloseCamera(id)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def getNumberOfControls(self, id):
+    def get_number_of_controls(self, id):
         # ASICAMERA_API ASI_ERROR_CODE ASIGetNumOfControls(int iCameraID,
         # int * piNumberOfControls);
-        numberOfControls = self._getIntPtr()
-        result = self.lib.ASIGetNumOfControls(id, numberOfControls)
-        return self._toResultEnum(result), numberOfControls[0]
+        number_of_controls = self._get_int_ptr()
+        result = self.lib.ASIGetNumOfControls(id, number_of_controls)
+        return self._to_result_enum(result), number_of_controls[0]
 
-    def getControlCaps(self, id, index):
+    def get_control_caps(self, id, index):
         # ASICAMERA_API ASI_ERROR_CODE ASIGetControlCaps(int iCameraID,
         # int iControlIndex, ASI_CONTROL_CAPS * pControlCaps);
-        controlCaps = ASIControlCapsCtypes()
-        result = self.lib.ASIGetControlCaps(id, index, controlCaps)
-        return self._toResultEnum(result), ASIControlCaps(controlCaps)
+        control_caps = ASIControlCapsCtypes()
+        result = self.lib.ASIGetControlCaps(id, index, control_caps)
+        return self._to_result_enum(result), ASIControlCaps(control_caps)
 
-    def getControlValue(self, id, controlType):
+    def get_control_value(self, id, control_type):
         # ASICAMERA_API ASI_ERROR_CODE ASIGetControlValue(int  iCameraID,
         # ASI_CONTROL_TYPE  ControlType, long *plValue, ASI_BOOL *pbAuto);
-        value = self._getLongPtr()
-        auto = self._getIntPtr()
-        result = self.lib.ASIGetControlValue(id, controlType, value, auto)
-        return self._toResultEnum(result), value[0], auto[0]
+        value = self._get_long_ptr()
+        auto = self._get_int_ptr()
+        result = self.lib.ASIGetControlValue(id, control_type, value, auto)
+        return self._to_result_enum(result), value[0], auto[0]
 
-    def setControlValue(self, id, controlType, value, auto):
+    def set_control_value(self, id, control_type, value, auto):
         # ASICAMERA_API ASI_ERROR_CODE ASISetControlValue(int  iCameraID,
         # ASI_CONTROL_TYPE  ControlType, long lValue, ASI_BOOL bAuto);
-        result = self.lib.ASISetControlValue(id, controlType, value, auto)
-        return self._toResultEnum(result)
+        result = self.lib.ASISetControlValue(id, control_type, value, auto)
+        return self._to_result_enum(result)
 
-    def setROIFormat(self, id, width, height, bin, imgType):
+    def set_ROI_format(self, id, width, height, bin, img_type):
         # ASICAMERA_API  ASI_ERROR_CODE ASISetROIFormat(int iCameraID,
         # int iWidth, int iHeight,  int iBin, ASI_IMG_TYPE Img_type);
-        result = self.lib.ASISetROIFormat(id, width, height, bin, imgType)
-        return self._toResultEnum(result)
+        result = self.lib.ASISetROIFormat(id, width, height, bin, img_type)
+        return self._to_result_enum(result)
 
-    def getROIFormat(self, id):
+    def get_ROI_format(self, id):
         # ASICAMERA_API  ASI_ERROR_CODE ASIGetROIFormat(int iCameraID,
         # int *piWidth, int *piHeight,  int *piBin, ASI_IMG_TYPE *pImg_type);
-        width = self._getIntPtr()
-        height = self._getIntPtr()
-        bin = self._getIntPtr()
-        imgType = self._getIntPtr()
-        result = self.lib.ASIGetROIFormat(id, width, height, bin, imgType)
-        return self._toResultEnum(result), width[0], height[0], bin[0], imgType[0]
+        width = self._get_int_ptr()
+        height = self._get_int_ptr()
+        bin = self._get_int_ptr()
+        img_type = self._get_int_ptr()
+        result = self.lib.ASIGetROIFormat(id, width, height, bin, img_type)
+        return self._to_result_enum(result), width[0], height[0], bin[0], img_type[0]
 
-    def setStartPosition(self, id, x, y):
+    def set_start_position(self, id, x, y):
         # ASICAMERA_API  ASI_ERROR_CODE ASISetStartPos(int iCameraID, int
-        # iStartX, int iStartY);
+        # StartX, int iStartY);
         result = self.lib.ASISetStartPos(id, x, y)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def getStartPosition(self, id):
-        # ASICAMERA_API  ASI_ERROR_CODE ASIGetStartPos(int iCameraID, int
+    def get_start_position(self, id):
+        # ASICAMERA_API  ASI_ERROR_CODE ASIGetStartPos(int CameraID, int
         # *piStartX, int *piStartY);
-        x = self._getIntPtr()
-        y = self._getIntPtr()
+        x = self._get_int_ptr()
+        y = self._get_int_ptr()
         result = self.lib.ASIGetStartPos(id, x, y)
-        return self._toResultEnum(result), x[0], y[0]
+        return self._to_result_enum(result), x[0], y[0]
 
-    def getDroppedFrames(self, id):
+    def get_dropped_frames(self, id):
         # ASICAMERA_API  ASI_ERROR_CODE ASIGetDroppedFrames(int iCameraID,int
         # *piDropFrames);
-        dropFrames = self._getIntPtr()
-        result = self.lib.ASIGetDroppedFrames(id, dropFrames)
-        return self._toResultEnum(result), dropFrames[0]
+        drop_frames = self._get_int_ptr()
+        result = self.lib.ASIGetDroppedFrames(id, drop_frames)
+        return self._to_result_enum(result), drop_frames[0]
 
-    def enableDarkSubtract(self, id, bmpFile):
+    def enable_dark_subtract(self, id, bmp_file):
         # ASICAMERA_API ASI_ERROR_CODE ASIEnableDarkSubtract(int iCameraID,
         # char *pcBMPPath);
-        bmpFilePath = self.getStringBuffer(bmpFile.encode("ascii"))
-        result = self.lib.ASIEnableDarkSubtract(id, bmpFilePath)
-        return self._toResultEnum(result)
+        bmp_file_path = self.get_string_buffer(bmp_file.encode("ascii"))
+        result = self.lib.ASIEnableDarkSubtract(id, bmp_file_path)
+        return self._to_result_enum(result)
 
-    def disableDarkSubtract(self, id):
+    def disable_dark_subtract(self, id):
         # ASICAMERA_API ASI_ERROR_CODE ASIDisableDarkSubtract(int iCameraID);
         result = self.lib.ASIDisableDarkSubtract(id)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def startVideoCapture(self, id):
+    def start_video_capture(self, id):
         # ASICAMERA_API  ASI_ERROR_CODE ASIStartVideoCapture(int iCameraID);
         result = self.lib.ASIStartVideoCapture(id)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def stopVideoCapture(self, id):
+    def stop_video_capture(self, id):
         # ASICAMERA_API  ASI_ERROR_CODE ASIStopVideoCapture(int iCameraID);
         result = self.lib.ASIStopVideoCapture(id)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def getVideoData(self, id, buffer, bufferSize, timeoutMs):
+    def get_video_data(self, id, buffer, buffer_size, timeout_ms):
         # ASICAMERA_API  ASI_ERROR_CODE ASIGetVideoData(int iCameraID,
         # unsigned char* pBuffer, long lBuffSize, int iWaitms);
-        result = self.lib.ASIGetVideoData(id, buffer, bufferSize, timeoutMs)
-        return self._toResultEnum(result)
+        result = self.lib.ASIGetVideoData(id, buffer, buffer_size, timeout_ms)
+        return self._to_result_enum(result)
 
-    def pulseGuideOn(self, id, direction):
+    def pulse_guide_on(self, id, direction):
         # ASICAMERA_API ASI_ERROR_CODE ASIPulseGuideOn(int iCameraID,
         # ASI_GUIDE_DIRECTION direction);
         result = self.lib.ASIPulseGuideOn(id, direction)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def pulseGuideOff(self, id, direction):
+    def pulse_guide_off(self, id, direction):
         # ASICAMERA_API ASI_ERROR_CODE ASIPulseGuideOff(int iCameraID,
         # ASI_GUIDE_DIRECTION direction);
         result = self.lib.ASIPulseGuideOff(id, direction)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def startExposure(self, id, isDark):
+    def start_exposure(self, id, is_dark):
         # ASICAMERA_API ASI_ERROR_CODE  ASIStartExposure(int iCameraID,
         # ASI_BOOL bIsDark);
-        result = self.lib.ASIStartExposure(id, isDark)
-        return self._toResultEnum(result)
+        result = self.lib.ASIStartExposure(id, is_dark)
+        return self._to_result_enum(result)
 
-    def stopExposure(self, id):
+    def stop_exposure(self, id):
         # ASICAMERA_API ASI_ERROR_CODE  ASIStopExposure(int iCameraID);
         result = self.lib.ASIStopExposure(id)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def getExposureStatus(self, id):
+    def get_exposure_status(self, id):
         # ASICAMERA_API ASI_ERROR_CODE  ASIGetExpStatus(int iCameraID,
         # ASI_EXPOSURE_STATUS *pExpStatus);
-        exposureStatus = self._getIntPtr()
-        result = self.lib.ASIGetExpStatus(id, exposureStatus)
-        return self._toResultEnum(result), exposureStatus[0]
+        exposure_status = self._get_int_ptr()
+        result = self.lib.ASIGetExpStatus(id, exposure_status)
+        return self._to_result_enum(result), exposure_status[0]
 
-    def getDataAfterExposure(self, id, buffer, bufferSize):
+    def get_data_after_exposure(self, id, buffer, buffer_size):
         # ASICAMERA_API  ASI_ERROR_CODE ASIGetDataAfterExp(int iCameraID,
         # unsigned char* pBuffer, long lBuffSize);
-        result = self.lib.ASIGetDataAfterExp(id, buffer, bufferSize)
-        return self._toResultEnum(result)
+        result = self.lib.ASIGetDataAfterExp(id, buffer, buffer_size)
+        return self._to_result_enum(result)
 
-    def getID(self, id):
+    def get_ID(self, id):
         # ASICAMERA_API  ASI_ERROR_CODE ASIGetID(int iCameraID, ASI_ID* pID);
-        otherID = ASIIDCtypes()
-        result = self.lib.ASIGetID(id, otherID)
-        return self._toResultEnum(result), ASIID(otherID)
+        other_ID = ASIIDCtypes()
+        result = self.lib.ASIGetID(id, other_ID)
+        return self._to_result_enum(result), ASIID(other_ID)
 
-    def setID(self, id, otherID):
+    def set_ID(self, id, other_ID):
         # ASICAMERA_API  ASI_ERROR_CODE ASISetID(int iCameraID, ASI_ID ID);
-        result = self.lib.ASISetID(id, otherID)
-        return self._toResultEnum(result)
+        result = self.lib.ASISetID(id, other_ID)
+        return self._to_result_enum(result)
 
-    def getGainOffset(self, id):
+    def get_gain_offset(self, id):
         # ASICAMERA_API ASI_ERROR_CODE ASIGetGainOffset(int iCameraID, int
         # *pOffset_HighestDR, int *pOffset_UnityGain, int *pGain_LowestRN,
         # int *pOffset_LowestRN);
-        offsetHighestDR = self._getIntPtr()
-        offsetUnityGain = self._getIntPtr()
-        gainLowestRN = self._getIntPtr()
-        offsetLowestRN = self._getIntPtr()
+        offset_highest_DR = self._get_int_ptr()
+        offset_unity_gain = self._get_int_ptr()
+        gain_lowest_RN = self._get_int_ptr()
+        offset_lowest_RN = self._get_int_ptr()
         result = self.lib.ASIGetGainOffset(
-            id, offsetHighestDR, offsetUnityGain, gainLowestRN, offsetLowestRN
+            id, offset_highest_DR, offset_unity_gain, gain_lowest_RN, offset_lowest_RN
         )
         return (
-            self._toResultEnum(result),
-            offsetHighestDR[0],
-            offsetUnityGain[0],
-            gainLowestRN[0],
-            offsetLowestRN[0],
+            self._to_result_enum(result),
+            offset_highest_DR[0],
+            offset_unity_gain[0],
+            gain_lowest_RN[0],
+            offset_lowest_RN[0],
         )
 
-    def getSDKVersion(self):
+    def get_SDK_version(self):
         # ASICAMERA_API char* ASIGetSDKVersion();
         return self.lib.ASIGetSDKVersion().decode("ascii")
 
-    def getCameraSupportMode(self, id):
+    def get_camera_support_mode(self, id):
         # ASICAMERA_API ASI_ERROR_CODE  ASIGetCameraSupportMode(int iCameraID,
         # ASI_SUPPORTED_MODE* pSupportedMode);
-        supportedMode = ASISupportedModeCtypes()
-        result = self.lib.ASIGetCameraSupportMode(id, supportedMode)
-        return self._toResultEnum(result), ASISupportedMode(supportedMode)
+        supported_mode = ASISupportedModeCtypes()
+        result = self.lib.ASIGetCameraSupportMode(id, supported_mode)
+        return self._to_result_enum(result), ASISupportedMode(supported_mode)
 
-    def getCameraMode(self, id):
+    def get_camera_mode(self, id):
         # ASICAMERA_API ASI_ERROR_CODE  ASIGetCameraMode(int iCameraID,
         # ASI_CAMERA_MODE* mode);
-        mode = self._getIntPtr()
+        mode = self._get_int_ptr()
         result = self.lib.ASIGetCameraMode(id, mode)
-        return self._toResultEnum(result), ASICameraMode(mode[0])
+        return self._to_result_enum(result), ASICameraMode(mode[0])
 
-    def setCameraMode(self, id, mode):
+    def set_camera_mode(self, id, mode):
         # ASICAMERA_API ASI_ERROR_CODE  ASISetCameraMode(int iCameraID,
         # ASI_CAMERA_MODE mode);
         result = self.lib.ASISetCameraMode(id, mode)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def sendSoftwareTrigger(self, id, start):
+    def send_software_trigger(self, id, start):
         # ASICAMERA_API ASI_ERROR_CODE  ASISendSoftTrigger(int iCameraID,
         # ASI_BOOL bStart);
         result = self.lib.ASISendSoftTrigger(id, start)
-        return self._toResultEnum(result)
+        return self._to_result_enum(result)
 
-    def getSerialNumber(self, id):
+    def get_serial_number(self, id):
         # ASICAMERA_API ASI_ERROR_CODE  ASIGetSerialNumber(int iCameraID,
         # ASI_SN* pSN);
-        serialNumber = ASIIDCtypes()
-        result = self.lib.ASIGetSerialNumber(id, serialNumber)
-        return self._toResultEnum(result), ASIID(serialNumber)
+        serial_number = ASIIDCtypes()
+        result = self.lib.ASIGetSerialNumber(id, serial_number)
+        return self._to_result_enum(result), ASIID(serial_number)
 
-    def _getIntPtr(self, defaultValue=0):
-        return self.intPtr(ctypes.c_int(defaultValue))
+    def _get_int_ptr(self, default_value=0):
+        return self.int_ptr(ctypes.c_int(default_value))
 
-    def _getLongPtr(self, defaultValue=0):
-        return self.longPtr(ctypes.c_long(defaultValue))
+    def _get_long_ptr(self, default_value=0):
+        return self.long_ptr(ctypes.c_long(default_value))
 
-    def _toResultEnum(self, result):
+    def _to_result_enum(self, result):
         return Results(result)
 
-    def getStringBuffer(self, size=128):
+    def get_string_buffer(self, size=128):
         return ctypes.create_string_buffer(size)
 
 
@@ -977,7 +975,7 @@ class ASIError(Exception):
         return self.result.name
 
 
-class ASILibraryNotInitialised(Exception):
+class ASILibraryNotInitialisedError(Exception):
     def __init__(self):
         super().__init__()
 
@@ -987,7 +985,7 @@ class ASIDeviceNotOpenError(Exception):
         super().__init__()
 
 
-class ASIImageFailed(Exception):
+class ASIImageFailedError(Exception):
     def __init__(self):
         super().__init__()
 
@@ -999,7 +997,7 @@ class ASIBase(object):
         else:
             self.asi = asi
 
-    def _raiseIfBad(self, result: Results):
+    def _raise_if_bad(self, result: Results):
         if result != Results.Success:
             raise ASIError(result)
 
@@ -1009,24 +1007,24 @@ class ASILibrary(ASIBase):
         super().__init__(asi)
         self.initialised = False
 
-    def initialiseLibrary(self):
+    def initialise(self):
         """Initialise the ASICamera2 Library."""
         if not self.initialised:
-            self.asi.getNumOfConnectedCameras()
+            self.asi.get_num_of_connected_cameras()
             self.initialised = True
 
-    def getDeviceCount(self):
+    def get_device_count(self):
         """Gets the number of ASI cameras attached to this machine.
 
         Returns
         -------
         int
             The number of cameras attached to this machine."""
-        self._assertInitialised()
-        deviceCount = self.asi.getNumOfConnectedCameras()
-        return deviceCount
+        self._assert_initialised()
+        device_count = self.asi.get_num_of_connected_cameras()
+        return device_count
 
-    def getProductIDs(self):
+    def get_product_IDs(self):
         """Gets the product IDs of all the ASI cameras attached to this
         machine.
 
@@ -1035,120 +1033,120 @@ class ASILibrary(ASIBase):
         int list
             The product IDs of the cameras attached to this machine."""
         self._assertInitialised()
-        productIDs = self.asi.getProductIDs()
-        return productIDs
+        product_IDs = self.asi.get_product_IDs()
+        return product_IDs
 
-    def getCameraInfo(self, index):
+    def get_camera_info(self, index):
         """Gets camera information for the ASI camera at the specified index.
 
         Parameters
         ----------
         index : int
-            The index of the camera (0, getDeviceCount()).
+            The index of the camera (0, get_devicei_count()).
 
         Returns
         -------
         ASICameraInfo
             The camera information."""
-        self._assertInitialised()
-        result, cameraInfo = self.asi.getCameraProperty(index)
-        self._raiseIfBad(result)
-        return cameraInfo
+        self._assert_initialised()
+        result, camera_info = self.asi.get_camera_property(index)
+        self._raise_if_bad(result)
+        return camera_info
 
-    def getSDKVersion(self):
+    def get_SDK_version(self):
         """Gets the SDK version for the library.
 
         Returns
         -------
         str
             The version of the SDK."""
-        self._assertInitialised()
-        return self.asi.getSDKVersion()
+        self._assert_initialised()
+        return self.asi.get_SDK_version()
 
-    def openASI(self, index):
+    def open_ASI(self, index):
         """Opens the specified ASI camera attached to this machine.
 
         Parameters
         ----------
         index : int
-            The index (0 to getDeviceCount()) of the camera to open.
+            The index (0 to get_device_count()) of the camera to open.
 
         Returns
         -------
         ASIDevice
             The camera device."""
-        self._assertInitialised()
+        self._assert_initialised()
         device = ASIDevice(index, self.asi)
         return device
 
-    def _assertInitialised(self):
+    def _assert_initialised(self):
         if not self.initialised:
-            raise ASILibraryNotInitialised()
+            raise ASILibraryNotInitialisedError()
 
 
 class ASIDevice(ASIBase):
     def __init__(self, index, asi=None):
         super().__init__(asi)
         self.handle = -1
-        result = self.asi.openCamera(index)
-        self._raiseIfBad(result)
-        result = self.asi.initCamera(index)
+        result = self.asi.open_camera(index)
+        self._raise_if_bad(result)
+        result = self.asi.init_camera(index)
         self.handle = index
 
     def close(self):
         """Closes this device."""
-        self._assertHandle()
-        result = self.asi.closeCamera(self.handle)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.close_camera(self.handle)
+        self._raise_if_bad(result)
         self.handle = -1
 
-    def getCameraInfo(self):
+    def get_camera_info(self):
         """Gets camera information for this ASI camera.
 
         Returns
         -------
         ASICameraInfo
             The camera information."""
-        self._assertHandle()
-        result, cameraInfo = self.asi.getCameraPropertyByID(self.handle)
-        self._raiseIfBad(result)
-        return cameraInfo
+        self._assert_handle()
+        result, camera_info = self.asi.get_camera_property_by_ID(self.handle)
+        self._raise_if_bad(result)
+        return camera_info
 
-    def getNumberOfControls(self):
+    def get_number_of_controls(self):
         """Gets the number of controls available for this ASI camera.
 
         Returns
         -------
         int
             The number of controls available."""
-        self._assertHandle()
-        result, controlCount = self.asi.getNumberOfControls(self.handle)
-        self._raiseIfBad(result)
-        return controlCount
+        self._assert_handle()
+        result, control_count = self.asi.get_number_of_controls(self.handle)
+        self._raise_if_bad(result)
+        return control_count
 
-    def getControlInfo(self, index):
+    def get_control_info(self, index):
         """Gets the information on the control at the specified index.
 
         Parameters
         ----------
         index : int
-            The index of the control (0, getNumberOfControls()).
+            The index of the control (0, get_number_of_controls()).
 
         Returns
         -------
         ASIControlCaps
             The information on the specified control."""
-        self._assertHandle()
-        result, controlInfo = self.asi.getControlCaps(self.handle, index)
-        self._raiseIfBad(result)
-        return controlInfo
+        self._assert_handle()
+        result, control_info = self.asi.get_control_caps(self.handle, index)
+        self._raise_if_bad(result)
+        return control_info
 
-    def getControlValue(self, controlType: ASIControlType):
+    def get_control_value(self, control_type: ASIControlType):
         """Gets the value of the specified control.
 
         Parameters
         ----------
-        controlType : ASIControlType
+        control_type : ASIControlType
             The control to query.
 
         Returns
@@ -1157,29 +1155,31 @@ class ASIDevice(ASIBase):
             The value of the control.
         bool
             True if the control is set to auto."""
-        self._assertHandle()
-        result, value, auto = self.asi.getControlValue(self.handle, controlType.value)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result, value, auto = self.asi.get_control_value(
+            self.handle, control_type.value
+        )
+        self._raise_if_bad(result)
         return value, auto
 
-    def setControlValue(self, controlType: ASIControlType, value, auto: bool):
+    def set_control_value(self, control_type: ASIControlType, value, auto: bool):
         """Sets the value of the specified control.
 
         Parameters
         ----------
-        controlType : ASIControlType
+        control_type : ASIControlType
             The control to set.
         value : int
             The new value of the control.
         auto : bool
             True if the control should be set automatically."""
-        self._assertHandle()
-        result = self.asi.setControlValue(
-            self.handle, controlType.value, value, self.boolToInt(auto)
+        self._assert_handle()
+        result = self.asi.set_control_value(
+            self.handle, control_type.value, value, self.bool_to_int(auto)
         )
-        self._raiseIfBad(result)
+        self._raise_if_bad(result)
 
-    def setROI(self, width, height, bin, imgType: ASIImageType):
+    def set_ROI(self, width, height, bin, img_type: ASIImageType):
         """Sets the region of interest, binning, and image type.
 
         Parameters
@@ -1190,13 +1190,15 @@ class ASIDevice(ASIBase):
             The height of the region.
         bin : int
             The bin size for the region.
-        imgType : ASIImageType
+        img_type : ASIImageType
             The image format."""
-        self._assertHandle()
-        result = self.asi.setROIFormat(self.handle, width, height, bin, imgType.value)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.set_ROI_format(
+            self.handle, width, height, bin, img_type.value
+        )
+        self._raise_if_bad(result)
 
-    def getROI(self):
+    def get_ROI(self):
         """Gets the region of interest, binning, and image type.
 
         Returns
@@ -1209,12 +1211,12 @@ class ASIDevice(ASIBase):
             The pixel binning of the region.
         ASIImageType
             The image type."""
-        self._assertHandle()
-        result, width, height, bin, imgType = self.asi.getROIFormat(self.handle)
-        self._raiseIfBad(result)
-        return width, height, bin, ASIImageType(imgType)
+        self._assert_handle()
+        result, width, height, bin, img_type = self.asi.get_ROI_format(self.handle)
+        self._raise_if_bad(result)
+        return width, height, bin, ASIImageType(img_type)
 
-    def setStartPosition(self, x, y):
+    def set_start_position(self, x, y):
         """Sets the start position of the region of interest.
 
         Parameters
@@ -1223,11 +1225,11 @@ class ASIDevice(ASIBase):
             The x position.
         y : int
             The y position."""
-        self._assertHandle()
-        result = self.asi.setStartPosition(self.handle, x, y)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.set_start_position(self.handle, x, y)
+        self._raise_if_bad(result)
 
-    def getStartPosition(self):
+    def get_start_position(self):
         """Gets the start position of the region of interest.
 
         Returns
@@ -1236,69 +1238,69 @@ class ASIDevice(ASIBase):
             The x position.
         int
             The y position."""
-        self._assertHandle()
-        result, x, y = self.asi.getStartPosition(self.handle)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result, x, y = self.asi.get_start_position(self.handle)
+        self._raise_if_bad(result)
         return x, y
 
-    def getDroppedFrames(self):
+    def get_dropped_frames(self):
         """Gets the number of frames dropped by the camera.
 
         Returns
         -------
         int
             The number of dropped frames."""
-        self._assertHandle()
-        result, droppedFrames = self.asi.getDroppedFrames(self.handle)
-        self._raiseIfBad(result)
-        return droppedFrames
+        self._assert_handle()
+        result, dropped_frames = self.asi.get_dropped_frames(self.handle)
+        self._raise_if_bad(result)
+        return dropped_frames
 
-    def enableDarkSubtract(self, pathToBMP):
+    def enable_dark_subtract(self, bmp_path):
         """Enables the camera to automatically subtract a dark frame.
 
         Parameters
         ----------
-        pathToBMP : str
+        bmp_path : str
             The path to the dark image as a bitmap."""
-        self._assertHandle()
-        result = self.asi.enableDarkSubtract(self.handle, pathToBMP)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.enable_dark_subtract(self.handle, bmp_path)
+        self._raise_if_bad(result)
 
-    def disableDarkSubtract(self):
+    def disable_dark_subtract(self):
         """Disables the automatic subtraction of a dark frame."""
-        self._assertHandle()
-        result = self.asi.disableDarkSubtract(self.handle)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.disable_dark_subtract(self.handle)
+        self._raise_if_bad(result)
 
-    def startVideoCapture(self):
+    def start_video_capture(self):
         """Starts capturing video."""
-        self._assertHandle()
-        result = self.asi.startVideoCapture(self.handle)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.start_video_capture(self.handle)
+        self._raise_if_bad(result)
 
-    def stopVideoCapture(self):
+    def stop_video_capture(self):
         """Stops capturing video."""
-        self._assertHandle()
-        result = self.asi.stopVideoCapture(self.handle)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.stop_video_capture(self.handle)
+        self._raise_if_bad(result)
 
-    def getVideoData(self):
+    def get_video_data(self):
         """Gets video data.
 
         Returns
         -------
         buffer
             The image data."""
-        self._assertHandle()
-        bufferSize = self.getImageSize()
-        buffer = self.asi.getStringBuffer(bufferSize)
-        exposure_time_in_us = self.getControlValue(ASIControlType.Exposure)
-        timeoutInMs = int((exposure_time_in_us * 2 + 500000) / 1000)
-        result = self.asi.getVideoData(self.handle, buffer, bufferSize, timeoutInMs)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        buffer_size = self.get_image_size()
+        buffer = self.asi.get_string_buffer(buffer_size)
+        exposure_time_in_us = self.get_control_value(ASIControlType.Exposure)
+        timeout_in_ms = int((exposure_time_in_us * 2 + 500000) / 1000)
+        result = self.asi.get_videoData(self.handle, buffer, buffer_size, timeout_in_ms)
+        self._raise_if_bad(result)
         return buffer
 
-    def pulseGuideOn(self, direction: ASIGuideDirection):
+    def pulse_guide_on(self, direction: ASIGuideDirection):
         """Issues a guide pulse on the ST4 port for the
         specified direction.
 
@@ -1306,11 +1308,11 @@ class ASIDevice(ASIBase):
         ----------
         direction : ASIGuideDirection
             The direction to start the pulse."""
-        self._assertHandle()
-        result = self.asi.pulseGuideOn(self.handle, direction.value)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.pulse_guide_on(self.handle, direction.value)
+        self._raise_if_bad(result)
 
-    def pulseGuideOff(self, direction: ASIGuideDirection):
+    def pulse_guide_off(self, direction: ASIGuideDirection):
         """Stops issuing a guide pulse on the ST4 port for the
         specified direction.
 
@@ -1318,78 +1320,78 @@ class ASIDevice(ASIBase):
         ----------
         direction : ASIGuideDirection
             The direction to start the pulse."""
-        self._assertHandle()
-        result = self.asi.pulseGuideOff(self.handle, direction.value)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.pulse_guide_off(self.handle, direction.value)
+        self._raise_if_bad(result)
 
-    def startExposure(self, isDark=False):
+    def start_exposure(self, is_dark=False):
         """Starts an exposure.
 
         Parameters
         ----------
-        isDark : bool (optional)
+        is_dark : bool (optional)
             If true uses the mechanical shutter to take a dark (if available).
         """
-        self._assertHandle()
-        result = self.asi.startExposure(self.handle, self.boolToInt(isDark))
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.start_exposure(self.handle, self.bool_to_int(is_dark))
+        self._raise_if_bad(result)
 
-    def stopExposure(self):
+    def stop_exposure(self):
         """Stops an exposure."""
-        self._assertHandle()
-        result = self.asi.stopExposure(self.handle)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.stop_exposure(self.handle)
+        self._raise_if_bad(result)
 
-    def getExposureStatus(self):
+    def get_exposure_status(self):
         """Gets the status of a currently running exposure.
 
         Returns
         -------
         ASIExposureStatus
             The status of the exposure."""
-        self._assertHandle()
-        result, exposureStatus = self.asi.getExposureStatus(self.handle)
-        self._raiseIfBad(result)
-        return ASIExposureStatus(exposureStatus)
+        self._assert_handle()
+        result, exposure_status = self.asi.get_exposure_status(self.handle)
+        self._raise_if_bad(result)
+        return ASIExposureStatus(exposure_status)
 
-    def getExposureData(self):
+    def get_exposure_data(self):
         """Gets the exposure data.
 
         Returns
         -------
         buffer
             The image data."""
-        self._assertHandle()
-        bufferSize = self.getImageSize()
-        buffer = self.asi.getStringBuffer(bufferSize)
-        result = self.asi.getDataAfterExposure(self.handle, buffer, bufferSize)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        buffer_size = self.get_image_size()
+        buffer = self.asi.get_string_buffer(buffer_size)
+        result = self.asi.get_data_after_exposure(self.handle, buffer, buffer_size)
+        self._raise_if_bad(result)
         return buffer
 
-    def getID(self):
+    def get_ID(self):
         """Gets the ID of the camera.
 
         Returns
         -------
         ASIID
             The id of the camera."""
-        self._assertHandle()
-        result, id = self.asi.getID(self.handle)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result, id = self.asi.get_ID(self.handle)
+        self._raise_if_bad(result)
         return id
 
-    def setID(self, id):
+    def set_ID(self, id):
         """Sets the ID of the camera.
 
         Parameters
         ----------
         id : ASIIDCtypes
             The new ID of the camera."""
-        self._assertHandle()
-        result = self.asi.setID(self.handle, id)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.set_ID(self.handle, id)
+        self._raise_if_bad(result)
 
-    def getGainOffsets(self):
+    def get_gain_offsets(self):
         """Gets a set of standard gains and offsets.
 
         Returns
@@ -1402,66 +1404,66 @@ class ASIDevice(ASIBase):
             The gain for the lowest read noise.
         int
             The offset for the lowest read noise."""
-        self._assertHandle()
+        self._assert_handle()
         (
             result,
-            highestDROffset,
-            unityGainOffset,
-            lowestRNGain,
-            lowestRNOffset,
-        ) = self.asi.getGainOffset(self.handle)
-        self._raiseIfBad(result)
-        return highestDROffset, unityGainOffset, lowestRNGain, lowestRNOffset
+            highest_DR_offset,
+            unity_gain_offset,
+            lowest_RN_gain,
+            lowest_RN_offset,
+        ) = self.asi.get_gain_offset(self.handle)
+        self._raise_if_bad(result)
+        return highest_DR_offset, unity_gain_offset, lowest_RN_gain, lowest_RN_offset
 
-    def getCameraSupportModes(self):
+    def get_camera_support_modes(self):
         """Gets the supported modes of operations.
 
         Returns
         -------
         ASISupportedMode
             The modes the camera supports."""
-        self._assertHandle()
-        result, modes = self.asi.getCameraSupportMode(self.handle)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result, modes = self.asi.get_camera_support_mode(self.handle)
+        self._raise_if_bad(result)
         return modes
 
-    def getCameraMode(self):
+    def get_camera_mode(self):
         """Gets the current mode of the camera.
 
         Returns
         -------
         ASICameraMode
             The current mode of the camera."""
-        self._assertHandle()
-        result, mode = self.asi.getCameraMode(self.handle)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result, mode = self.asi.get_camera_mode(self.handle)
+        self._raise_if_bad(result)
         return mode
 
-    def setCameraMode(self, mode: ASICameraMode):
+    def set_camera_mode(self, mode: ASICameraMode):
         """Sets the mode of the camera.
 
         Parameters
         ----------
         mode : ASICameraMode
             The new mode of the camera."""
-        self._assertHandle()
-        result = self.asi.setCameraMode(self.handle, mode)
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.set_camera_mode(self.handle, mode)
+        self._raise_if_bad(result)
 
-    def sendSoftwareTrigger(self, start):
+    def send_software_trigger(self, start):
         """Sends a software trigger to the camera."""
-        self._assertHandle()
-        result = self.asi.sendSoftwareTrigger(self.handle, self.boolToInt(start))
-        self._raiseIfBad(result)
+        self._assert_handle()
+        result = self.asi.send_software_trigger(self.handle, self.bool_to_int(start))
+        self._raise_if_bad(result)
 
-    def getSerialNumber(self):
+    def get_serial_number(self):
         """Gets the serial number of the camera."""
-        self._assertHandle()
-        result, serialNumber = self.asi.getSerialNumber(self.handle)
-        self._raiseIfBad(result)
-        return serialNumber
+        self._assert_handle()
+        result, serial_number = self.asi.get_serial_number(self.handle)
+        self._raise_if_bad(result)
+        return serial_number
 
-    def getImageSize(self):
+    def get_image_size(self):
         """Gets the size of the image based on the current camera configuration
         without taking binning into account.
 
@@ -1469,23 +1471,23 @@ class ASIDevice(ASIBase):
         -------
         int
             The number of bytes per image."""
-        width, height, bin, imgType = self.getROI()
-        bytesPerPixel = 1
-        if imgType == ASIImageType.Raw8:
-            bytesPerPixel = 1
-        elif imgType == ASIImageType.RGB24:
-            bytesPerPixel = 3
-        elif imgType == ASIImageType.Raw16:
-            bytesPerPixel = 2
-        elif imgType == ASIImageType.Y8:
-            bytesPerPixel = 1
-        return width * height * bytesPerPixel
+        width, height, bin, img_type = self.get_ROI()
+        bytes_per_pixel = 1
+        if img_type == ASIImageType.Raw8:
+            bytes_per_pixel = 1
+        elif img_type == ASIImageType.RGB24:
+            bytes_per_pixel = 3
+        elif img_type == ASIImageType.Raw16:
+            bytes_per_pixel = 2
+        elif img_type == ASIImageType.Y8:
+            bytes_per_pixel = 1
+        return width * height * bytes_per_pixel
 
-    def boolToInt(self, value):
+    def bool_to_int(self, value):
         if value:
             return 1
         return 0
 
-    def _assertHandle(self):
+    def _assert_handle(self):
         if self.handle == -1:
             raise ASIDeviceNotOpenError()

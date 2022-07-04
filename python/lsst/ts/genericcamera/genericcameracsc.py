@@ -277,7 +277,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.camera.start_live_view()
         self.run_live_task = True
         await asyncio.wait_for(self.server.start(), timeout=2)
-        self.live_task = asyncio.ensure_future(self.liveView_loop(id_data.expTime))
+        self.live_task = asyncio.ensure_future(self.live_view_loop(id_data.expTime))
         await self.evt_startLiveView.set_write(ip=self.ip, port=self.port)
         self.log.info("startLiveView - End")
 
@@ -518,11 +518,11 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.run_auto_exposure_task = False
         await self.auto_exposure_task
 
-        await self.stop_autoexposure()
+        await self.stop_auto_exposure()
 
         self.log.info("stopAutoExposure - End")
 
-    async def stop_autoexposure(self):
+    async def stop_auto_exposure(self):
         """Stop auto exposure.
 
         Not much content for now but this may change in the future.
@@ -530,7 +530,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         await self.evt_autoExposureStopped.write()
 
-    async def liveView_loop(self, exposure_time):
+    async def live_view_loop(self, exposure_time):
         """Run the live view capture loop.
 
         Parameters
@@ -538,7 +538,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         exposure_time : `float`
             The exposure time of the image (in seconds).
         """
-        self.log.debug("liveView_loop - Start")
+        self.log.debug("live_view_loop - Start")
         self.is_live = True
         try:
             while self.run_live_task:
@@ -556,22 +556,22 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 await self.camera.start_integration()
                 self.log.debug("end integration")
                 await self.camera.end_integration()
-                self.log.debug("startShutterClose")
+                self.log.debug("start_shutter_close")
                 await self.camera.start_shutter_close()
-                self.log.debug("endShutterClose")
+                self.log.debug("end_shutter_close")
                 await self.camera.end_shutter_close()
-                self.log.debug("startReadout")
+                self.log.debug("start_readout")
                 await self.camera.start_readout()
-                self.log.debug("endReadout")
+                self.log.debug("end_readout")
                 exposure = await self.camera.end_readout()
-                self.log.debug("endTakeImage")
+                self.log.debug("end_take_image")
                 await self.camera.end_take_image()
                 exposure.make_jpeg()
                 self.log.debug(f"{exposure.buffer}")
                 await self.server.send_exposure(exposure)
                 stop_frame_time = time.time()
                 frame_time = round(stop_frame_time - start_frame_time, 3)
-                self.log.debug(f"liveView_loop - {frame_time}")
+                self.log.debug(f"live_view_loop - {frame_time}")
         except Exception as e:
             self.log.error("Error in live view loop.")
             self.log.exception(e)
@@ -584,7 +584,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             )
 
         self.is_live = False
-        self.log.info("liveView_loop - End")
+        self.log.info("live_view_loop - End")
 
     async def run_auto_exposure_loop(self, min_exp_time, max_exp_time, configuration):
         """Prepare and start the auto exposure capture loop.
@@ -615,7 +615,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             )
         except Exception:
             self.log.exception("Error in auto exposure loop.")
-            await self.stop_autoexposure()
+            await self.stop_auto_exposure()
 
             await self.fault(
                 code=AE_ERROR,

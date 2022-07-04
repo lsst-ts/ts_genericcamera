@@ -131,7 +131,7 @@ class LiveViewServer:
             self._exposure = new_exposure
             self.new_exposure_available.set()
 
-    def _assertConnected(self):
+    def _assert_connected(self):
         if not self.is_connected:
             raise ConnectionError()
 
@@ -314,7 +314,7 @@ class AsyncLiveViewClient:
             else:
                 self.log.debug(f"Got {read_bytes}. Expecting '>'.")
 
-    def _assertConnected(self):
+    def _assert_connected(self):
         if not self.is_connected:
             raise ConnectionError()
 
