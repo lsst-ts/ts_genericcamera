@@ -134,7 +134,7 @@ properties:
         str
             The make and model of the camera."""
         info = self.dev.get_camera_info()
-        return info.Name
+        return info.name
 
     def get_value(self, key):
         """Gets the value of a unique property of the camera.
@@ -207,8 +207,8 @@ properties:
         self.set_roi(
             0,
             0,
-            int(info.MaxWidth / self.bin_value),
-            int(info.MaxHeight / self.bin_value),
+            int(info.max_width / self.bin_value),
+            int(info.max_height / self.bin_value),
         )
 
     def start_live_view(self):
@@ -364,28 +364,27 @@ class Results(enum.Enum):
 
 class ASICameraInfo:
     def __init__(self, info):
-        self.Name = info.Name.decode("ascii")
-        self.CameraID = int(info.CameraID)
-        self.MaxHeight = int(info.MaxHeight)
-        self.MaxWidth = int(info.MaxWidth)
-        self.IsColorCam = bool(info.IsColorCam)
-        self.BayerPattern = ASIBayerPattern(info.BayerPattern)
-        self.SupportedBins = [x for x in info.SupportedBins if x != 0]
+        self.name = info.Name.decode("ascii")
+        self.camera_ID = int(info.CameraID)
+        self.max_height = int(info.MaxHeight)
+        self.max_width = int(info.MaxWidth)
+        self.is_color_cam = bool(info.IsColorCam)
+        self.bayer_pattern = ASIBayerPattern(info.BayerPattern)
+        self.supported_bins = [x for x in info.SupportedBins if x != 0]
         video_formats = []
         for x in info.SupportedVideoFormat:
             if x == -1:
                 break
             video_formats.append(ASIImageType(x))
-        self.SupportedVideoFormat = video_formats
-        self.PixelSize = float(info.PixelSize)
-        self.MechanicalShutter = bool(info.MechanicalShutter)
-        self.ST4Port = bool(info.ST4Port)
-        self.IsColorCam = bool(info.IsColorCam)
-        self.IsUSB3Host = bool(info.IsUSB3Host)
-        self.IsUSB3Camera = bool(info.IsUSB3Camera)
-        self.ElecPerADU = float(info.ElecPerADU)
-        self.BitDepth = int(info.BitDepth)
-        self.IsTriggerCam = bool(info.IsTriggerCam)
+        self.supported_video_format = video_formats
+        self.pixel_size = float(info.PixelSize)
+        self.mechanical_shutter = bool(info.MechanicalShutter)
+        self.ST4_port = bool(info.ST4Port)
+        self.is_USB3_host = bool(info.IsUSB3Host)
+        self.is_USB3_camera = bool(info.IsUSB3Camera)
+        self.elec_per_ADU = float(info.ElecPerADU)
+        self.bit_depth = int(info.BitDepth)
+        self.is_trigger_cam = bool(info.IsTriggerCam)
 
 
 # This class was taken from https://github.com/stevemarple/python-zwoasi
@@ -402,7 +401,6 @@ class ASICameraInfoCtypes(ctypes.Structure):
         ("PixelSize", ctypes.c_double),  # in um
         ("MechanicalShutter", ctypes.c_int),
         ("ST4Port", ctypes.c_int),
-        ("IsCoolerCam", ctypes.c_int),
         ("IsUSB3Host", ctypes.c_int),
         ("IsUSB3Camera", ctypes.c_int),
         ("ElecPerADU", ctypes.c_float),
@@ -439,14 +437,14 @@ class ASIControlType(enum.Enum):
 
 class ASIControlCaps:
     def __init__(self, caps):
-        self.Name = caps.Name.decode("ascii")
-        self.Description = caps.Description.decode("ascii")
-        self.MaxValue = int(caps.MaxValue)
-        self.MinValue = int(caps.MinValue)
-        self.DefaultValue = int(caps.DefaultValue)
-        self.IsAutoSupported = bool(caps.IsAutoSupported)
-        self.IsWritable = bool(caps.IsWritable)
-        self.ControlType = ASIControlType(caps.ControlType)
+        self.name = caps.Name.decode("ascii")
+        self.description = caps.Description.decode("ascii")
+        self.max_value = int(caps.MaxValue)
+        self.min_value = int(caps.MinValue)
+        self.default_value = int(caps.DefaultValue)
+        self.is_auto_supported = bool(caps.IsAutoSupported)
+        self.is_writable = bool(caps.IsWritable)
+        self.control_type = ASIControlType(caps.ControlType)
 
 
 # This class was taken from https://github.com/stevemarple/python-zwoasi
