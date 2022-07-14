@@ -94,8 +94,6 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         ch.setFormatter(logging.Formatter(console_format))
         self.log.addHandler(ch)
 
-        logging.getLogger("asyncio").setLevel(logging.DEBUG)
-
         # Create dictionary of camera options.
         self.drivers = {}
         for member in inspect.getmembers(driver):
