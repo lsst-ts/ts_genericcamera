@@ -1,0 +1,10 @@
+ORIGIN  = 'LSST Generic Camera Service'/ FITS file originator
+
+        ---- Camera ROI information ----
+TOP     =                      / top pixel on sensor
+LEFT    =                      / left pixel on sensor
+WIDTH   =                      / width in pixels of ROI
+HEIGHT  =                      / height in pixels of ROI
+
+        ---- Exposure-related information ----
+EXPTIME =                      / exposure time in seconds

@@ -6,6 +6,11 @@
 Version History
 ###############
 
+v0.7.0
+======
+
+* Add AlliedVision camera driver
+
 v0.6.0
 ======
 
