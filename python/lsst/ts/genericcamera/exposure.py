@@ -54,7 +54,6 @@ class Exposure:
         """
         self.width = width
         self.height = height
-        print(len(buffer))
         self.buffer = buffer.reshape(height, width)
         self.tags = tags
         self.is_jpeg = is_jpeg

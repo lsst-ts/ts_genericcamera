@@ -33,6 +33,7 @@ class FitsHeaderTemplate(Enum):
 
     ALL_SKY = "allsky"
     CANON = "canon"
+    STARTRACKER = "startracker"
 
 
 class FitsHeaderItem:
