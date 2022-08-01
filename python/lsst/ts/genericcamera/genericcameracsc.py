@@ -359,16 +359,18 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             time_stamp = time.time()
 
             # Calculate expected time for IN_PROGRESS ack
-            SHUTTER_TIME = (
+            total_shutter_time = (
                 images_in_sequence * DEFAULT_SHUTTER_TIME if id_data.shutter else 0
             )
-            EXPOSURE_TIME = images_in_sequence * exposure_time
-            READOUT_TIME = images_in_sequence * DEFAULT_READOUT_TIME
-            EXPECTED_TIMEOUT = EXPOSURE_TIME + SHUTTER_TIME + READOUT_TIME
-            self.log.debug(f"In progress timeout: {EXPECTED_TIMEOUT} seconds")
+            total_exposure_time = images_in_sequence * exposure_time
+            total_readout_time = images_in_sequence * DEFAULT_READOUT_TIME
+            expected_timeout = (
+                total_exposure_time + total_shutter_time + total_readout_time
+            )
+            self.log.debug(f"In progress timeout: {expected_timeout} seconds")
 
             await self.cmd_takeImages.ack_in_progress(
-                data=id_data, timeout=EXPECTED_TIMEOUT
+                data=id_data, timeout=expected_timeout
             )
 
             await self.evt_startTakeImage.write()

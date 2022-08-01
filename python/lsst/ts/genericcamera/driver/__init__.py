@@ -24,7 +24,9 @@ from .basecamera import *
 try:
     from .alliedvisioncamera import *
 except ImportError:
-    pass
+    import warnings
+
+    warnings.warn("Vimba package is not available.")
 from .andorcamera import *
 from .canoncamera import *
 from .simulatorcamera import *

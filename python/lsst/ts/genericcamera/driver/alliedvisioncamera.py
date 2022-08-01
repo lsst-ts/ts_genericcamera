@@ -30,14 +30,16 @@ from . import basecamera
 from .. import exposure
 from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
 
-MILLISECONDS = 10**3
+SECONDS_TO_MILLISECONDS = 1000
 "Allied Vision cameras have timeouts in milliseconds."
 
-MICROSECONDS = 10**6
+SECONDS_TO_MICROSECONDS = 1000000
 "Allied Vision camera have exposure times in microseconds."
 
 
 class AlliedVisionCamera(basecamera.BaseCamera):
+    """Class for handling AlliedVision Vimba cameras."""
+
     def __init__(self, log=None):
         super().__init__(log=log)
 
@@ -66,8 +68,9 @@ class AlliedVisionCamera(basecamera.BaseCamera):
 
         Parameters
         ----------
-        config : str
-            The name of the configuration file to load."""
+        config : `str`
+            The name of the configuration file to load.
+        """
         self.id = config.config["id"]
         self.liveview_use_autoexposure = config.config["liveview_use_autoexposure"]
         self.normal_image_type = getattr(vimba.PixelFormat, config.config["image_type"])
@@ -119,8 +122,9 @@ properties:
 
         Returns
         -------
-        str
-            The make and model of the camera."""
+        `str`
+            The make and model of the camera.
+        """
         return self.camera.get_name()
 
     def get_roi(self):
@@ -128,14 +132,15 @@ properties:
 
         Returns
         -------
-        int
+        `int`
             The top most pixel of the region.
-        int
+        `int`
             The left most pixel of the region.
-        int
+        `int`
             The width of the region in pixels.
-        int
-            The height of the region in pixels."""
+        `int`
+            The height of the region in pixels.
+        """
         with vimba.Vimba.get_instance():
             with self.camera:
                 left = self.camera.OffsetX.get()
@@ -149,14 +154,15 @@ properties:
 
         Parameters
         ----------
-        top : int
+        top : `int`
             The top most pixel of the region.
-        left : int
+        left : `int`
             The left most pixel of the region.
-        width : int
+        width : `int`
             The width of the region in pixels.
-        height : int
-            The height of the region in pixels."""
+        height : `int`
+            The height of the region in pixels.
+        """
         with vimba.Vimba.get_instance():
             with self.camera:
                 self.camera.OffsetX.set(left)
@@ -176,8 +182,8 @@ properties:
         """Configure the camera for live view.
 
         This should change the image format to 8bits per pixel so
-        the image can be encoded to JPEG."""
-
+        the image can be encoded to JPEG.
+        """
         self.is_live_exposure = True
         with vimba.Vimba.get_instance():
             with self.camera:
@@ -189,7 +195,8 @@ properties:
     def stop_live_view(self):
         """Stops an active live view data stream from the camera.
 
-        This should review the image format back to original format."""
+        This should review the image format back to original format.
+        """
         self.is_live_exposure = False
         with vimba.Vimba.get_instance():
             with self.camera:
@@ -203,22 +210,24 @@ properties:
                 if not self.is_live_exposure or not self.liveview_use_autoexposure:
                     self.log.debug("Setting camera exposure time")
                     self.camera.ExposureAuto.set("Off")
-                    self.camera.ExposureTimeAbs.set(self.exposure_time * MICROSECONDS)
+                    self.camera.ExposureTimeAbs.set(
+                        self.exposure_time * SECONDS_TO_MICROSECONDS
+                    )
 
     async def start_take_image(self, exp_time, shutter, science, guide, wfs):
         """Start taking an image or a set of images.
 
         Parameters
         ----------
-        exp_time : float
+        exp_time : `float`
             The exposure time in seconds.
-        shutter : bool
+        shutter : `bool`
             Should the shutter be opened?
-        science : bool
+        science : `bool`
             Should the science/main sensor be used?
-        guide : bool
+        guide : `bool`
             Should guider sensor be used?
-        wfs : bool
+        wfs : `bool`
             Should wave front sensor be used?
         """
         self.exposure_time = exp_time
@@ -230,21 +239,20 @@ properties:
 
         Returns
         -------
-        Vimba.Frame
+        frame : `Vimba.Frame`
             The frame captured from the camera.
         """
         with vimba.Vimba.get_instance():
-            # v.enable_log(vimba.LOG_CONFIG_INFO)
             with self.camera:
                 if self.liveview_use_autoexposure:
-                    timeout = int(
-                        (self.camera.ExposureTimeAbs.get() / MILLISECONDS)
-                        + 2 * MILLISECONDS
+                    timeout_ms = int(
+                        (self.camera.ExposureTimeAbs.get() / SECONDS_TO_MILLISECONDS)
+                        + 2 * SECONDS_TO_MILLISECONDS
                     )
                 else:
-                    timeout = int(self.exposure_time + 2) * MILLISECONDS
-                self.log.debug(f"Exposure timeout = {timeout} ms")
-                frame = self.camera.get_frame(timeout_ms=timeout)
+                    timeout_ms = int(self.exposure_time + 2) * SECONDS_TO_MILLISECONDS
+                self.log.debug(f"Exposure timeout = {timeout_ms} ms")
+                frame = self.camera.get_frame(timeout_ms=timeout_ms)
         return frame
 
     def _get_buffer_and_ancillary_data(self, frame):
@@ -252,15 +260,15 @@ properties:
 
         Parameters
         ----------
-        frame : Vimba.Frame
+        frame : `Vimba.Frame`
             The frame from the camera.
 
         Returns
         -------
-        numpy.ndarray
+        buffer_array : `numpy.ndarray`
             The converted camera frame.
-        float
-            The actual frame exposure time.
+        actual_exp_time : `float`
+            The actual frame exposure time (seconds).
         """
         with vimba.Vimba.get_instance():
             self.log.debug("Starting buffer conversion")
@@ -273,7 +281,7 @@ properties:
                         "ChunkExposureTime"
                     ).get()
             self.log.debug(
-                f"Actual Exposure Time: {actual_exp_time / MICROSECONDS} seconds"
+                f"Actual Exposure Time: {actual_exp_time / SECONDS_TO_MICROSECONDS} seconds"
             )
             self.log.debug("Finished getting ancillary data")
         return buffer_array, actual_exp_time
@@ -295,7 +303,7 @@ properties:
         self.get_tag(name="LEFT").value = left
         self.get_tag(name="WIDTH").value = width
         self.get_tag(name="HEIGHT").value = height
-        self.get_tag(name="EXPTIME").value = actual_exp_time / MICROSECONDS
+        self.get_tag(name="EXPTIME").value = actual_exp_time / SECONDS_TO_MICROSECONDS
         self.log.debug("Finished setting header tags")
         image = exposure.Exposure(buffer_array, width, height, self.tags)
         self.log.debug("Finished creating exposure")
