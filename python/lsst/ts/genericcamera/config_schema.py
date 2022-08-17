@@ -32,6 +32,11 @@ title: GenericCamera v2
 description: Schema for GenericCamera configuration files
 type: object
 properties:
+  s3instance:
+    type: string
+    description: >-
+      Large File Annex S3 instance, for example "tuc" (Tucson Test Stand),
+      "ls" (Base Test Stand), "cp" (summit).
   instances:
     type: array
     description: Configuration for each GenericCamera instance.

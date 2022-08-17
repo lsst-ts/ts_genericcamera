@@ -121,6 +121,15 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.live_task = None
         self.run_auto_exposure_task = False
         self.auto_exposure_task = None
+
+        try:
+            os.environ["S3_ENDPOINT_URL"]
+            self.use_lfa = True
+        except KeyError:
+            self.use_lfa = False
+        self.s3bucket = None
+        self.s3bucket_name = None
+
         self.log.debug("Generic Camera CSC Ready")
 
     async def begin_enable(self, id_data):
@@ -136,6 +145,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         """
         self.server = liveview.LiveViewServer(self.config.port, log=self.log)
         self.camera.initialise(config=self.config)
+        if self.s3bucket is None:
+            self.s3bucket = salobj.AsyncS3Bucket(name=self.s3bucket_name)
 
     async def begin_disable(self, id_data):
         """Begin do_disable; called before state changes.
@@ -189,6 +200,9 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 self.log.exception(e)
             finally:
                 self.camera = None
+
+        if self.s3bucket is not None:
+            self.s3bucket = None
         self.log.info("end_disable")
 
     async def do_setValue(self, id_data):
@@ -397,7 +411,9 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     timestamp=time_stamp,
                     image_name=image_name,
                 )
-                exposure.save(os.path.join(self.directory, image_name + ".fits"))
+                output_file = os.path.join(self.directory, image_name + ".fits")
+                exposure.save(output_file)
+
             await self.camera.end_take_image()
             await self.evt_endTakeImage.write()
         except Exception as e:
@@ -952,6 +968,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             raise salobj.ExpectedError(
                 f"No config found for sal_index={self.salinfo.index}"
             )
+
+        self.s3bucket_name = salobj.AsyncS3Bucket.make_bucket_name(
+            s3instance=config.s3instance
+        )
 
         settings = types.SimpleNamespace(**instance)
         self.config = settings
