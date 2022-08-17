@@ -24,6 +24,7 @@ import glob
 import os
 import pathlib
 import unittest
+import shutil
 
 import numpy as np
 import yaml
@@ -37,6 +38,15 @@ TEST_CONFIG_DIR = pathlib.Path(__file__).parent / "data" / "config"
 
 
 class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.data_dir = pathlib.Path.home() / "data"
+        cls.data_dir.mkdir()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.data_dir)
+
     def flush_take_image_events(self):
         self.remote.evt_startTakeImage.flush()
         self.remote.evt_startShutterOpen.flush()
