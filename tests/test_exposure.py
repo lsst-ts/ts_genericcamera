@@ -63,6 +63,8 @@ class TestExposure(unittest.TestCase):
 
         exp.save(self.tmp_name)
 
+        self.assertEqual(".fits", exp.suffix)
+
         self.assertTrue(
             os.path.exists(self.tmp_name), f"File {self.tmp_name} does not exist."
         )
@@ -99,6 +101,7 @@ class TestExposure(unittest.TestCase):
 
         exp.make_jpeg()
         self.assertTrue(exp.is_jpeg)
+        self.assertEqual(".jpeg", exp.suffix)
 
 
 if __name__ == "__main__":

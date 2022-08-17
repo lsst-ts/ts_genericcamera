@@ -59,6 +59,11 @@ class Exposure:
         self.is_jpeg = is_jpeg
         self.dtype = dtype
 
+    @property
+    def suffix(self):
+        """Provide a file suffix"""
+        return ".jpeg" if self.is_jpeg else ".fits"
+
     def make_fileobj(self):
         """Create an object suitable for saving to a file.
 

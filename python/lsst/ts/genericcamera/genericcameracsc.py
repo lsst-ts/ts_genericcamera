@@ -424,6 +424,21 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             self.is_exposing = False
         self.log.info("takeImages - End")
 
+    def handle_exposure_saving(self, exposure, image_name):
+        """Save exposure to LFA or local directory.
+
+        Parameters
+        ----------
+        exposure: `lsst.ts.genericcamera.Exposure`
+            The exposure to save.
+        image_name: `str`
+            The filename for the exposure.
+        """
+        if self.use_lfa:
+            pass
+        else:
+            pass
+
     async def take_image(
         self,
         shutter,
