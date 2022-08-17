@@ -25,6 +25,7 @@ import asyncio
 import inspect
 import logging
 import os
+import pathlib
 
 # TODO Use utils.current_tai() instead.
 import time
@@ -107,7 +108,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         self.ip = None
         self.port = None
-        self.directory = os.path.expanduser("~/")
+        self.directory = pathlib.Path.home() / "data"
         self.file_name_format = "{timestamp}-{index}-{total}"
         self.config = None
 
