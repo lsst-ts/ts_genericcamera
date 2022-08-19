@@ -6,7 +6,7 @@
 lsst.ts.genericcamera
 #####################
 
-ts_genericcamera contains the `GenericCameraCsc` and suport code.
+ts_genericcamera contains the `GenericCameraCsc` and support code.
 
 .. _lsst.ts.genericcamera-using:
 
@@ -14,9 +14,11 @@ Using lsst.ts.genericcamera
 ===========================
 
 You can setup and build this package using eups and sconsUtils.
-After setting up the package you can build it and run unit tests by typing ``py.test``.
+After setting up the package you can build it and run unit tests by typing ``pytest``.
 
-To run the `GenericCamera` CSC type ``bin/run_genericcamera.py``
+Before running the CSC, a ``data`` directory needs to be created in the ``$HOME`` area of the user where the CSC process is being run.
+
+To run the `GenericCamera` CSC type ``run_genericcamera <index>``
 
 .. _lsst.ts.genericcamera-contributing:
 
@@ -39,6 +41,9 @@ Python API reference
 .. automodapi:: lsst.ts.genericcamera
    :no-main-docstr:
    :no-inheritance-diagram:
+   :skip: find_library
+   :skip: EarthLocation
+   :skip: Time
 
 Version History
 ===============

@@ -6,6 +6,12 @@
 Version History
 ###############
 
+v0.8.0
+======
+
+* Add LFA file saving capability
+* Timestamps are now TAI
+
 v0.7.0
 ======
 
