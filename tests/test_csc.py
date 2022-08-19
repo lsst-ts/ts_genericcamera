@@ -31,6 +31,7 @@ import yaml
 
 from lsst.ts import salobj
 from lsst.ts import genericcamera
+from lsst.ts import utils
 
 STD_TIMEOUT = 2  # standard command timeout (sec)
 LONG_TIMEOUT = 20  # timeout for starting SAL components (sec)
@@ -57,6 +58,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         self.remote.evt_endShutterClose.flush()
         self.remote.evt_startReadout.flush()
         self.remote.evt_endReadout.flush()
+        self.remote.evt_largeFileObjectAvailable.flush()
         self.remote.evt_endTakeImage.flush()
 
     def basic_make_csc(self, initial_state, config_dir, simulation_mode, **kwargs):
@@ -223,7 +225,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             )
             self.assertIsNotNone(endTakeImage)
 
-        async def take_image():
+        async def take_image(check_lfoa=False):
             await self.remote.cmd_takeImages.set_start(
                 numImages=1,
                 expTime=np.random.rand() + 1.0,
@@ -278,6 +280,14 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             )
             self.assertIsNotNone(endReadout)
 
+            if check_lfoa:
+                largeFileObjectAvailable = (
+                    await self.remote.evt_largeFileObjectAvailable.next(
+                        flush=False, timeout=LONG_TIMEOUT
+                    )
+                )
+                self.assertIsNotNone(largeFileObjectAvailable)
+
             endTakeImage = await self.remote.evt_endTakeImage.next(
                 flush=False, timeout=STD_TIMEOUT
             )
@@ -308,6 +318,28 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             with self.subTest(image="bias2"):
                 await take_bias()
+
+        # Run with LFA
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
+            with utils.modify_environ(
+                AWS_ACCESS_KEY_ID="test",
+                AWS_SECRET_ACCESS_KEY="bar",
+                MYS3_ACCESS_KEY="test",
+                MYS3_SECRET_KEY="bar",
+            ):
+                # S3_ENDPOINT_URL must be None for mock not to try to make a
+                # connection, but having it missing won't trigger LFA use.
+                self.csc.use_lfa = True
+                self.assertTrue(self.csc.use_lfa)
+                self.csc.s3_mock = True
+                self.assertTrue(self.csc.s3_mock)
+                await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
+                self.flush_take_image_events()
+
+                with self.subTest(image="image3"):
+                    await take_image(check_lfoa=True)
 
     async def test_live_view(self):
         async with self.make_csc(

@@ -129,6 +129,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             self.use_lfa = False
         self.s3bucket = None
         self.s3bucket_name = None
+        self.s3_mock = False
 
         self.log.debug("Generic Camera CSC Ready")
 
@@ -146,7 +147,9 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.server = liveview.LiveViewServer(self.config.port, log=self.log)
         self.camera.initialise(config=self.config)
         if self.s3bucket is None:
-            self.s3bucket = salobj.AsyncS3Bucket(name=self.s3bucket_name)
+            self.s3bucket = salobj.AsyncS3Bucket(
+                name=self.s3bucket_name, domock=self.s3_mock, create=self.s3_mock
+            )
 
     async def begin_disable(self, id_data):
         """Begin do_disable; called before state changes.
@@ -202,7 +205,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 self.camera = None
 
         if self.s3bucket is not None:
-            self.s3bucket = None
+            self.s3bucket.stop_mock()
+        self.s3bucket = None
         self.log.info("end_disable")
 
     async def do_setValue(self, id_data):
