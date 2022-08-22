@@ -92,6 +92,14 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(state.summaryState, salobj.State.STANDBY)
 
+            configs_available = await self.remote.evt_configurationsAvailable.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertEqual(
+                configs_available.overrides,
+                "all_fields.yaml,invalid_bad_camera_driver.yaml,invalid_malformed.yaml",
+            )
+
             invalid_files = glob.glob(os.path.join(TEST_CONFIG_DIR, "invalid_*.yaml"))
             bad_config_names = [os.path.basename(name) for name in invalid_files]
             bad_config_names.append("no_such_file.yaml")
@@ -107,6 +115,14 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             state = await self.remote.evt_summaryState.next(
                 flush=False, timeout=STD_TIMEOUT
             )
+
+            config_applied = await self.remote.evt_configurationApplied.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertEqual(
+                config_applied.configurations, "_init.yaml,all_fields.yaml"
+            )
+
             self.assertEqual(state.summaryState, salobj.State.DISABLED)
             all_fields_path = os.path.join(TEST_CONFIG_DIR, "all_fields.yaml")
             with open(all_fields_path, "r") as f:
