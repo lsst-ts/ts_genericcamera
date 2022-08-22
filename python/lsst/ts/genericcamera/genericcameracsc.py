@@ -1028,6 +1028,11 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         validator = salobj.DefaultingValidator(config_schema)
         validator.validate(camera_config)
 
+        await self.evt_cameraInfo.set_write(
+            cameraMakeAndModel=self.camera.get_make_and_model()
+        )
+        self.evt_configurationApplied.set(otherInfo="cameraInfo")
+
     def _assert_notlive(self):
         """Raise an exception if live view is active."""
         assert not self.is_live, "Live view is active."

@@ -122,6 +122,11 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 config_applied.configurations, "_init.yaml,all_fields.yaml"
             )
+            self.assertEqual(config_applied.otherInfo, "cameraInfo")
+            camera_info = await self.remote.evt_cameraInfo.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertEqual(camera_info.cameraMakeAndModel, "Simulator")
 
             self.assertEqual(state.summaryState, salobj.State.DISABLED)
             all_fields_path = os.path.join(TEST_CONFIG_DIR, "all_fields.yaml")
