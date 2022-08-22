@@ -19,31 +19,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["DATE_FORMAT", "DATETIME_FORMAT", "get_dayobs"]
+import unittest
 
 from astropy.time import Time, TimeDelta
 
-
-DATE_FORMAT = "%Y-%m-%d"
-"""Format string for date values in the FITS header."""
-
-DATETIME_FORMAT = f"{DATE_FORMAT}T%H:%M:%S"
-"""Format string for datetime values in the FITS header."""
+from lsst.ts.genericcamera import utils
 
 
-def get_dayobs(timestamp: float) -> str:
-    """Get the DAYOBS for the given timestamp.
+class TestUtils(unittest.TestCase):
+    def test_get_dayobs(self):
+        timestamp = Time("2022-08-22T11:00:00", scale="utc", format="isot")
+        self.assertEqual(utils.get_dayobs(timestamp.utc.unix), "20220821")
+        timestamp += TimeDelta(3600, format="sec")
+        self.assertEqual(utils.get_dayobs(timestamp.utc.unix), "20220822")
+        timestamp += TimeDelta(12 * 3600, format="sec")
+        self.assertEqual(utils.get_dayobs(timestamp.utc.unix), "20220822")
 
-    Parameters
-    ----------
-    timestamp: `float`
-        The timestamp to derive the DAYOBS. Scale is assumed to be UTC.
 
-    Returns
-    -------
-    dayobs: `str`
-        The calculated DAYOBS.
-    """
-    time_obj = Time(timestamp, scale="utc", format="unix")
-    dayobs_time = time_obj - TimeDelta(12 * 3600, format="sec")
-    return dayobs_time.strftime("%Y%m%d")
+if __name__ == "__main__":
+    unittest.main()

@@ -39,6 +39,9 @@ properties:
     description: >-
       Large File Annex S3 instance, for example "tuc" (Tucson Test Stand),
       "ls" (Base Test Stand), "cp" (summit).
+  image_service:
+    type: string
+    description: The URL to the image name service
   instances:
     type: array
     description: Configuration for each GenericCamera instance.

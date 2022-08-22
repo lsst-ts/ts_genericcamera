@@ -186,7 +186,20 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await check_rejected(salobj.State.STANDBY)
 
     async def test_take_image(self):
-        async def take_bias():
+
+        self.mock_response = unittest.mock.Mock()
+        self.mock_response.status_code = 200
+        self.mock_response.json.side_effect = [
+            ["GC1_O_20220822_0001"],
+            ["GC1_O_20220822_0002"],
+            ["GC1_O_20220822_0003"],
+            ["GC1_O_20220822_0004"],
+        ]
+
+        @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
+        async def take_bias(mock_get):
+            mock_get.return_value = self.mock_response
+
             await self.remote.cmd_takeImages.set_start(
                 numImages=1,
                 expTime=0.0,
@@ -246,7 +259,9 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             )
             self.assertIsNotNone(endTakeImage)
 
-        async def take_image(check_lfoa=False):
+        @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
+        async def take_image(check_lfoa, mock_get):
+            mock_get.return_value = self.mock_response
             await self.remote.cmd_takeImages.set_start(
                 numImages=1,
                 expTime=np.random.rand() + 1.0,
@@ -279,6 +294,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 startIntegration.imageController, self.csc.image_controller
             )
+            self.assertEqual(
+                startIntegration.imageNumber, self.csc.image_sequence_num - 1
+            )
+            self.assertEqual(startIntegration.imageDate, self.csc.dayobs)
 
             endIntegration = await self.remote.evt_endIntegration.next(
                 flush=False, timeout=LONG_TIMEOUT
@@ -301,6 +320,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(startReadout)
             self.assertEqual(startReadout.imageSource, self.csc.image_source_short)
             self.assertEqual(startReadout.imageController, self.csc.image_controller)
+            self.assertEqual(startReadout.imageNumber, self.csc.image_sequence_num - 1)
+            self.assertEqual(startReadout.imageDate, self.csc.dayobs)
 
             endReadout = await self.remote.evt_endReadout.next(
                 flush=False, timeout=STD_TIMEOUT
@@ -308,6 +329,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(endReadout)
             self.assertEqual(endReadout.imageSource, self.csc.image_source_short)
             self.assertEqual(endReadout.imageController, self.csc.image_controller)
+            self.assertEqual(endReadout.imageNumber, self.csc.image_sequence_num - 1)
+            self.assertEqual(endReadout.imageDate, self.csc.dayobs)
 
             if check_lfoa:
                 largeFileObjectAvailable = (

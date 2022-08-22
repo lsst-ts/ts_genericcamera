@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["GenericCameraCsc", "run_genericcamera"]
+__all__ = ["GenericCameraCsc", "requests", "run_genericcamera"]
 
 import asyncio
 import inspect
@@ -30,6 +30,8 @@ import types
 
 from astropy.time import Time
 import numpy as np
+import requests
+from requests.exceptions import ConnectionError
 import yaml
 
 from .config_schema import CONFIG_SCHEMA
@@ -39,7 +41,7 @@ from lsst.ts import utils
 
 from .liveview import liveview
 from . import driver
-
+from .utils import get_dayobs
 
 LV_ERROR = 1000
 """Error code for when the live view loop dies and the CSC is in enable
@@ -119,6 +121,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.image_source = f"GC{index}"
         # GenericCameras can only be run by the OCS
         self.image_controller = "O"
+
+        self.dayobs = None
+        self.image_sequence_num = 1
+        self.image_service = None
 
         self.is_live = False
         self.is_auto_exposure = False
@@ -373,10 +379,31 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         try:
             self.log.info("takeImages - Start")
-
             images_in_sequence = id_data.numImages
             exposure_time = id_data.expTime
             time_stamp = utils.current_tai()
+
+            try:
+                response = requests.get(
+                    self.image_service,
+                    params={"n": images_in_sequence, "sourceIndex": self.salinfo.index},
+                )
+                if response.status_code == 200:
+                    json_response = response.json()
+                    self.dayobs = json_response[0].split("_")[2]
+                    image_sequence_array = [
+                        int(x.split("_")[-1]) for x in json_response
+                    ]
+                else:
+                    self.log.warning("Image name service returned an error.")
+                    image_sequence_array = self._get_dayobs_and_seqnum_array(
+                        time_stamp, images_in_sequence
+                    )
+            except ConnectionError:
+                self.log.exception("Cannot connect to image name service.")
+                image_sequence_array = self._get_dayobs_and_seqnum_array(
+                    time_stamp, images_in_sequence
+                )
 
             # Calculate expected time for IN_PROGRESS ack
             total_shutter_time = (
@@ -403,6 +430,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             )
 
             for image_index in range(images_in_sequence):
+                timestamp = time.time()
+                self.image_sequence_num = image_sequence_array[image_index]
                 timestamp = utils.current_tai()
                 image_name = self.file_name_format.format(
                     timestamp=int(timestamp),
@@ -421,6 +450,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
             await self.camera.end_take_image()
             await self.evt_endTakeImage.write()
+            # Adjust SEQNUM in case web service is unavailable
+            self.image_sequence_num += 1
         except Exception as e:
             self.log.exception(e)
             raise e
@@ -506,6 +537,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             exposureTime=exposure_time,
             imageSource=self.image_source_short,
             imageController=self.image_controller,
+            imageNumber=self.image_sequence_num,
+            imageDate=self.dayobs,
         )
         await self.camera.start_integration()
         await self.camera.end_integration()
@@ -525,6 +558,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             exposureTime=exposure_time,
             imageSource=self.image_source_short,
             imageController=self.image_controller,
+            imageNumber=self.image_sequence_num,
+            imageDate=self.dayobs,
         )
         await self.camera.start_readout()
 
@@ -537,6 +572,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             requestedExposureTime=exposure_time,
             imageSource=self.image_source_short,
             imageController=self.image_controller,
+            imageNumber=self.image_sequence_num,
+            imageDate=self.dayobs,
         )
         return exposure
 
@@ -1025,6 +1062,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 s3instance=config.s3instance
             )
 
+        self.image_service = config.image_service
+
         settings = types.SimpleNamespace(**instance)
         self.config = settings
         self.ip = self.config.ip
@@ -1061,3 +1100,30 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
     def _assert_autoexposure(self):
         """Raise an exception if auto exposure is not active."""
         assert self.is_auto_exposure, "Auto exposure is not active."
+
+    def _get_dayobs_and_seqnum_array(
+        self, timestamp: float, num_images: int
+    ) -> list[int]:
+        """Get the DAYOBS and a SEQNUM array
+
+        Parameters
+        ----------
+        timestamp: `float`
+            The timestamp to get the DAYOBS from. Assumed to be on UTC scale.
+        num_images: `int`
+            The number of images in the sequence.
+
+        Returns
+        -------
+        seqnum_array: `list`
+            The array containing the requested number of image sequence
+            numbers.
+        """
+        dayobs = get_dayobs(timestamp)
+        if dayobs != self.dayobs:
+            self.dayobs = dayobs
+            self.image_sequence_num = 1
+        seqnum_array = list(
+            range(self.image_sequence_num, self.image_sequence_num + num_images)
+        )
+        return seqnum_array
