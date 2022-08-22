@@ -275,6 +275,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(startIntegration)
+            self.assertEqual(startIntegration.imageSource, self.csc.image_source_short)
+            self.assertEqual(
+                startIntegration.imageController, self.csc.image_controller
+            )
 
             endIntegration = await self.remote.evt_endIntegration.next(
                 flush=False, timeout=LONG_TIMEOUT
@@ -295,11 +299,15 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(startReadout)
+            self.assertEqual(startReadout.imageSource, self.csc.image_source_short)
+            self.assertEqual(startReadout.imageController, self.csc.image_controller)
 
             endReadout = await self.remote.evt_endReadout.next(
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(endReadout)
+            self.assertEqual(endReadout.imageSource, self.csc.image_source_short)
+            self.assertEqual(endReadout.imageController, self.csc.image_controller)
 
             if check_lfoa:
                 largeFileObjectAvailable = (
