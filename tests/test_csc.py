@@ -216,12 +216,12 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_startShutterOpen.next(
-                    flush=False, timeout=LONG_TIMEOUT
+                    flush=False, timeout=STD_TIMEOUT
                 )
 
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_endShutterOpen.next(
-                    flush=False, timeout=LONG_TIMEOUT
+                    flush=False, timeout=STD_TIMEOUT
                 )
 
             startIntegration = await self.remote.evt_startIntegration.next(
@@ -236,12 +236,12 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_startShutterClose.next(
-                    flush=False, timeout=LONG_TIMEOUT
+                    flush=False, timeout=STD_TIMEOUT
                 )
 
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_endShutterClose.next(
-                    flush=False, timeout=LONG_TIMEOUT
+                    flush=False, timeout=STD_TIMEOUT
                 )
 
             startReadout = await self.remote.evt_startReadout.next(

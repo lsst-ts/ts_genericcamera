@@ -42,7 +42,7 @@ class TestLiveView(unittest.IsolatedAsyncioTestCase):
 
             await client.start()
 
-            for i in range(10):
+            for i in range(3):
                 image = np.random.randint(
                     low=np.iinfo(np.uint16).min,
                     high=np.iinfo(np.uint16).max,
