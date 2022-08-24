@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["DATE_FORMAT", "DATETIME_FORMAT", "get_dayobs"]
+__all__ = ["DATE_FORMAT", "DATETIME_FORMAT", "get_dayobs", "parse_key_value_map"]
 
 from astropy.time import Time, TimeDelta
 
@@ -47,3 +47,37 @@ def get_dayobs(timestamp: float) -> str:
     time_obj = Time(timestamp, scale="utc", format="unix")
     dayobs_time = time_obj - TimeDelta(12 * 3600, format="sec")
     return dayobs_time.strftime("%Y%m%d")
+
+
+def parse_key_value_map(kvm: str) -> (str, str):
+    """Create keys and values string from key-value map.
+
+    Parameters
+    ----------
+    kvm: `str`
+        The key-value map parse.
+
+    Returns
+    -------
+    keys: `str`
+        The set of keys from the map.
+    values: `str`
+        The set of values from the map.
+    """
+    parts = kvm.split(",")
+    keys_list = []
+    values_list = []
+
+    for part in parts:
+        try:
+            k, v = part.split(":")
+        except ValueError:
+            # The value has colons in it.
+            index = part.find(":")
+            k = part[:index]
+            v = part[index + 1 :]
+            v = v.replace(":", r"\:")
+        keys_list.append(k.strip())
+        values_list.append(v.strip())
+
+    return ":".join(keys_list), ":".join(values_list)

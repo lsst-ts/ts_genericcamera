@@ -205,7 +205,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 expTime=0.0,
                 shutter=False,
                 sensors="",
-                keyValueMap="",
+                keyValueMap="imageType: BIAS, groupId: CALIBSET_20220823, testType: BIAS",
                 obsNote="bias",
             )
 
@@ -228,11 +228,23 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(startIntegration)
+            self.assertEqual(
+                startIntegration.additionalKeys, "imageType:groupId:testType"
+            )
+            self.assertEqual(
+                startIntegration.additionalValues, "BIAS:CALIBSET_20220823:BIAS"
+            )
 
             endIntegration = await self.remote.evt_endIntegration.next(
                 flush=False, timeout=LONG_TIMEOUT
             )
             self.assertIsNotNone(endIntegration)
+            self.assertEqual(
+                endIntegration.additionalKeys, "imageType:groupId:testType"
+            )
+            self.assertEqual(
+                endIntegration.additionalValues, "BIAS:CALIBSET_20220823:BIAS"
+            )
 
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_startShutterClose.next(
@@ -248,11 +260,17 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(startReadout)
+            self.assertEqual(startReadout.additionalKeys, "imageType:groupId:testType")
+            self.assertEqual(
+                startReadout.additionalValues, "BIAS:CALIBSET_20220823:BIAS"
+            )
 
             endReadout = await self.remote.evt_endReadout.next(
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(endReadout)
+            self.assertEqual(endReadout.additionalKeys, "imageType:groupId:testType")
+            self.assertEqual(endReadout.additionalValues, "BIAS:CALIBSET_20220823:BIAS")
 
             endTakeImage = await self.remote.evt_endTakeImage.next(
                 flush=False, timeout=STD_TIMEOUT
@@ -267,7 +285,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 expTime=np.random.rand() + 1.0,
                 shutter=True,
                 sensors="",
-                keyValueMap="",
+                keyValueMap="imageType: ENGTEST, groupId: TestGroup",
                 obsNote="image",
             )
 
@@ -298,11 +316,15 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 startIntegration.imageNumber, self.csc.image_sequence_num - 1
             )
             self.assertEqual(startIntegration.imageDate, self.csc.dayobs)
+            self.assertEqual(startIntegration.additionalKeys, "imageType:groupId")
+            self.assertEqual(startIntegration.additionalValues, "ENGTEST:TestGroup")
 
             endIntegration = await self.remote.evt_endIntegration.next(
                 flush=False, timeout=LONG_TIMEOUT
             )
             self.assertIsNotNone(endIntegration)
+            self.assertEqual(endIntegration.additionalKeys, "imageType:groupId")
+            self.assertEqual(endIntegration.additionalValues, "ENGTEST:TestGroup")
 
             startShutterClose = await self.remote.evt_startShutterClose.next(
                 flush=False, timeout=LONG_TIMEOUT
@@ -322,6 +344,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(startReadout.imageController, self.csc.image_controller)
             self.assertEqual(startReadout.imageNumber, self.csc.image_sequence_num - 1)
             self.assertEqual(startReadout.imageDate, self.csc.dayobs)
+            self.assertEqual(startReadout.additionalKeys, "imageType:groupId")
+            self.assertEqual(startReadout.additionalValues, "ENGTEST:TestGroup")
 
             endReadout = await self.remote.evt_endReadout.next(
                 flush=False, timeout=STD_TIMEOUT
@@ -331,6 +355,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(endReadout.imageController, self.csc.image_controller)
             self.assertEqual(endReadout.imageNumber, self.csc.image_sequence_num - 1)
             self.assertEqual(endReadout.imageDate, self.csc.dayobs)
+            self.assertEqual(endReadout.additionalKeys, "imageType:groupId")
+            self.assertEqual(endReadout.additionalValues, "ENGTEST:TestGroup")
 
             if check_lfoa:
                 largeFileObjectAvailable = (

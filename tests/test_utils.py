@@ -35,6 +35,16 @@ class TestUtils(unittest.TestCase):
         timestamp += TimeDelta(12 * 3600, format="sec")
         self.assertEqual(utils.get_dayobs(timestamp.utc.unix), "20220822")
 
+    def test_parse_key_value_map(self):
+        key_value_map1 = "imageType: ENGTEST, groupId: Group1"
+        additional_keys, additional_values = utils.parse_key_value_map(key_value_map1)
+        self.assertEqual(additional_keys, "imageType:groupId")
+        self.assertEqual(additional_values, "ENGTEST:Group1")
+        key_value_map2 = "imageType: ENGTEST, groupId: 2022-08-23T15:20:00"
+        additional_keys, additional_values = utils.parse_key_value_map(key_value_map2)
+        self.assertEqual(additional_keys, "imageType:groupId")
+        self.assertEqual(additional_values, r"ENGTEST:2022-08-23T15\:20\:00")
+
 
 if __name__ == "__main__":
     unittest.main()

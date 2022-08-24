@@ -41,7 +41,7 @@ from lsst.ts import utils
 
 from .liveview import liveview
 from . import driver
-from .utils import get_dayobs
+from .utils import get_dayobs, parse_key_value_map
 
 LV_ERROR = 1000
 """Error code for when the live view loop dies and the CSC is in enable
@@ -125,6 +125,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.dayobs = None
         self.image_sequence_num = 1
         self.image_service = None
+        self.additional_keys = None
+        self.additional_values = None
 
         self.is_live = False
         self.is_auto_exposure = False
@@ -405,6 +407,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     time_stamp, images_in_sequence
                 )
 
+            self.additional_keys, self.additional_values = parse_key_value_map(
+                id_data.keyValueMap
+            )
+
             # Calculate expected time for IN_PROGRESS ack
             total_shutter_time = (
                 images_in_sequence * DEFAULT_SHUTTER_TIME if id_data.shutter else 0
@@ -539,10 +545,16 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             imageController=self.image_controller,
             imageNumber=self.image_sequence_num,
             imageDate=self.dayobs,
+            additionalKeys=self.additional_keys,
+            additionalValues=self.additional_values,
         )
         await self.camera.start_integration()
         await self.camera.end_integration()
-        await self.evt_endIntegration.write()
+        await self.evt_endIntegration.set_write(
+            additionalKeys=self.additional_keys,
+            additionalValues=self.additional_values,
+            force_output=True,
+        )
 
         if shutter:
             await self.evt_startShutterClose.write()
@@ -560,6 +572,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             imageController=self.image_controller,
             imageNumber=self.image_sequence_num,
             imageDate=self.dayobs,
+            additionalKeys=self.additional_keys,
+            additionalValues=self.additional_values,
         )
         await self.camera.start_readout()
 
@@ -574,6 +588,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             imageController=self.image_controller,
             imageNumber=self.image_sequence_num,
             imageDate=self.dayobs,
+            additionalKeys=self.additional_keys,
+            additionalValues=self.additional_values,
         )
         return exposure
 
