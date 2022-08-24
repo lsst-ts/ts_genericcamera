@@ -190,10 +190,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         self.mock_response = unittest.mock.Mock()
         self.mock_response.status_code = 200
         self.mock_response.json.side_effect = [
-            ["GC1_O_20220822_0001"],
-            ["GC1_O_20220822_0002"],
-            ["GC1_O_20220822_0003"],
-            ["GC1_O_20220822_0004"],
+            ["GC1_O_20220822_000001"],
+            ["GC1_O_20220822_000002"],
+            ["GC1_O_20220822_000003"],
+            ["GC1_O_20220822_000004"],
         ]
 
         @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
@@ -288,7 +288,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(endTakeImage)
 
         @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
-        async def take_image(check_lfoa, mock_get):
+        async def take_image(image_name_check, check_lfoa, mock_get):
             mock_get.return_value = self.mock_response
             await self.remote.cmd_takeImages.set_start(
                 numImages=1,
@@ -333,6 +333,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 startIntegration.additionalValues, "ENGTEST:TestGroup:100:50"
             )
+            self.assertEqual(startIntegration.imageName, image_name_check)
 
             endIntegration = await self.remote.evt_endIntegration.next(
                 flush=False, timeout=LONG_TIMEOUT
@@ -367,6 +368,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 startReadout.additionalKeys, "imageType:groupId:focalLength:diameter"
             )
             self.assertEqual(startReadout.additionalValues, "ENGTEST:TestGroup:100:50")
+            self.assertEqual(startReadout.imageName, image_name_check)
 
             endReadout = await self.remote.evt_endReadout.next(
                 flush=False, timeout=STD_TIMEOUT
@@ -380,6 +382,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 endReadout.additionalKeys, "imageType:groupId:focalLength:diameter"
             )
             self.assertEqual(endReadout.additionalValues, "ENGTEST:TestGroup:100:50")
+            self.assertEqual(startReadout.imageName, image_name_check)
 
             if check_lfoa:
                 largeFileObjectAvailable = (
@@ -408,10 +411,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             # Take 2 images with random exposure time
             with self.subTest(image="image1"):
-                await take_image()
+                await take_image("GC1_O_20220822_000001")
 
             with self.subTest(image="image2"):
-                await take_image()
+                await take_image("GC1_O_20220822_000002")
 
             # Try taking 2 bias
             with self.subTest(image="bias1"):

@@ -19,7 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["DATE_FORMAT", "DATETIME_FORMAT", "get_dayobs", "parse_key_value_map"]
+__all__ = [
+    "DATE_FORMAT",
+    "DATETIME_FORMAT",
+    "get_dayobs",
+    "make_image_names",
+    "parse_key_value_map",
+]
 
 from astropy.time import Time, TimeDelta
 
@@ -47,6 +53,29 @@ def get_dayobs(timestamp: float) -> str:
     time_obj = Time(timestamp, scale="utc", format="unix")
     dayobs_time = time_obj - TimeDelta(12 * 3600, format="sec")
     return dayobs_time.strftime("%Y%m%d")
+
+
+def make_image_names(gctag: str, dayobs: str, seqnums: list[int]) -> list[str]:
+    """Create a list of image service type image names.
+
+    Parameters
+    ----------
+    gctag: `str`
+        The tag name for the indexed GenericCamera.
+    dayobs: `str`
+        The DAYOBS for the images.
+    seqnums: `list`
+        The list of sequence numbers to generate image names for.
+
+    Returns
+    -------
+    image_names: `list`
+        The list of image service type image names.
+    """
+    image_names = []
+    for i in seqnums:
+        image_names.append(f"{gctag}_O_{dayobs}_{i:06d}")
+    return image_names
 
 
 def parse_key_value_map(kvm: str) -> (str, str):

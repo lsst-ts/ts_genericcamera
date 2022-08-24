@@ -41,7 +41,7 @@ from lsst.ts import utils
 
 from .liveview import liveview
 from . import driver
-from .utils import get_dayobs, parse_key_value_map
+from .utils import get_dayobs, make_image_names, parse_key_value_map
 
 LV_ERROR = 1000
 """Error code for when the live view loop dies and the CSC is in enable
@@ -396,15 +396,22 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     image_sequence_array = [
                         int(x.split("_")[-1]) for x in json_response
                     ]
+                    image_names = json_response
                 else:
                     self.log.warning("Image name service returned an error.")
                     image_sequence_array = self._get_dayobs_and_seqnum_array(
                         time_stamp, images_in_sequence
                     )
+                    image_names = make_image_names(
+                        self.image_source, self.dayobs, image_sequence_array
+                    )
             except ConnectionError:
                 self.log.exception("Cannot connect to image name service.")
                 image_sequence_array = self._get_dayobs_and_seqnum_array(
                     time_stamp, images_in_sequence
+                )
+                image_names = make_image_names(
+                    self.image_source, self.dayobs, image_sequence_array
                 )
 
             try:
@@ -447,14 +454,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             )
 
             for image_index in range(images_in_sequence):
-                timestamp = time.time()
                 self.image_sequence_num = image_sequence_array[image_index]
-                timestamp = utils.current_tai()
-                image_name = self.file_name_format.format(
-                    timestamp=int(timestamp),
-                    index=image_index,
-                    total=images_in_sequence,
-                )
+                image_name = image_names[image_index]
                 exposure = await self.take_image(
                     shutter=id_data.shutter,
                     images_in_sequence=images_in_sequence,

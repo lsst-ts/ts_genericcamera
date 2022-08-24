@@ -45,6 +45,19 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(additional_keys, "imageType:groupId")
         self.assertEqual(additional_values, r"ENGTEST:2022-08-23T15\:20\:00")
 
+    def test_make_images_names(self):
+        images_names = utils.make_image_names("GC1", "20220823", list(range(3, 8)))
+        self.assertListEqual(
+            images_names,
+            [
+                "GC1_O_20220823_000003",
+                "GC1_O_20220823_000004",
+                "GC1_O_20220823_000005",
+                "GC1_O_20220823_000006",
+                "GC1_O_20220823_000007",
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
