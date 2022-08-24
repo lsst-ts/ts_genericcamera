@@ -407,8 +407,19 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     time_stamp, images_in_sequence
                 )
 
+            try:
+                new_keyValueMap = ", ".join(
+                    [
+                        id_data.keyValueMap,
+                        self.camera.get_static_configuration_for_key_value_map(),
+                    ]
+                )
+            except TypeError:
+                # Camera config returned None, so do nothing
+                new_keyValueMap = id_data.keyValueMap
+
             self.additional_keys, self.additional_values = parse_key_value_map(
-                id_data.keyValueMap
+                new_keyValueMap
             )
 
             # Calculate expected time for IN_PROGRESS ack

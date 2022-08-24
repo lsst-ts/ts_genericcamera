@@ -461,6 +461,17 @@ properties:
         # Reset readout state
         self.readout_state = 0
 
+    def get_static_configuration_for_key_value_map(self) -> str:
+        """Provide camera specific configuration to the key-value map.
+
+        Returns
+        -------
+        `str`
+            Static camera configuration in the format of
+            key1: value1, key2: value2 ...
+        """
+        return "focalLength: 100, diameter: 50"
+
     async def _set_tag_values(self):
         """Convenience coroutine to provide values for some of the tags in the
         FITS header. More tags can be added if necessary but these were deemed

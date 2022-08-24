@@ -265,6 +265,17 @@ class BaseCamera(abc.ABC):
             fhi = None
         return fhi
 
+    def get_static_configuration_for_key_value_map(self) -> str | None:
+        """Provide camera specific configuration to the key-value map.
+
+        Returns
+        -------
+        `str` or `None`
+            Static camera configuration in the format of
+            key1: value1, key2: value2 ...
+        """
+        return None
+
     async def _get_radec_from_altaz_location_time(self, alt, az, obs_time, location):
         """Get the Right Ascension and Declination from the altitude and
         azimuth for the given time and location.
