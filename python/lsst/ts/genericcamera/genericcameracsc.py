@@ -1099,8 +1099,6 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         if not self.directory.exists():
             raise RuntimeError(f"Directory {self.directory} does not exist.")
 
-        self.file_name_format = self.config.file_name_format
-
         self.camera = self.drivers[self.config.camera](log=self.log)
         camera_config = self.config.config
         config_schema = self.camera.get_config_schema()

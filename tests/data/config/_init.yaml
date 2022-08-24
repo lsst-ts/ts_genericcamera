@@ -6,7 +6,6 @@ instances:
     ip: "127.0.0.1"
     port: 5013
     directory: "~/"
-    file_name_format: "{timestamp}-{index}-{total}"
     camera: "Simulator"
     auto_exposure_nterval: 60
     min_background: 32500.0

@@ -59,15 +59,6 @@ properties:
         port:
           description: Port for the live view server.
           type: number
-        file_name_format:
-          description: >
-            File name format. Supported tags are:
-              - timestamp: the TAI timestamp of the image which is the start of
-                image acquisition.
-              - index: the index of the image in the sequence of images to be
-                taken.
-              - total: the total amount of images to take.
-          type: string
         camera:
           description: Camera driver to use.
           type: string
