@@ -125,6 +125,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.dayobs = None
         self.image_sequence_num = 1
         self.image_service = None
+        self.require_image_service = False
         self.additional_keys = None
         self.additional_values = None
 
@@ -398,7 +399,13 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     ]
                     image_names = json_response
                 else:
-                    self.log.warning("Image name service returned an error.")
+                    self.log.warning(
+                        f"Image name service returned an error: {response.status_code}"
+                    )
+                    if self.require_image_service:
+                        raise ConnectionError(
+                            f"Image name service returned an error: {response.status_code}"
+                        )
                     image_sequence_array = self._get_dayobs_and_seqnum_array(
                         time_stamp, images_in_sequence
                     )
@@ -407,6 +414,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     )
             except ConnectionError:
                 self.log.exception("Cannot connect to image name service.")
+                if self.require_image_service:
+                    raise
                 image_sequence_array = self._get_dayobs_and_seqnum_array(
                     time_stamp, images_in_sequence
                 )
@@ -1096,6 +1105,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.config = settings
         self.ip = self.config.ip
         self.port = self.config.port
+        self.require_image_service = self.config.require_image_service
 
         if not self.directory.exists():
             raise RuntimeError(f"Directory {self.directory} does not exist.")

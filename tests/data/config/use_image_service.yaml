@@ -1,5 +1,4 @@
 # Default configuration for tests.
-s3instance: null
 image_service: "http://localhost/ImageUtilities/rest/imageNameService"
 instances:
   - sal_index: 1
@@ -7,7 +6,7 @@ instances:
     port: 5013
     directory: "~/"
     camera: "Simulator"
-    require_image_service: false
+    require_image_service: true
     auto_exposure_nterval: 60
     min_background: 32500.0
     max_background: 33000.0

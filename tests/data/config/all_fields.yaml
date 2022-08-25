@@ -6,6 +6,7 @@ instances:
     port: 100
     directory: "~/"
     camera: "Simulator"
+    require_image_service: false
     auto_exposure_nterval: 60
     min_background: 32500.0
     max_background: 33000.0

@@ -27,6 +27,7 @@ import unittest
 import shutil
 
 import numpy as np
+from requests import ConnectionError
 import yaml
 
 from lsst.ts import salobj
@@ -95,9 +96,15 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             configs_available = await self.remote.evt_configurationsAvailable.next(
                 flush=False, timeout=LONG_TIMEOUT
             )
+            overrides = [
+                "all_fields.yaml",
+                "invalid_bad_camera_driver.yaml",
+                "invalid_malformed.yaml",
+                "use_image_service.yaml",
+            ]
             self.assertEqual(
                 configs_available.overrides,
-                "all_fields.yaml,invalid_bad_camera_driver.yaml,invalid_malformed.yaml",
+                ",".join(overrides),
             )
 
             invalid_files = glob.glob(os.path.join(TEST_CONFIG_DIR, "invalid_*.yaml"))
@@ -192,13 +199,12 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         self.mock_response.json.side_effect = [
             ["GC1_O_20220822_000001"],
             ["GC1_O_20220822_000002"],
-            ["GC1_O_20220822_000003"],
-            ["GC1_O_20220822_000004"],
+            ["GC1_O_20220822_000005"],
         ]
 
         @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
         async def take_bias(mock_get):
-            mock_get.return_value = self.mock_response
+            mock_get.side_effect = ConnectionError()
 
             await self.remote.cmd_takeImages.set_start(
                 numImages=1,
@@ -397,6 +403,31 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             )
             self.assertIsNotNone(endTakeImage)
 
+        @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
+        async def take_image_no_image_service(image_name_check, mock_get):
+            mock_get.side_effect = ConnectionError("Cannot connect to image service")
+            await self.remote.cmd_takeImages.set_start(
+                numImages=1,
+                expTime=np.random.rand() + 1.0,
+                shutter=True,
+                sensors="",
+                keyValueMap="imageType: ENGTEST, groupId: TestGroup",
+                obsNote="image",
+            )
+
+        @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
+        async def take_image_image_service_bad_status_code(image_name_check, mock_get):
+            self.mock_response.status_code = 400
+            mock_get.return_value = self.mock_response
+            await self.remote.cmd_takeImages.set_start(
+                numImages=1,
+                expTime=np.random.rand() + 1.0,
+                shutter=True,
+                sensors="",
+                keyValueMap="imageType: ENGTEST, groupId: TestGroup",
+                obsNote="image",
+            )
+
         async with self.make_csc(
             initial_state=salobj.State.ENABLED, config_dir=TEST_CONFIG_DIR
         ):
@@ -422,6 +453,22 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             with self.subTest(image="bias2"):
                 await take_bias()
+
+            await salobj.set_summary_state(self.remote, salobj.State.STANDBY)
+            await salobj.set_summary_state(
+                self.remote, salobj.State.ENABLED, override="use_image_service.yaml"
+            )
+
+            with self.subTest(image="image4"):
+                await take_image("GC1_O_20220822_000005")
+
+            with self.subTest(image="image5"):
+                with self.assertRaises(salobj.AckError):
+                    await take_image_no_image_service("")
+
+            with self.subTest(image="image6"):
+                with self.assertRaises(salobj.AckError):
+                    await take_image_image_service_bad_status_code("")
 
         # Run with LFA
         async with self.make_csc(
