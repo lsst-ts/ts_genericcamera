@@ -24,7 +24,6 @@ __all__ = ["GenericCameraCsc", "run_genericcamera"]
 import asyncio
 import inspect
 import logging
-import os
 import pathlib
 import traceback
 import types
@@ -122,11 +121,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.run_auto_exposure_task = False
         self.auto_exposure_task = None
 
-        try:
-            os.environ["S3_ENDPOINT_URL"]
-            self.use_lfa = True
-        except KeyError:
-            self.use_lfa = False
+        self.use_lfa = False
         self.s3bucket = None
         self.s3bucket_name = None
         self.s3_mock = False
@@ -146,7 +141,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         """
         self.server = liveview.LiveViewServer(self.config.port, log=self.log)
         self.camera.initialise(config=self.config)
-        if self.s3bucket is None:
+        if self.s3bucket is None and self.use_lfa:
             self.s3bucket = salobj.AsyncS3Bucket(
                 name=self.s3bucket_name, domock=self.s3_mock, create=self.s3_mock
             )
@@ -1005,9 +1000,17 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 f"No config found for sal_index={self.salinfo.index}"
             )
 
-        self.s3bucket_name = salobj.AsyncS3Bucket.make_bucket_name(
-            s3instance=config.s3instance
+        self.use_lfa = config.s3instance is not None
+        self.s3_mock = config.s3instance == "mock"
+
+        self.log.info(
+            f"s3 instance: {config.s3instance} -> use_lfa: {self.use_lfa}, s3_mock: {self.s3_mock}"
         )
+
+        if self.use_lfa:
+            self.s3bucket_name = salobj.AsyncS3Bucket.make_bucket_name(
+                s3instance=config.s3instance
+            )
 
         settings = types.SimpleNamespace(**instance)
         self.config = settings

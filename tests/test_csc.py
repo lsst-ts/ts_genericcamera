@@ -329,13 +329,9 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 MYS3_ACCESS_KEY="test",
                 MYS3_SECRET_KEY="bar",
             ):
-                # S3_ENDPOINT_URL must be None for mock not to try to make a
-                # connection, but having it missing won't trigger LFA use.
-                self.csc.use_lfa = True
-                self.assertTrue(self.csc.use_lfa)
-                self.csc.s3_mock = True
-                self.assertTrue(self.csc.s3_mock)
-                await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
+                await salobj.set_summary_state(
+                    self.remote, salobj.State.ENABLED, override="mock_lfa.yaml"
+                )
                 self.flush_take_image_events()
 
                 with self.subTest(image="image3"):
