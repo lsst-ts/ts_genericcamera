@@ -1,4 +1,5 @@
 # Default configuration for tests.
+s3instance: "mock"
 image_service: "http://localhost/ImageUtilities/rest/imageNameService"
 instances:
   - sal_index: 1

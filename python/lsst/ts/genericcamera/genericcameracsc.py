@@ -473,7 +473,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     timestamp=time_stamp,
                     image_name=image_name,
                 )
-                await self.handle_exposure_saving(exposure, timestamp, image_name)
+                await self.handle_exposure_saving(exposure, time_stamp, image_name)
 
             await self.camera.end_take_image()
             await self.evt_endTakeImage.write()

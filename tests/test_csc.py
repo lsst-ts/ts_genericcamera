@@ -100,6 +100,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 "all_fields.yaml",
                 "invalid_bad_camera_driver.yaml",
                 "invalid_malformed.yaml",
+                "mock_lfa.yaml",
                 "use_image_service.yaml",
             ]
             self.assertEqual(
@@ -200,6 +201,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             ["GC1_O_20220822_000001"],
             ["GC1_O_20220822_000002"],
             ["GC1_O_20220822_000005"],
+            ["GC1_O_20220822_000006"],
         ]
 
         @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
@@ -442,10 +444,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             # Take 2 images with random exposure time
             with self.subTest(image="image1"):
-                await take_image("GC1_O_20220822_000001")
+                await take_image("GC1_O_20220822_000001", False)
 
             with self.subTest(image="image2"):
-                await take_image("GC1_O_20220822_000002")
+                await take_image("GC1_O_20220822_000002", False)
 
             # Try taking 2 bias
             with self.subTest(image="bias1"):
@@ -459,21 +461,19 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 self.remote, salobj.State.ENABLED, override="use_image_service.yaml"
             )
 
-            with self.subTest(image="image4"):
-                await take_image("GC1_O_20220822_000005")
+            with self.subTest(image="image3"):
+                await take_image("GC1_O_20220822_000005", False)
 
-            with self.subTest(image="image5"):
+            with self.subTest(image="image4"):
                 with self.assertRaises(salobj.AckError):
                     await take_image_no_image_service("")
 
-            with self.subTest(image="image6"):
+            with self.subTest(image="image5"):
                 with self.assertRaises(salobj.AckError):
                     await take_image_image_service_bad_status_code("")
 
-        # Run with LFA
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
-        ):
+            # Run with LFA
+            await salobj.set_summary_state(self.remote, salobj.State.STANDBY)
             with utils.modify_environ(
                 AWS_ACCESS_KEY_ID="test",
                 AWS_SECRET_ACCESS_KEY="bar",
@@ -485,8 +485,9 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 )
                 self.flush_take_image_events()
 
-                with self.subTest(image="image3"):
-                    await take_image(check_lfoa=True)
+                self.mock_response.status_code = 200
+                with self.subTest(image="image6"):
+                    await take_image("GC1_O_20220822_000006", True)
 
     async def test_live_view(self):
         async with self.make_csc(

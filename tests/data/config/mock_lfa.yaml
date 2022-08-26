@@ -1,12 +1,12 @@
 # Default configuration for tests.
 s3instance: "mock"
+image_service: "http://localhost/ImageUtilities/rest/imageNameService"
 instances:
   - sal_index: 1
     ip: "127.0.0.1"
     port: 5013
-    directory: "~/"
-    file_name_format: "{timestamp}-{index}-{total}"
     camera: "Simulator"
+    require_image_service: false
     auto_exposure_nterval: 60
     min_background: 32500.0
     max_background: 33000.0
