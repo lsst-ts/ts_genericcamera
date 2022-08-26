@@ -24,19 +24,18 @@ __all__ = ["GenericCameraCsc", "run_genericcamera"]
 import asyncio
 import inspect
 import logging
-import os
-
-# TODO Use utils.current_tai() instead.
-import time
+import pathlib
 import traceback
 import types
 
+from astropy.time import Time
 import numpy as np
 import yaml
 
 from .config_schema import CONFIG_SCHEMA
 from . import __version__
 from lsst.ts import salobj
+from lsst.ts import utils
 
 from .liveview import liveview
 from . import driver
@@ -107,7 +106,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         self.ip = None
         self.port = None
-        self.directory = os.path.expanduser("~/")
+        self.directory = pathlib.Path.home() / "data"
         self.file_name_format = "{timestamp}-{index}-{total}"
         self.config = None
 
@@ -121,6 +120,12 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.live_task = None
         self.run_auto_exposure_task = False
         self.auto_exposure_task = None
+
+        self.use_lfa = False
+        self.s3bucket = None
+        self.s3bucket_name = None
+        self.s3_mock = False
+
         self.log.debug("Generic Camera CSC Ready")
 
     async def begin_enable(self, id_data):
@@ -136,6 +141,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         """
         self.server = liveview.LiveViewServer(self.config.port, log=self.log)
         self.camera.initialise(config=self.config)
+        if self.s3bucket is None and self.use_lfa:
+            self.s3bucket = salobj.AsyncS3Bucket(
+                name=self.s3bucket_name, domock=self.s3_mock, create=self.s3_mock
+            )
 
     async def begin_disable(self, id_data):
         """Begin do_disable; called before state changes.
@@ -189,6 +198,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 self.log.exception(e)
             finally:
                 self.camera = None
+
+        if self.s3bucket is not None:
+            self.s3bucket.stop_mock()
+        self.s3bucket = None
         self.log.info("end_disable")
 
     async def do_setValue(self, id_data):
@@ -356,7 +369,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
             images_in_sequence = id_data.numImages
             exposure_time = id_data.expTime
-            time_stamp = time.time()
+            time_stamp = utils.current_tai()
 
             # Calculate expected time for IN_PROGRESS ack
             total_shutter_time = (
@@ -383,7 +396,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             )
 
             for image_index in range(images_in_sequence):
-                timestamp = time.time()
+                timestamp = utils.current_tai()
                 image_name = self.file_name_format.format(
                     timestamp=int(timestamp),
                     index=image_index,
@@ -397,7 +410,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     timestamp=time_stamp,
                     image_name=image_name,
                 )
-                exposure.save(os.path.join(self.directory, image_name + ".fits"))
+                await self.handle_exposure_saving(exposure, timestamp, image_name)
+
             await self.camera.end_take_image()
             await self.evt_endTakeImage.write()
         except Exception as e:
@@ -406,6 +420,39 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         finally:
             self.is_exposing = False
         self.log.info("takeImages - End")
+
+    async def handle_exposure_saving(self, exposure, timestamp, image_name):
+        """Save exposure to LFA or local directory.
+
+        Parameters
+        ----------
+        exposure: `lsst.ts.genericcamera.Exposure`
+            The exposure to save.
+        timestamp: `float`
+            The timestamp for the exposure.
+        image_name: `str`
+            The filename for the exposure.
+        """
+        if self.use_lfa:
+            key = self.s3bucket.make_key(
+                salname=self.salinfo.name,
+                salindexname=None,
+                generator=str(self.salinfo.index),
+                other=image_name,
+                date=Time(timestamp, scale="tai", format="unix_tai"),
+                suffix=exposure.suffix,
+            )
+
+            await self.s3bucket.upload(fileobj=exposure.make_fileobj(), key=key)
+
+            url = f"{self.s3bucket.service_resource.meta.client.meta.endpoint_url}/{self.s3bucket.name}/{key}"
+
+            await self.evt_largeFileObjectAvailable.set_write(
+                url=url, generator=f"{self.salinfo.name}:{self.salinfo.index}"
+            )
+        else:
+            output_file = self.directory / f"{image_name}{exposure.suffix}"
+            exposure.save(output_file)
 
     async def take_image(
         self,
@@ -569,7 +616,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     exposure_time, True, True, True, True
                 )
 
-                start_frame_time = time.time()
+                start_frame_time = utils.current_tai()
 
                 self.log.debug("start shutter open")
                 await self.camera.start_shutter_open()
@@ -592,7 +639,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 exposure.make_jpeg()
                 self.log.debug(f"{exposure.buffer}")
                 await self.server.send_exposure(exposure)
-                stop_frame_time = time.time()
+                stop_frame_time = utils.current_tai()
                 frame_time = round(stop_frame_time - start_frame_time, 3)
                 self.log.debug(f"live_view_loop - {frame_time}")
         except Exception as e:
@@ -664,7 +711,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         # First determine the exposure time based by taking images
         # starting from the configured minimum exposure time.
-        timestamp = time.time()
+        timestamp = utils.current_tai()
         image_name = self.file_name_format.format(
             timestamp=int(timestamp), index=0, total=1
         )
@@ -680,7 +727,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         # Then loop and take images using the latest exposure time and
         # update the exposure time if necessary on the way.
         while self.run_auto_exposure_task:
-            timestamp = time.time()
+            timestamp = utils.current_tai()
             image_name = self.file_name_format.format(
                 timestamp=int(timestamp),
                 index=configuration["image_index"],
@@ -717,7 +764,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
             if exposure:
                 # Save the image.
-                exposure.save(os.path.join(self.directory, image_name + ".fits"))
+                await self.handle_exposure_saving(exposure, timestamp, image_name)
                 # Update the initial exposure time for the next run of
                 # the loop.
                 self.log.debug(
@@ -953,15 +1000,25 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 f"No config found for sal_index={self.salinfo.index}"
             )
 
+        self.use_lfa = config.s3instance is not None
+        self.s3_mock = config.s3instance == "mock"
+
+        self.log.info(
+            f"s3 instance: {config.s3instance} -> use_lfa: {self.use_lfa}, s3_mock: {self.s3_mock}"
+        )
+
+        if self.use_lfa:
+            self.s3bucket_name = salobj.AsyncS3Bucket.make_bucket_name(
+                s3instance=config.s3instance
+            )
+
         settings = types.SimpleNamespace(**instance)
         self.config = settings
         self.ip = self.config.ip
         self.port = self.config.port
 
-        if os.path.exists(os.path.expanduser(self.config.directory)):
-            self.directory = os.path.expanduser(self.config.directory)
-        else:
-            raise RuntimeError(f"Directory {self.config.directory} does not exists.")
+        if not self.directory.exists():
+            raise RuntimeError(f"Directory {self.directory} does not exist.")
 
         self.file_name_format = self.config.file_name_format
 

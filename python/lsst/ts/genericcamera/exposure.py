@@ -59,6 +59,32 @@ class Exposure:
         self.is_jpeg = is_jpeg
         self.dtype = dtype
 
+    @property
+    def suffix(self):
+        """Provide a file suffix"""
+        return ".jpeg" if self.is_jpeg else ".fits"
+
+    def make_fileobj(self):
+        """Create an object suitable for saving to a file.
+
+        Returns
+        -------
+        fileobj: `io.BytesIO`
+        """
+        if self.is_jpeg:
+            fileobj = io.BytesIO(self.buffer)
+        else:
+            img = fits.PrimaryHDU(self.buffer)
+            hdul = fits.HDUList([img])
+            hdr = hdul[0].header
+            for tag in self.tags:
+                hdr.append((tag.name, tag.value, tag.comment), end=True)
+            fileobj = io.BytesIO()
+            hdul.writeto(fileobj)
+            fileobj.seek(0)
+
+        return fileobj
+
     def make_jpeg(self):
         """Takes this exposure and converts it to a JPEG."""
         # fileMemory = io.BytesIO()
@@ -82,14 +108,11 @@ class Exposure:
         ----------
         file_path : str
             The path to the file to save the image to."""
+        fileobj = self.make_fileobj()
 
         if self.is_jpeg:
-            img = Image.open(io.BytesIO(self.buffer))
+            img = Image.open(fileobj)
             img.save(file_path, "jpeg")
         else:
-            img = fits.PrimaryHDU(self.buffer)
-            hdul = fits.HDUList([img])
-            hdr = hdul[0].header
-            for tag in self.tags:
-                hdr.append((tag.name, tag.value, tag.comment), end=True)
-            hdul.writeto(file_path)
+            with open(file_path, "wb") as ofile:
+                ofile.write(fileobj.getbuffer())

@@ -89,6 +89,15 @@ pipeline {
                 }
             }
         }
+        stage("Build and Upload Documentation") {
+            steps {
+                script {
+                    sh """
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd repo && pip install --ignore-installed -e . && pip install -r doc/requirements.txt && package-docs build && pip install ltd-conveyor && ltd upload --product ts-genericcamera --git-ref ${GIT_BRANCH} --dir doc/_build/html\"
+                    """
+                }
+            }
+        }
     }
     post {
         always {

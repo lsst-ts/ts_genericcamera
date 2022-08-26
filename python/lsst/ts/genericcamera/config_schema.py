@@ -28,10 +28,17 @@ CONFIG_SCHEMA = yaml.safe_load(
 $schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_genericcamera/blob/master/python/lsst/ts/genericcamera/config_schema.py
 # title must end with one or more spaces followed by the schema version, which must begin with "v"
-title: GenericCamera v2
+title: GenericCamera v3
 description: Schema for GenericCamera configuration files
 type: object
 properties:
+  s3instance:
+    anyOf:
+    - type: string
+    - type: "null"
+    description: >-
+      Large File Annex S3 instance, for example "tuc" (Tucson Test Stand),
+      "ls" (Base Test Stand), "cp" (summit).
   instances:
     type: array
     description: Configuration for each GenericCamera instance.
@@ -49,9 +56,6 @@ properties:
         port:
           description: Port for the live view server.
           type: number
-        directory:
-          description: Directory to store images (default is home folder).
-          type: string
         file_name_format:
           description: >
             File name format. Supported tags are:
