@@ -558,6 +558,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             await self.camera.end_shutter_open()
             await self.evt_endShutterOpen.write()
 
+        # Put start integration timestamp closer to call
+        timestamp = utils.current_tai()
         await self.evt_startIntegration.set_write(
             imagesInSequence=images_in_sequence,
             imageName=image_name,
