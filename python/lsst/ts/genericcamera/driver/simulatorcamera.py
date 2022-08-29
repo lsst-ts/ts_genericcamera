@@ -487,13 +487,13 @@ properties:
         self.get_tag(name="DATE").value = datetime.datetime.now(
             tz=datetime.timezone.utc
         ).strftime(utils.DATETIME_FORMAT)
-        self.get_tag(name="DATE-OBS").value = self.datetime_start.strftime(
+        self.get_tag(name="DATE-OBS").value = self.datetime_start_readout.strftime(
             utils.DATE_FORMAT
         )
-        self.get_tag(name="DATE-BEG").value = self.datetime_start.strftime(
+        self.get_tag(name="DATE-BEG").value = self.datetime_start_readout.strftime(
             utils.DATETIME_FORMAT
         )
-        self.get_tag(name="DATE-END").value = self.datetime_end.strftime(
+        self.get_tag(name="DATE-END").value = self.datetime_end_readout.strftime(
             utils.DATETIME_FORMAT
         )
         self.get_tag(name="ISO").value = 100

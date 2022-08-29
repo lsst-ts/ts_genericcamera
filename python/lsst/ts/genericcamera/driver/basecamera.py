@@ -23,7 +23,6 @@ __all__ = ["BaseCamera"]
 
 import abc
 import ctypes
-import datetime
 import logging
 
 from astropy.coordinates import Angle, SkyCoord
@@ -48,8 +47,9 @@ class BaseCamera(abc.ABC):
         self.tags = fhig.generate_fits_header_items(FitsHeaderTemplate.ALL_SKY)
 
         # Variables holding image acquisition info
-        self.datetime_start = None
-        self.datetime_end = None
+        self.datetime_end_integration = None
+        self.datetime_start_readout = None
+        self.datetime_end_readout = None
 
     @staticmethod
     @abc.abstractmethod
@@ -179,7 +179,7 @@ class BaseCamera(abc.ABC):
         wfs : bool
             Should wave front sensor be used?
         """
-        self.datetime_start = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.datetime_start_readout = Time.now()
         return True
 
     async def start_shutter_open(self):
@@ -205,7 +205,7 @@ class BaseCamera(abc.ABC):
         """End integration.
 
         This should wait for the integration period to complete."""
-        pass
+        self.datetime_end_integration = Time.now()
 
     async def start_shutter_close(self):
         """Start closing the shutter.
@@ -227,7 +227,7 @@ class BaseCamera(abc.ABC):
 
     async def start_readout(self):
         """Start reading out the image."""
-        self.datetime_end = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.datetime_end_readout = Time.now()
 
     async def end_readout(self):
         """End reading out the image.

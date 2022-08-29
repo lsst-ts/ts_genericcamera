@@ -58,17 +58,17 @@ class TestSimulatorCamera(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(exposure.width == simcam.max_width)
             self.assertTrue(exposure.height == simcam.max_height)
             self.assertTrue(exposure.buffer is not None)
-            self.assertIsNotNone(simcam.datetime_start)
-            self.assertIsNotNone(simcam.datetime_end)
+            self.assertIsNotNone(simcam.datetime_start_readout)
+            self.assertIsNotNone(simcam.datetime_end_readout)
 
             # Test several FITS header tags.
             self.assertEqual(
                 simcam.get_tag("DATE-BEG").value,
-                simcam.datetime_start.strftime(DATETIME_FORMAT),
+                simcam.datetime_start_readout.strftime(DATETIME_FORMAT),
             )
             self.assertEqual(
                 simcam.get_tag("DATE-END").value,
-                simcam.datetime_end.strftime(DATETIME_FORMAT),
+                simcam.datetime_end_readout.strftime(DATETIME_FORMAT),
             )
             self.assertEqual(simcam.get_tag("ISO").value, 100)
 
