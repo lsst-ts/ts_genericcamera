@@ -72,7 +72,7 @@ class TestSimulatorCamera(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(simcam.get_tag("ISO").value, 100)
 
-        asyncio.get_event_loop().run_until_complete(doit())
+        asyncio.run(doit())
 
 
 if __name__ == "__main__":
