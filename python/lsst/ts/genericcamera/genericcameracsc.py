@@ -805,11 +805,11 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         # First determine the exposure time based by taking images
         # starting from the configured minimum exposure time.
         timestamp = utils.current_tai()
-        image_name = self.file_name_format.format(
+        temp_image_name = self.file_name_format.format(
             timestamp=int(timestamp), index=0, total=1
         )
         exposure_time_auto_current = await self.determine_exposure_time(
-            min_exp_time, max_exp_time, configuration, timestamp, image_name
+            min_exp_time, max_exp_time, configuration, timestamp, temp_image_name
         )
 
         self.log.debug(
