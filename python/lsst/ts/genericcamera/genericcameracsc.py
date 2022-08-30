@@ -578,7 +578,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         await self.evt_endIntegration.set_write(
             additionalKeys=self.additional_keys,
             additionalValues=self.additional_values,
-            timestampAcquisitionEnd=self.camera.datetime_end_integration.unix_tai,
+            timestampAcquisitionEnd=self.camera.timestamp_end_integration,
         )
 
         if shutter:
@@ -609,7 +609,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             imageName=image_name,
             imageIndex=image_index,
             timestampAcquisitionStart=timestamp,
-            timestampEndOfReadout=self.camera.datetime_end_readout.unix_tai,
+            timestampEndOfReadout=self.camera.timestamp_end_readout,
             requestedExposureTime=exposure_time,
             imageSource=self.image_source_short,
             imageController=self.image_controller,
