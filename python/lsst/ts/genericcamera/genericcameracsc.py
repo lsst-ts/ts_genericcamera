@@ -156,7 +156,6 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             Command ID and data
         """
         self.server = liveview.LiveViewServer(self.config.port, log=self.log)
-        self.camera.initialise(config=self.config)
         if self.s3bucket is None and self.use_lfa:
             self.s3bucket = salobj.AsyncS3Bucket(
                 name=self.s3bucket_name, domock=self.s3_mock, create=self.s3_mock
@@ -181,7 +180,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         acknowledged.
 
         The method will stop any live view, close live view server and
-        stop the camera.
+        remove the S3 bucket handle.
 
         Parameters
         ----------
@@ -206,6 +205,21 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             finally:
                 self.server = None
 
+        if self.s3bucket is not None:
+            self.s3bucket.stop_mock()
+        self.s3bucket = None
+        self.log.info("end_disable")
+
+    async def begin_standby(self, id_data):
+        """Begin do_standby; called before the state changes.
+
+        This method will stop the camera.
+
+        Parameters
+        ----------
+        data : `DataType`
+            Command data
+        """
         if self.camera is not None:
             try:
                 await self.camera.stop()
@@ -214,11 +228,6 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 self.log.exception(e)
             finally:
                 self.camera = None
-
-        if self.s3bucket is not None:
-            self.s3bucket.stop_mock()
-        self.s3bucket = None
-        self.log.info("end_disable")
 
     async def do_setValue(self, id_data):
         """Set a parameter/value pair.
@@ -1121,6 +1130,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         config_schema = self.camera.get_config_schema()
         validator = salobj.DefaultingValidator(config_schema)
         validator.validate(camera_config)
+        self.camera.initialise(config=self.config)
 
         await self.evt_cameraInfo.set_write(
             cameraMakeAndModel=self.camera.get_make_and_model()
