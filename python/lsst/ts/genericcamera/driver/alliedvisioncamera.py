@@ -128,7 +128,7 @@ properties:
         `str`
             The make and model of the camera.
         """
-        return self.camera.get_name()
+        return f"AlliedVision {self.camera.get_name()}"
 
     def get_roi(self):
         """Gets the region of interest.
