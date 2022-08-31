@@ -400,20 +400,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 images_in_sequence, time_stamp
             )
 
-            try:
-                new_keyValueMap = ", ".join(
-                    [
-                        id_data.keyValueMap,
-                        self.camera.get_static_configuration_for_key_value_map(),
-                    ]
-                )
-            except TypeError:
-                # Camera config returned None, so do nothing
-                new_keyValueMap = id_data.keyValueMap
-
-            self.additional_keys, self.additional_values = parse_key_value_map(
-                new_keyValueMap
-            )
+            self.parse_key_value_map(id_data.keyValueMap)
 
             # Calculate expected time for IN_PROGRESS ack
             total_shutter_time = (
@@ -462,6 +449,31 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         finally:
             self.is_exposing = False
         self.log.info("takeImages - End")
+
+    def parse_key_value_map(self, key_value_map: str) -> None:
+        """Parse key/value map into additional keys and values.
+
+        Add extra information from the camera if necessary.
+
+        Parameters
+        ----------
+        key_value_map: `str`
+            The key/value map to parse.
+        """
+        try:
+            new_keyValueMap = ", ".join(
+                [
+                    key_value_map,
+                    self.camera.get_static_configuration_for_key_value_map(),
+                ]
+            )
+        except TypeError:
+            # Camera config returned None, so do nothing
+            new_keyValueMap = key_value_map
+
+        self.additional_keys, self.additional_values = parse_key_value_map(
+            new_keyValueMap
+        )
 
     def get_image_names_from_image_service(
         self, num_images: int, timestamp: float
@@ -687,6 +699,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             for key in configuration:
                 if key in loaded_configuration:
                     configuration[key] = loaded_configuration[key]
+
+        self.parse_key_value_map(configuration["keyValueMap"])
 
         self.auto_exposure_task = asyncio.ensure_future(
             self.run_auto_exposure_loop(
