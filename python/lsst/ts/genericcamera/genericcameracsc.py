@@ -463,17 +463,17 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             )
 
             await self.evt_startTakeImage.write()
-            await self.camera.start_take_image(
-                exposure_time,
-                id_data.shutter,
-                id_data.sensors,
-                id_data.keyValueMap,
-                id_data.obsNote,
-            )
 
             for image_index in range(images_in_sequence):
                 self.image_sequence_num = image_sequence_array[image_index]
                 image_name = image_names[image_index]
+                await self.camera.start_take_image(
+                    exposure_time,
+                    id_data.shutter,
+                    id_data.sensors,
+                    id_data.keyValueMap,
+                    id_data.obsNote,
+                )
                 exposure = await self.take_image(
                     shutter=id_data.shutter,
                     images_in_sequence=images_in_sequence,
@@ -482,9 +482,9 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     timestamp=time_stamp,
                     image_name=image_name,
                 )
+                await self.camera.end_take_image()
                 await self.handle_exposure_saving(exposure, time_stamp, image_name)
 
-            await self.camera.end_take_image()
             await self.evt_endTakeImage.write()
             # Adjust SEQNUM in case web service is unavailable
             self.image_sequence_num += 1
