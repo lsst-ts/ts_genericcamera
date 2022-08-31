@@ -11,6 +11,8 @@ v0.8.0
 
 * Add LFA file saving capability
 * Timestamps are now TAI
+* Populate events with information necessary for GenericHeaderService
+* Standardize image name with image name service
 
 v0.7.0
 ======
