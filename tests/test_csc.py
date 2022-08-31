@@ -522,7 +522,18 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             await self.remote.cmd_stopLiveView.start()
 
-    async def test_auto_exposure(self):
+    @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
+    async def test_auto_exposure(self, mock_get):
+        mock_response = unittest.mock.Mock()
+        mock_response.status_code = 200
+        mock_response.json.side_effect = [
+            ["GC1_O_20220830_000001"],
+            ["GC1_O_20220830_000002"],
+            ["GC1_O_20220830_000003"],
+            ["GC1_O_20220830_000004"],
+        ]
+        mock_get.return_value = mock_response
+
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
         ):

@@ -27,6 +27,7 @@ import logging
 import pathlib
 import traceback
 import types
+import typing
 
 from astropy.time import Time
 import numpy as np
@@ -395,42 +396,9 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             exposure_time = id_data.expTime
             time_stamp = utils.current_tai()
 
-            try:
-                response = requests.get(
-                    self.image_service,
-                    params={"n": images_in_sequence, "sourceIndex": self.salinfo.index},
-                )
-                if response.status_code == 200:
-                    json_response = response.json()
-                    self.dayobs = json_response[0].split("_")[2]
-                    image_sequence_array = [
-                        int(x.split("_")[-1]) for x in json_response
-                    ]
-                    image_names = json_response
-                else:
-                    self.log.warning(
-                        f"Image name service returned an error: {response.status_code}"
-                    )
-                    if self.require_image_service:
-                        raise ConnectionError(
-                            f"Image name service returned an error: {response.status_code}"
-                        )
-                    image_sequence_array = self._get_dayobs_and_seqnum_array(
-                        time_stamp, images_in_sequence
-                    )
-                    image_names = make_image_names(
-                        self.image_source, self.dayobs, image_sequence_array
-                    )
-            except ConnectionError:
-                self.log.exception("Cannot connect to image name service.")
-                if self.require_image_service:
-                    raise
-                image_sequence_array = self._get_dayobs_and_seqnum_array(
-                    time_stamp, images_in_sequence
-                )
-                image_names = make_image_names(
-                    self.image_source, self.dayobs, image_sequence_array
-                )
+            image_names, image_sequence_array = self.get_image_names_from_image_service(
+                images_in_sequence, time_stamp
+            )
 
             try:
                 new_keyValueMap = ", ".join(
@@ -494,6 +462,64 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         finally:
             self.is_exposing = False
         self.log.info("takeImages - End")
+
+    def get_image_names_from_image_service(
+        self, num_images: int, timestamp: float
+    ) -> typing.Tuple[list[str], list[int]]:
+        """Get image names and sequence numbers from image service.
+
+        If the image service is not available, the code will generate the
+        required information from internal state.
+
+        Parameters
+        ----------
+        num_images: `int`
+            The number of images to request names for.
+        timestamp: `float`
+            The timestamp used in case the service isn't available.
+
+        Returns
+        -------
+        image_names: `list`
+            The set of image names returned from the service.
+        image_sequence_array: `list`
+            The set of SEQNUMs for the requested images.
+        """
+        try:
+            response = requests.get(
+                self.image_service,
+                params={"n": num_images, "sourceIndex": self.salinfo.index},
+            )
+            if response.status_code == 200:
+                json_response = response.json()
+                self.dayobs = json_response[0].split("_")[2]
+                image_sequence_array = [int(x.split("_")[-1]) for x in json_response]
+                image_names = json_response
+            else:
+                self.log.warning(
+                    f"Image name service returned an error: {response.status_code}"
+                )
+                if self.require_image_service:
+                    raise ConnectionError(
+                        f"Image name service returned an error: {response.status_code}"
+                    )
+                image_sequence_array = self._get_dayobs_and_seqnum_array(
+                    timestamp, num_images
+                )
+                image_names = make_image_names(
+                    self.image_source, self.dayobs, image_sequence_array
+                )
+        except ConnectionError:
+            self.log.exception("Cannot connect to image name service.")
+            if self.require_image_service:
+                raise
+            image_sequence_array = self._get_dayobs_and_seqnum_array(
+                timestamp, num_images
+            )
+            image_names = make_image_names(
+                self.image_source, self.dayobs, image_sequence_array
+            )
+        return image_names, image_sequence_array
 
     async def handle_exposure_saving(self, exposure, timestamp, image_name):
         """Save exposure to LFA or local directory.
@@ -830,11 +856,17 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         # update the exposure time if necessary on the way.
         while self.run_auto_exposure_task:
             timestamp = utils.current_tai()
-            image_name = self.file_name_format.format(
-                timestamp=int(timestamp),
-                index=configuration["image_index"],
-                total=configuration["images_in_sequence"],
+            # image_name = self.file_name_format.format(
+            #     timestamp=int(timestamp),
+            #     index=configuration["image_index"],
+            #     total=configuration["images_in_sequence"],
+            # )
+            image_names, image_sequence_array = self.get_image_names_from_image_service(
+                configuration["images_in_sequence"], timestamp
             )
+            image_index = configuration["image_index"]
+            self.image_sequence_num = image_sequence_array[image_index]
+            image_name = image_names[image_index]
 
             await self.evt_startTakeImage.write()
             await self.camera.start_take_image(
