@@ -145,7 +145,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         self.log.debug("Generic Camera CSC Ready")
 
-    async def begin_enable(self, id_data):
+    async def begin_enable(self, data):
         """Begin do_enable; called before state changes.
 
         This method will start the liveview server and initialize the camera
@@ -153,7 +153,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        id_data : `CommandIdData`
+        data : `CommandIdData`
             Command ID and data
         """
         self.server = liveview.LiveViewServer(self.config.port, log=self.log)
@@ -162,7 +162,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 name=self.s3bucket_name, domock=self.s3_mock, create=self.s3_mock
             )
 
-    async def begin_disable(self, id_data):
+    async def begin_disable(self, data):
         """Begin do_disable; called before state changes.
 
         The method will check if the camera is exposing and reject the command
@@ -170,13 +170,13 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        id_data : `CommandIdData`
+        data : `CommandIdData`
             Command ID and data
         """
         if self.is_exposing:
             raise RuntimeError("Camera is exposing, cannot disable.")
 
-    async def end_disable(self, id_data):
+    async def end_disable(self, data):
         """End do_disable; called after state changes but before command
         acknowledged.
 
@@ -185,7 +185,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        id_data : `CommandIdData`
+        data : `CommandIdData`
             Command ID and data
         """
         if self.is_live:
@@ -211,7 +211,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.s3bucket = None
         self.log.info("end_disable")
 
-    async def begin_standby(self, id_data):
+    async def begin_standby(self, data):
         """Begin do_standby; called before the state changes.
 
         This method will stop the camera.
@@ -230,12 +230,12 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             finally:
                 self.camera = None
 
-    async def do_setValue(self, id_data):
+    async def do_setValue(self, data):
         """Set a parameter/value pair.
 
         Parameters
         ----------
-        id_data :
+        data :
             id : `int`
                 The command id.
             data : `GenericCamera_command_setValueC`
@@ -246,16 +246,16 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self._assert_notlive()
 
         self.log.info("setValue - Start")
-        tokens = id_data.parametersAndValues.split(",")
+        tokens = data.parametersAndValues.split(",")
         await self.camera.set_value(tokens[0], tokens[1])
         self.log.info("setValue - End")
 
-    async def do_setROI(self, id_data):
+    async def do_setROI(self, data):
         """Set the region of interest.
 
         Parameters
         ----------
-        id_data :
+        data :
             id : `int`
                 The command id.
             data : `GenericCamera_command_setROIC`
@@ -272,26 +272,24 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self._assert_notlive()
 
         if self.evt_roi.set(
-            topPixel=id_data.topPixel,
-            leftPixel=id_data.leftPixel,
-            width=id_data.width,
-            height=id_data.height,
+            topPixel=data.topPixel,
+            leftPixel=data.leftPixel,
+            width=data.width,
+            height=data.height,
         ):
             self.log.debug("setROI - Start")
-            self.camera.set_roi(
-                id_data.topPixel, id_data.leftPixel, id_data.width, id_data.height
-            )
+            self.camera.set_roi(data.topPixel, data.leftPixel, data.width, data.height)
             await self.evt_roi.write()
             self.log.debug("setROI - End")
         else:
             self.log.warning("ROI already set with same parameters.")
 
-    async def do_setFullFrame(self, id_data):
+    async def do_setFullFrame(self, data):
         """Set the region of interest to full frame.
 
         Parameters
         ----------
-        id_data :
+        data :
             id : `int`
                 The command id.
             data : `GenericCamera_command_setFullFrameC`
@@ -304,12 +302,12 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.camera.set_full_frame()
         self.log.info("setFullFrame - End")
 
-    async def do_startLiveView(self, id_data):
+    async def do_startLiveView(self, data):
         """Starts the live view display.
 
         Parameters
         ----------
-        id_data :
+        data :
             id : int
                 The command id.
             data : GenericCamera_command_startLiveViewC
@@ -319,21 +317,21 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.log.info("startLiveView - Start")
         self._assert_notlive()
         self._assert_notautoexposure()
-        if id_data.expTime == 0.0:
+        if data.expTime == 0.0:
             raise RuntimeError("LiveView exposure time must be greater than zero.")
         self.camera.start_live_view()
         self.run_live_task = True
         await asyncio.wait_for(self.server.start(), timeout=2)
-        self.live_task = asyncio.ensure_future(self.live_view_loop(id_data.expTime))
+        self.live_task = asyncio.ensure_future(self.live_view_loop(data.expTime))
         await self.evt_startLiveView.set_write(ip=self.ip, port=self.port)
         self.log.info("startLiveView - End")
 
-    async def do_stopLiveView(self, id_data):
+    async def do_stopLiveView(self, data):
         """Stop the live view display.
 
         Parameters
         ----------
-        id_data :
+        data :
             id : `int`
                 The command id.
             data : `GenericCamera_command_stopLiveViewC`
@@ -369,12 +367,12 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         await self.evt_endLiveView.write()
 
-    async def do_takeImages(self, id_data):
+    async def do_takeImages(self, data):
         """Start taking images.
 
         Parameters
         ----------
-        id_data :
+        data :
             id : `int`
                 The command id.
             data : `GenericCamera_command_takeImagesC`
@@ -392,19 +390,19 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         try:
             self.log.info("takeImages - Start")
-            images_in_sequence = id_data.numImages
-            exposure_time = id_data.expTime
+            images_in_sequence = data.numImages
+            exposure_time = data.expTime
             time_stamp = utils.current_tai()
 
             image_names, image_sequence_array = self.get_image_names_from_image_service(
                 images_in_sequence, time_stamp
             )
 
-            self.parse_key_value_map(id_data.keyValueMap)
+            self.parse_key_value_map(data.keyValueMap)
 
             # Calculate expected time for IN_PROGRESS ack
             total_shutter_time = (
-                images_in_sequence * DEFAULT_SHUTTER_TIME if id_data.shutter else 0
+                images_in_sequence * DEFAULT_SHUTTER_TIME if data.shutter else 0
             )
             total_exposure_time = images_in_sequence * exposure_time
             total_readout_time = images_in_sequence * DEFAULT_READOUT_TIME
@@ -414,7 +412,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             self.log.debug(f"In progress timeout: {expected_timeout} seconds")
 
             await self.cmd_takeImages.ack_in_progress(
-                data=id_data, timeout=expected_timeout
+                data=data, timeout=expected_timeout
             )
 
             await self.evt_startTakeImage.write()
@@ -424,13 +422,13 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 image_name = image_names[image_index]
                 await self.camera.start_take_image(
                     exposure_time,
-                    id_data.shutter,
-                    id_data.sensors,
-                    id_data.keyValueMap,
-                    id_data.obsNote,
+                    data.shutter,
+                    data.sensors,
+                    data.keyValueMap,
+                    data.obsNote,
                 )
                 exposure = await self.take_image(
-                    shutter=id_data.shutter,
+                    shutter=data.shutter,
                     images_in_sequence=images_in_sequence,
                     image_index=image_index,
                     exposure_time=exposure_time,
@@ -668,12 +666,12 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         )
         return exposure
 
-    async def do_startAutoExposure(self, id_data):
+    async def do_startAutoExposure(self, data):
         """Start taking exposures automatically.
 
         Parameters
         ----------
-        id_data :
+        data :
             minExpTime : `float`
                 The minimum exposure time in seconds.
             maxExpTime : `float`
@@ -695,8 +693,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             "keyValueMap": "",
             "obsNote": "",
         }
-        if id_data.configuration != "":
-            loaded_configuration = yaml.safe_load(id_data.configuration)
+        if data.configuration != "":
+            loaded_configuration = yaml.safe_load(data.configuration)
             for key in configuration:
                 if key in loaded_configuration:
                     configuration[key] = loaded_configuration[key]
@@ -704,23 +702,21 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.parse_key_value_map(configuration["keyValueMap"])
 
         self.auto_exposure_task = asyncio.ensure_future(
-            self.run_auto_exposure_loop(
-                id_data.minExpTime, id_data.maxExpTime, configuration
-            )
+            self.run_auto_exposure_loop(data.minExpTime, data.maxExpTime, configuration)
         )
         await self.evt_autoExposureStarted.set_write(
-            minExpTime=id_data.minExpTime,
-            maxExpTime=id_data.maxExpTime,
-            configuration=id_data.configuration,
+            minExpTime=data.minExpTime,
+            maxExpTime=data.maxExpTime,
+            configuration=data.configuration,
         )
         self.log.info("startAutoExposure - End")
 
-    async def do_stopAutoExposure(self, id_data):
+    async def do_stopAutoExposure(self, data):
         """Stop taking exposures automatically.
 
         Parameters
         ----------
-        id_data
+        data
             Nothing passed on.
         """
         self.assert_enabled("stopAutoExposure")
