@@ -22,10 +22,12 @@
 __all__ = [
     "DATE_FORMAT",
     "DATETIME_FORMAT",
-    "get_dayobs",
+    "get_day_obs",
     "make_image_names",
     "parse_key_value_map",
 ]
+
+from typing import Tuple
 
 from astropy.time import Time, TimeDelta
 
@@ -37,7 +39,7 @@ DATETIME_FORMAT = f"{DATE_FORMAT}T%H:%M:%S"
 """Format string for datetime values in the FITS header."""
 
 
-def get_dayobs(timestamp: float) -> str:
+def get_day_obs(timestamp: float) -> str:
     """Get the DAYOBS for the given timestamp.
 
     Parameters
@@ -55,30 +57,30 @@ def get_dayobs(timestamp: float) -> str:
     return dayobs_time.strftime("%Y%m%d")
 
 
-def make_image_names(gctag: str, dayobs: str, seqnums: list[int]) -> list[str]:
+def make_image_names(gc_tag: str, day_obs: str, seq_nums: list[int]) -> list[str]:
     """Create a list of image service type image names.
 
     Parameters
     ----------
-    gctag: `str`
+    gc_tag: `str`
         The tag name for the indexed GenericCamera.
-    dayobs: `str`
+    day_obs: `str`
         The DAYOBS for the images.
-    seqnums: `list`
+    seq_nums: `list` [`int`]
         The list of sequence numbers to generate image names for.
 
     Returns
     -------
-    image_names: `list`
+    image_names: `list` [`str`]
         The list of image service type image names.
     """
     image_names = []
-    for i in seqnums:
-        image_names.append(f"{gctag}_O_{dayobs}_{i:06d}")
+    for i in seq_nums:
+        image_names.append(f"{gc_tag}_O_{day_obs}_{i:06d}")
     return image_names
 
 
-def parse_key_value_map(kvm: str) -> (str, str):
+def parse_key_value_map(kvm: str) -> Tuple[str, str]:
     """Create keys and values string from key-value map.
 
     Parameters

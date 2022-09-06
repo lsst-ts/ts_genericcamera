@@ -27,13 +27,13 @@ from lsst.ts.genericcamera import utils
 
 
 class TestUtils(unittest.TestCase):
-    def test_get_dayobs(self):
+    def test_get_day_obs(self):
         timestamp = Time("2022-08-22T11:00:00", scale="utc", format="isot")
-        self.assertEqual(utils.get_dayobs(timestamp.utc.unix), "20220821")
+        self.assertEqual(utils.get_day_obs(timestamp.utc.unix), "20220821")
         timestamp += TimeDelta(3600, format="sec")
-        self.assertEqual(utils.get_dayobs(timestamp.utc.unix), "20220822")
+        self.assertEqual(utils.get_day_obs(timestamp.utc.unix), "20220822")
         timestamp += TimeDelta(12 * 3600, format="sec")
-        self.assertEqual(utils.get_dayobs(timestamp.utc.unix), "20220822")
+        self.assertEqual(utils.get_day_obs(timestamp.utc.unix), "20220822")
 
     def test_parse_key_value_map(self):
         key_value_map1 = "imageType: ENGTEST, groupId: Group1"

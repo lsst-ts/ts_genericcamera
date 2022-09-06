@@ -1,6 +1,6 @@
 # Default configuration for tests.
 s3instance: null
-image_service: "http://localhost/ImageUtilities/rest/imageNameService"
+image_service_url: "http://localhost/ImageUtilities/rest/imageNameService"
 instances:
   - sal_index: 1
     ip: "127.0.0.1"

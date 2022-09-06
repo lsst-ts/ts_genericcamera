@@ -9,7 +9,7 @@ source:
 
 build:
   noarch: generic
-  script: python -m pip install --no-deps --ignore-installed .
+  script: {{ PYTHON }} -m pip install --no-deps --ignore-installed .
   entry_points:
     - run_genericcamera = lsst.ts.genericcamera.genericcameracsc:run_genericcamera
     - run_liveviewui = lsst.ts.genericcamera.liveview.liveviewui:run_liveviewui
@@ -23,13 +23,13 @@ build:
 
 requirements:
   host:
-    - python
+    - python {{ python }}
     - pip
     - setuptools_scm
     - setuptools
     - pytest-runner
   run:
-    - python
+    - python {{ python }}
     - setuptools
     - setuptools_scm
     - ts-idl

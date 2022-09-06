@@ -333,7 +333,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 startIntegration.imageNumber, self.csc.image_sequence_num - 1
             )
-            self.assertEqual(startIntegration.imageDate, self.csc.dayobs)
+            self.assertEqual(startIntegration.imageDate, self.csc.day_obs)
             self.assertEqual(
                 startIntegration.additionalKeys,
                 "imageType:groupId:focalLength:diameter",
@@ -371,7 +371,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(startReadout.imageSource, self.csc.image_source_short)
             self.assertEqual(startReadout.imageController, self.csc.image_controller)
             self.assertEqual(startReadout.imageNumber, self.csc.image_sequence_num - 1)
-            self.assertEqual(startReadout.imageDate, self.csc.dayobs)
+            self.assertEqual(startReadout.imageDate, self.csc.day_obs)
             self.assertEqual(
                 startReadout.additionalKeys, "imageType:groupId:focalLength:diameter"
             )
@@ -385,7 +385,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(endReadout.imageSource, self.csc.image_source_short)
             self.assertEqual(endReadout.imageController, self.csc.image_controller)
             self.assertEqual(endReadout.imageNumber, self.csc.image_sequence_num - 1)
-            self.assertEqual(endReadout.imageDate, self.csc.dayobs)
+            self.assertEqual(endReadout.imageDate, self.csc.day_obs)
             self.assertEqual(
                 endReadout.additionalKeys, "imageType:groupId:focalLength:diameter"
             )

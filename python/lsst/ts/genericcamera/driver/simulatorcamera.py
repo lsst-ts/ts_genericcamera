@@ -461,7 +461,7 @@ properties:
         # Reset readout state
         self.readout_state = 0
 
-    def get_static_configuration_for_key_value_map(self) -> str:
+    def get_configuration_for_key_value_map(self) -> str:
         """Provide camera specific configuration to the key-value map.
 
         Returns

@@ -39,7 +39,7 @@ properties:
     description: >-
       Large File Annex S3 instance, for example "tuc" (Tucson Test Stand),
       "ls" (Base Test Stand), "cp" (summit).
-  image_service:
+  image_service_url:
     type: string
     description: The URL to the image name service
   instances:

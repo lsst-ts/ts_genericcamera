@@ -282,7 +282,7 @@ class BaseCamera(abc.ABC):
             fhi = None
         return fhi
 
-    def get_static_configuration_for_key_value_map(self) -> str | None:
+    def get_configuration_for_key_value_map(self) -> str | None:
         """Provide camera specific configuration to the key-value map.
 
         Returns

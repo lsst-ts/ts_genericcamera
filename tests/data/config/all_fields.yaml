@@ -1,5 +1,5 @@
 # Default configuration for tests.
-image_service: "http://localhost/pick/my/name"
+image_service_url: "http://localhost/pick/my/name"
 instances:
   - sal_index: 1
     ip: "1.2.3.4"
