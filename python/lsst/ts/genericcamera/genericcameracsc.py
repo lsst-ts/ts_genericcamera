@@ -1153,12 +1153,12 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             )
 
         self.image_service_url = config.image_service_url
+        self.require_image_service = config.require_image_service
 
         settings = types.SimpleNamespace(**instance)
         self.config = settings
         self.ip = self.config.ip
         self.port = self.config.port
-        self.require_image_service = self.config.require_image_service
 
         if not self.directory.exists():
             raise RuntimeError(f"Directory {self.directory} does not exist.")

@@ -42,6 +42,9 @@ properties:
   image_service_url:
     type: string
     description: The URL to the image name service
+  require_image_service:
+    description: Make CSC go into FAULT if image name service is not available
+    type: boolean
   instances:
     type: array
     description: Configuration for each GenericCamera instance.
@@ -68,9 +71,6 @@ properties:
           - Zwo
           - Canon
           - AlliedVision
-        require_image_service:
-          description: Make CSC go into FAULT if image name service is not available
-          type: boolean
         auto_exposure_interval:
           description: The interval [sec] at which exposures are taken in auto exposure mode.
           type: number
