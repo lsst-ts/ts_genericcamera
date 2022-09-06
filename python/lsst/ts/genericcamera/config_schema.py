@@ -39,6 +39,12 @@ properties:
     description: >-
       Large File Annex S3 instance, for example "tuc" (Tucson Test Stand),
       "ls" (Base Test Stand), "cp" (summit).
+  image_service_url:
+    type: string
+    description: The URL to the image name service
+  require_image_service:
+    description: Make CSC go into FAULT if image name service is not available
+    type: boolean
   instances:
     type: array
     description: Configuration for each GenericCamera instance.
@@ -56,15 +62,6 @@ properties:
         port:
           description: Port for the live view server.
           type: number
-        file_name_format:
-          description: >
-            File name format. Supported tags are:
-              - timestamp: the TAI timestamp of the image which is the start of
-                image acquisition.
-              - index: the index of the image in the sequence of images to be
-                taken.
-              - total: the total amount of images to take.
-          type: string
         camera:
           description: Camera driver to use.
           type: string

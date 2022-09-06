@@ -249,9 +249,9 @@ properties:
         now_string = datetime.datetime.now(tz=datetime.timezone.utc).strftime(
             utils.DATETIME_FORMAT
         )
-        date_obs = self.datetime_start.strftime(utils.DATE_FORMAT)
-        date_beg = self.datetime_start.strftime(utils.DATETIME_FORMAT)
-        date_end = self.datetime_end.strftime(utils.DATETIME_FORMAT)
+        date_obs = self.datetime_start_readout.strftime(utils.DATE_FORMAT)
+        date_beg = self.datetime_start_readout.strftime(utils.DATETIME_FORMAT)
+        date_end = self.datetime_end_readout.strftime(utils.DATETIME_FORMAT)
         self.get_tag(name="DATE").value = now_string
         self.get_tag(name="DATE-OBS").value = date_obs
         self.get_tag(name="DATE-BEG").value = date_beg

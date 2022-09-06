@@ -23,12 +23,13 @@ __all__ = ["BaseCamera"]
 
 import abc
 import ctypes
-import datetime
 import logging
 
 from astropy.coordinates import Angle, SkyCoord
 from astropy.time import Time
 from astropy import units as u
+
+from lsst.ts import utils
 
 from .. import exposure
 from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
@@ -48,8 +49,9 @@ class BaseCamera(abc.ABC):
         self.tags = fhig.generate_fits_header_items(FitsHeaderTemplate.ALL_SKY)
 
         # Variables holding image acquisition info
-        self.datetime_start = None
-        self.datetime_end = None
+        self.timestamp_end_integration = None
+        self.timestamp_start_readout = None
+        self.timestamp_end_readout = None
 
     @staticmethod
     @abc.abstractmethod
@@ -76,6 +78,21 @@ class BaseCamera(abc.ABC):
             The configuration schema in yaml format.
         """
         raise NotImplementedError()
+
+    @property
+    def datetime_end_integration(self):
+        """Object representation of the end integration timestamp."""
+        return Time(self.timestamp_end_integration, scale="tai", format="unix_tai")
+
+    @property
+    def datetime_start_readout(self):
+        """Object representation of the start readout timestamp."""
+        return Time(self.timestamp_start_readout, scale="tai", format="unix_tai")
+
+    @property
+    def datetime_end_readout(self):
+        """Object representation of the end readout timestamp."""
+        return Time(self.timestamp_end_readout, scale="tai", format="unix_tai")
 
     async def stop(self):
         """Stop and close camera."""
@@ -179,7 +196,7 @@ class BaseCamera(abc.ABC):
         wfs : bool
             Should wave front sensor be used?
         """
-        self.datetime_start = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.timestamp_start_readout = utils.current_tai()
         return True
 
     async def start_shutter_open(self):
@@ -205,7 +222,7 @@ class BaseCamera(abc.ABC):
         """End integration.
 
         This should wait for the integration period to complete."""
-        pass
+        self.timestamp_end_integration = utils.current_tai()
 
     async def start_shutter_close(self):
         """Start closing the shutter.
@@ -227,7 +244,7 @@ class BaseCamera(abc.ABC):
 
     async def start_readout(self):
         """Start reading out the image."""
-        self.datetime_end = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.timestamp_end_readout = utils.current_tai()
 
     async def end_readout(self):
         """End reading out the image.
@@ -264,6 +281,17 @@ class BaseCamera(abc.ABC):
             # If no tag is found then returen None.
             fhi = None
         return fhi
+
+    def get_configuration_for_key_value_map(self) -> str | None:
+        """Provide camera specific configuration to the key-value map.
+
+        Returns
+        -------
+        `str` or `None`
+            Static camera configuration in the format of
+            key1: value1, key2: value2 ...
+        """
+        return None
 
     async def _get_radec_from_altaz_location_time(self, alt, az, obs_time, location):
         """Get the Right Ascension and Declination from the altitude and

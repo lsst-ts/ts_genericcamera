@@ -27,6 +27,7 @@ import unittest
 import shutil
 
 import numpy as np
+from requests import ConnectionError
 import yaml
 
 from lsst.ts import salobj
@@ -92,6 +93,21 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(state.summaryState, salobj.State.STANDBY)
 
+            configs_available = await self.remote.evt_configurationsAvailable.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            overrides = [
+                "all_fields.yaml",
+                "invalid_bad_camera_driver.yaml",
+                "invalid_malformed.yaml",
+                "mock_lfa.yaml",
+                "use_image_service.yaml",
+            ]
+            self.assertEqual(
+                configs_available.overrides,
+                ",".join(overrides),
+            )
+
             invalid_files = glob.glob(os.path.join(TEST_CONFIG_DIR, "invalid_*.yaml"))
             bad_config_names = [os.path.basename(name) for name in invalid_files]
             bad_config_names.append("no_such_file.yaml")
@@ -107,6 +123,19 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             state = await self.remote.evt_summaryState.next(
                 flush=False, timeout=STD_TIMEOUT
             )
+
+            config_applied = await self.remote.evt_configurationApplied.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertEqual(
+                config_applied.configurations, "_init.yaml,all_fields.yaml"
+            )
+            self.assertEqual(config_applied.otherInfo, "cameraInfo")
+            camera_info = await self.remote.evt_cameraInfo.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertEqual(camera_info.cameraMakeAndModel, "Simulator")
+
             self.assertEqual(state.summaryState, salobj.State.DISABLED)
             all_fields_path = os.path.join(TEST_CONFIG_DIR, "all_fields.yaml")
             with open(all_fields_path, "r") as f:
@@ -165,13 +194,26 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await check_rejected(salobj.State.STANDBY)
 
     async def test_take_image(self):
-        async def take_bias():
+
+        self.mock_response = unittest.mock.Mock()
+        self.mock_response.status_code = 200
+        self.mock_response.json.side_effect = [
+            ["GC1_O_20220822_000001"],
+            ["GC1_O_20220822_000002"],
+            ["GC1_O_20220822_000005"],
+            ["GC1_O_20220822_000006"],
+        ]
+
+        @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
+        async def take_bias(mock_get):
+            mock_get.side_effect = ConnectionError()
+
             await self.remote.cmd_takeImages.set_start(
                 numImages=1,
                 expTime=0.0,
                 shutter=False,
                 sensors="",
-                keyValueMap="",
+                keyValueMap="imageType: BIAS, groupId: CALIBSET_20220823, testType: BIAS",
                 obsNote="bias",
             )
 
@@ -182,56 +224,86 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_startShutterOpen.next(
-                    flush=False, timeout=LONG_TIMEOUT
+                    flush=False, timeout=STD_TIMEOUT
                 )
 
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_endShutterOpen.next(
-                    flush=False, timeout=LONG_TIMEOUT
+                    flush=False, timeout=STD_TIMEOUT
                 )
 
             startIntegration = await self.remote.evt_startIntegration.next(
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(startIntegration)
+            self.assertEqual(
+                startIntegration.additionalKeys,
+                "imageType:groupId:testType:focalLength:diameter",
+            )
+            self.assertEqual(
+                startIntegration.additionalValues, "BIAS:CALIBSET_20220823:BIAS:100:50"
+            )
 
             endIntegration = await self.remote.evt_endIntegration.next(
                 flush=False, timeout=LONG_TIMEOUT
             )
             self.assertIsNotNone(endIntegration)
+            self.assertEqual(
+                endIntegration.additionalKeys,
+                "imageType:groupId:testType:focalLength:diameter",
+            )
+            self.assertEqual(
+                endIntegration.additionalValues, "BIAS:CALIBSET_20220823:BIAS:100:50"
+            )
 
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_startShutterClose.next(
-                    flush=False, timeout=LONG_TIMEOUT
+                    flush=False, timeout=STD_TIMEOUT
                 )
 
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_endShutterClose.next(
-                    flush=False, timeout=LONG_TIMEOUT
+                    flush=False, timeout=STD_TIMEOUT
                 )
 
             startReadout = await self.remote.evt_startReadout.next(
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(startReadout)
+            self.assertEqual(
+                startReadout.additionalKeys,
+                "imageType:groupId:testType:focalLength:diameter",
+            )
+            self.assertEqual(
+                startReadout.additionalValues, "BIAS:CALIBSET_20220823:BIAS:100:50"
+            )
 
             endReadout = await self.remote.evt_endReadout.next(
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(endReadout)
+            self.assertEqual(
+                endReadout.additionalKeys,
+                "imageType:groupId:testType:focalLength:diameter",
+            )
+            self.assertEqual(
+                endReadout.additionalValues, "BIAS:CALIBSET_20220823:BIAS:100:50"
+            )
 
             endTakeImage = await self.remote.evt_endTakeImage.next(
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(endTakeImage)
 
-        async def take_image(check_lfoa=False):
+        @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
+        async def take_image(image_name_check, check_lfoa, mock_get):
+            mock_get.return_value = self.mock_response
             await self.remote.cmd_takeImages.set_start(
                 numImages=1,
                 expTime=np.random.rand() + 1.0,
                 shutter=True,
                 sensors="",
-                keyValueMap="",
+                keyValueMap="imageType: ENGTEST, groupId: TestGroup",
                 obsNote="image",
             )
 
@@ -254,11 +326,33 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(startIntegration)
+            self.assertEqual(startIntegration.imageSource, self.csc.image_source_short)
+            self.assertEqual(
+                startIntegration.imageController, self.csc.image_controller
+            )
+            self.assertEqual(
+                startIntegration.imageNumber, self.csc.image_sequence_num - 1
+            )
+            self.assertEqual(startIntegration.imageDate, self.csc.day_obs)
+            self.assertEqual(
+                startIntegration.additionalKeys,
+                "imageType:groupId:focalLength:diameter",
+            )
+            self.assertEqual(
+                startIntegration.additionalValues, "ENGTEST:TestGroup:100:50"
+            )
+            self.assertEqual(startIntegration.imageName, image_name_check)
 
             endIntegration = await self.remote.evt_endIntegration.next(
                 flush=False, timeout=LONG_TIMEOUT
             )
             self.assertIsNotNone(endIntegration)
+            self.assertEqual(
+                endIntegration.additionalKeys, "imageType:groupId:focalLength:diameter"
+            )
+            self.assertEqual(
+                endIntegration.additionalValues, "ENGTEST:TestGroup:100:50"
+            )
 
             startShutterClose = await self.remote.evt_startShutterClose.next(
                 flush=False, timeout=LONG_TIMEOUT
@@ -274,11 +368,29 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(startReadout)
+            self.assertEqual(startReadout.imageSource, self.csc.image_source_short)
+            self.assertEqual(startReadout.imageController, self.csc.image_controller)
+            self.assertEqual(startReadout.imageNumber, self.csc.image_sequence_num - 1)
+            self.assertEqual(startReadout.imageDate, self.csc.day_obs)
+            self.assertEqual(
+                startReadout.additionalKeys, "imageType:groupId:focalLength:diameter"
+            )
+            self.assertEqual(startReadout.additionalValues, "ENGTEST:TestGroup:100:50")
+            self.assertEqual(startReadout.imageName, image_name_check)
 
             endReadout = await self.remote.evt_endReadout.next(
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(endReadout)
+            self.assertEqual(endReadout.imageSource, self.csc.image_source_short)
+            self.assertEqual(endReadout.imageController, self.csc.image_controller)
+            self.assertEqual(endReadout.imageNumber, self.csc.image_sequence_num - 1)
+            self.assertEqual(endReadout.imageDate, self.csc.day_obs)
+            self.assertEqual(
+                endReadout.additionalKeys, "imageType:groupId:focalLength:diameter"
+            )
+            self.assertEqual(endReadout.additionalValues, "ENGTEST:TestGroup:100:50")
+            self.assertEqual(startReadout.imageName, image_name_check)
 
             if check_lfoa:
                 largeFileObjectAvailable = (
@@ -292,6 +404,31 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(endTakeImage)
+
+        @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
+        async def take_image_no_image_service(image_name_check, mock_get):
+            mock_get.side_effect = ConnectionError("Cannot connect to image service")
+            await self.remote.cmd_takeImages.set_start(
+                numImages=1,
+                expTime=np.random.rand() + 1.0,
+                shutter=True,
+                sensors="",
+                keyValueMap="imageType: ENGTEST, groupId: TestGroup",
+                obsNote="image",
+            )
+
+        @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
+        async def take_image_image_service_bad_status_code(image_name_check, mock_get):
+            self.mock_response.status_code = 400
+            mock_get.return_value = self.mock_response
+            await self.remote.cmd_takeImages.set_start(
+                numImages=1,
+                expTime=np.random.rand() + 1.0,
+                shutter=True,
+                sensors="",
+                keyValueMap="imageType: ENGTEST, groupId: TestGroup",
+                obsNote="image",
+            )
 
         async with self.make_csc(
             initial_state=salobj.State.ENABLED, config_dir=TEST_CONFIG_DIR
@@ -307,10 +444,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             # Take 2 images with random exposure time
             with self.subTest(image="image1"):
-                await take_image()
+                await take_image("GC1_O_20220822_000001", False)
 
             with self.subTest(image="image2"):
-                await take_image()
+                await take_image("GC1_O_20220822_000002", False)
 
             # Try taking 2 bias
             with self.subTest(image="bias1"):
@@ -319,10 +456,24 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             with self.subTest(image="bias2"):
                 await take_bias()
 
-        # Run with LFA
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
-        ):
+            await salobj.set_summary_state(self.remote, salobj.State.STANDBY)
+            await salobj.set_summary_state(
+                self.remote, salobj.State.ENABLED, override="use_image_service.yaml"
+            )
+
+            with self.subTest(image="image3"):
+                await take_image("GC1_O_20220822_000005", False)
+
+            with self.subTest(image="image4"):
+                with self.assertRaises(salobj.AckError):
+                    await take_image_no_image_service("")
+
+            with self.subTest(image="image5"):
+                with self.assertRaises(salobj.AckError):
+                    await take_image_image_service_bad_status_code("")
+
+            # Run with LFA
+            await salobj.set_summary_state(self.remote, salobj.State.STANDBY)
             with utils.modify_environ(
                 AWS_ACCESS_KEY_ID="test",
                 AWS_SECRET_ACCESS_KEY="bar",
@@ -334,8 +485,9 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 )
                 self.flush_take_image_events()
 
-                with self.subTest(image="image3"):
-                    await take_image(check_lfoa=True)
+                self.mock_response.status_code = 200
+                with self.subTest(image="image6"):
+                    await take_image("GC1_O_20220822_000006", True)
 
     async def test_live_view(self):
         async with self.make_csc(
@@ -370,7 +522,18 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             await self.remote.cmd_stopLiveView.start()
 
-    async def test_auto_exposure(self):
+    @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
+    async def test_auto_exposure(self, mock_get):
+        mock_response = unittest.mock.Mock()
+        mock_response.status_code = 200
+        mock_response.json.side_effect = [
+            ["GC1_O_20220830_000001"],
+            ["GC1_O_20220830_000002"],
+            ["GC1_O_20220830_000003"],
+            ["GC1_O_20220830_000004"],
+        ]
+        mock_get.return_value = mock_response
+
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
         ):

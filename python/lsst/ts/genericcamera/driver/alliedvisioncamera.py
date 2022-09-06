@@ -36,6 +36,9 @@ SECONDS_TO_MILLISECONDS = 1000
 SECONDS_TO_MICROSECONDS = 1000000
 "Allied Vision camera have exposure times in microseconds."
 
+IMAGE_TIMEOUT_PADDING = 200
+"Additional time (ms) to add to the frame acquisition."
+
 
 class AlliedVisionCamera(basecamera.BaseCamera):
     """Class for handling AlliedVision Vimba cameras."""
@@ -125,7 +128,7 @@ properties:
         `str`
             The make and model of the camera.
         """
-        return self.camera.get_name()
+        return f"AlliedVision {self.camera.get_name()}"
 
     def get_roi(self):
         """Gets the region of interest.
@@ -247,10 +250,13 @@ properties:
                 if self.liveview_use_autoexposure:
                     timeout_ms = int(
                         (self.camera.ExposureTimeAbs.get() / SECONDS_TO_MILLISECONDS)
-                        + 2 * SECONDS_TO_MILLISECONDS
+                        + IMAGE_TIMEOUT_PADDING
                     )
                 else:
-                    timeout_ms = int(self.exposure_time + 2) * SECONDS_TO_MILLISECONDS
+                    timeout_ms = (
+                        int(self.exposure_time) * SECONDS_TO_MILLISECONDS
+                        + IMAGE_TIMEOUT_PADDING
+                    )
                 self.log.debug(f"Exposure timeout = {timeout_ms} ms")
                 frame = self.camera.get_frame(timeout_ms=timeout_ms)
         return frame
@@ -286,14 +292,18 @@ properties:
             self.log.debug("Finished getting ancillary data")
         return buffer_array, actual_exp_time
 
+    async def end_integration(self):
+        """End image integration."""
+        self.log.debug("Start end_integration")
+        self.frame = await self.loop.run_in_executor(self.executor, self._get_frame)
+        await super().end_integration()
+
     async def end_readout(self):
         """Start reading out the image."""
         self.log.debug("Start end_readout")
-        frame = await self.loop.run_in_executor(self.executor, self._get_frame)
-        await super().start_readout()
         buffer_array, actual_exp_time = await self.loop.run_in_executor(
             self.executor,
-            functools.partial(self._get_buffer_and_ancillary_data, frame),
+            functools.partial(self._get_buffer_and_ancillary_data, self.frame),
         )
         top, left, width, height = await self.loop.run_in_executor(
             self.executor, self.get_roi
@@ -306,5 +316,6 @@ properties:
         self.get_tag(name="EXPTIME").value = actual_exp_time / SECONDS_TO_MICROSECONDS
         self.log.debug("Finished setting header tags")
         image = exposure.Exposure(buffer_array, width, height, self.tags)
+        await super().start_readout()
         self.log.debug("Finished creating exposure")
         return image

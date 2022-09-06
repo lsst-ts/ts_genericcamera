@@ -461,6 +461,17 @@ properties:
         # Reset readout state
         self.readout_state = 0
 
+    def get_configuration_for_key_value_map(self) -> str:
+        """Provide camera specific configuration to the key-value map.
+
+        Returns
+        -------
+        `str`
+            Static camera configuration in the format of
+            key1: value1, key2: value2 ...
+        """
+        return "focalLength: 100, diameter: 50"
+
     async def _set_tag_values(self):
         """Convenience coroutine to provide values for some of the tags in the
         FITS header. More tags can be added if necessary but these were deemed
@@ -476,13 +487,13 @@ properties:
         self.get_tag(name="DATE").value = datetime.datetime.now(
             tz=datetime.timezone.utc
         ).strftime(utils.DATETIME_FORMAT)
-        self.get_tag(name="DATE-OBS").value = self.datetime_start.strftime(
+        self.get_tag(name="DATE-OBS").value = self.datetime_start_readout.strftime(
             utils.DATE_FORMAT
         )
-        self.get_tag(name="DATE-BEG").value = self.datetime_start.strftime(
+        self.get_tag(name="DATE-BEG").value = self.datetime_start_readout.strftime(
             utils.DATETIME_FORMAT
         )
-        self.get_tag(name="DATE-END").value = self.datetime_end.strftime(
+        self.get_tag(name="DATE-END").value = self.datetime_end_readout.strftime(
             utils.DATETIME_FORMAT
         )
         self.get_tag(name="ISO").value = 100
