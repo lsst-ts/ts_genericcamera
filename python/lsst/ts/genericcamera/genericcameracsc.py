@@ -468,6 +468,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         except TypeError:
             new_keyValueMap = key_value_map
 
+        self.log.debug(f"Final key/value map: {new_keyValueMap}")
+
         self.additional_keys, self.additional_values = parse_key_value_map(
             new_keyValueMap
         )
