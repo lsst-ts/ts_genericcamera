@@ -61,6 +61,7 @@ class TestExposure(unittest.TestCase):
             tags=tags,
         )
 
+        self.assertIsNone(exp.header)
         exp.save(self.tmp_name)
 
         self.assertEqual(".fits", exp.suffix)

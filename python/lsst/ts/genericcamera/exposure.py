@@ -31,7 +31,9 @@ class Exposure:
     """This class is used to define an exposure. It provides methods
     for manipulating an exposure and saving it to the local disk."""
 
-    def __init__(self, buffer, width, height, tags, dtype=np.uint16, is_jpeg=False):
+    def __init__(
+        self, buffer, width, height, tags, header=None, dtype=np.uint16, is_jpeg=False
+    ):
         """Constructs an exposure object.
 
         Exposures meant to be a JPEG image should have 8bit pixels.
@@ -47,6 +49,8 @@ class Exposure:
             The height of the image.
         tags : list
             A list of FitsHeaderItem tags that describe the image.
+        header: `dict`
+            A set of key/value pairs containing image information.
         dtype : dtype (optional)
             Type of image data.
         is_jpeg : bool (optional)
@@ -56,6 +60,7 @@ class Exposure:
         self.height = height
         self.buffer = buffer.reshape(height, width)
         self.tags = tags
+        self.header = header
         self.is_jpeg = is_jpeg
         self.dtype = dtype
 
