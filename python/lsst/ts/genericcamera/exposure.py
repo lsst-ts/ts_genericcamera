@@ -79,8 +79,8 @@ class Exposure:
         if self.is_jpeg:
             fileobj = io.BytesIO(self.buffer)
         else:
-            img = fits.PrimaryHDU(self.buffer)
-            hdul = fits.HDUList([img])
+            img = fits.ImageHDU(self.buffer)
+            hdul = fits.HDUList([fits.PrimaryHDU(), img])
             hdr = hdul[0].header
             for tag in self.tags:
                 hdr.append((tag.name, tag.value, tag.comment), end=True)
