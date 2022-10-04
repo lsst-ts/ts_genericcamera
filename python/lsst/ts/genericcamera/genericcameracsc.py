@@ -40,6 +40,7 @@ from . import __version__
 from lsst.ts import salobj
 from lsst.ts import utils
 
+from .fits_header_items_generator import FitsHeaderItemsFromHeaderYaml
 from .liveview import liveview
 from . import driver
 from .utils import get_day_obs, make_image_names, parse_key_value_map
@@ -143,7 +144,24 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.s3bucket_name = None
         self.s3_mock = False
 
+        self.header_service_remote = salobj.Remote(
+            self.domain,
+            "GCHeaderService",
+            index,
+            include=["largeFileObjectAvailable"],
+            evt_max_history=0,
+        )
+        self.header_service_remote.evt_largeFileObjectAvailable.flush()
+        self.header_service_remote.evt_largeFileObjectAvailable.callback = (
+            self.gc_header_service_large_file_object_available_callback
+        )
+        self.header_file_dict = {}
+
         self.log.debug("Generic Camera CSC Ready")
+
+    async def start(self):
+        await super().start()
+        await self.header_service_remote.start_task
 
     async def begin_enable(self, data):
         """Begin do_enable; called before state changes.
@@ -532,6 +550,22 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             )
         return image_names, image_sequence_array
 
+    async def gc_header_service_large_file_object_available_callback(self, lfoa):
+        """Handle callback when receiving a LFOA event from GCHeaderService.
+
+        Parameters
+        ----------
+        lfoa: `salobj.DataType`
+        """
+        result = requests.get(lfoa.url)
+        header_filename = lfoa.url.split("/")[-1]
+        header_file = self.directory / header_filename
+        with header_file.open("w") as ofile:
+            ofile.write(result.content.decode())
+        file_stem = header_file.stem
+        header_tag = "_".join(file_stem.split("_")[2:])
+        self.header_file_dict[header_tag] = header_file
+
     async def handle_exposure_saving(self, exposure, timestamp, image_name):
         """Save exposure to LFA or local directory.
 
@@ -544,6 +578,20 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         image_name: `str`
             The filename for the exposure.
         """
+        try:
+            header_info = None
+            try:
+                header_file = self.header_file_dict[image_name]
+                fhifhy = FitsHeaderItemsFromHeaderYaml(header_file)
+                header_info = fhifhy.header_items
+                del self.header_file_dict[image_name]
+                header_file.unlink(missing_ok=True)
+            except KeyError:
+                pass
+            exposure.header = header_info
+        except ValueError:
+            self.log.warn(f"No header for image {image_name} found.")
+
         if self.use_lfa:
             key = self.s3bucket.make_key(
                 salname=self.salinfo.name,
