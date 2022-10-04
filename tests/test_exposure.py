@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import pathlib
 import unittest
 import tempfile
 import numpy as np
@@ -26,7 +27,14 @@ import os
 
 from astropy.io import fits
 
-from lsst.ts.genericcamera import Exposure, FitsHeaderItemsGenerator, FitsHeaderTemplate
+from lsst.ts.genericcamera import (
+    Exposure,
+    FitsHeaderItemsFromHeaderYaml,
+    FitsHeaderItemsGenerator,
+    FitsHeaderTemplate,
+)
+
+TEST_HEADER_DIR = pathlib.Path(__file__).parent / "data" / "header"
 
 
 class TestExposure(unittest.TestCase):
@@ -34,6 +42,14 @@ class TestExposure(unittest.TestCase):
         self.hdul = None
         self.tmp_name = os.path.join(
             tempfile.gettempdir(), f"{next(tempfile._get_candidate_names())}.fits"
+        )
+        self.width = 1024
+        self.height = 1024
+        self.image = np.random.randint(
+            low=np.iinfo(np.uint8).min,
+            high=np.iinfo(np.uint8).max,
+            size=(self.width, self.height),
+            dtype=np.uint8,
         )
 
     def tearDown(self) -> None:
@@ -45,19 +61,11 @@ class TestExposure(unittest.TestCase):
     def test(self):
         fhig = FitsHeaderItemsGenerator()
         tags = fhig.generate_fits_header_items(FitsHeaderTemplate.ALL_SKY)
-        width = 1024
-        height = 1024
-        image = np.random.randint(
-            low=np.iinfo(np.uint8).min,
-            high=np.iinfo(np.uint8).max,
-            size=(width, height),
-            dtype=np.uint8,
-        )
 
         exp = Exposure(
-            buffer=image,
-            width=width,
-            height=height,
+            buffer=self.image,
+            width=self.width,
+            height=self.height,
             tags=tags,
         )
 
@@ -103,6 +111,27 @@ class TestExposure(unittest.TestCase):
         exp.make_jpeg()
         self.assertTrue(exp.is_jpeg)
         self.assertEqual(".jpeg", exp.suffix)
+
+    def testWithHeaderFile(self):
+        exp = Exposure(
+            buffer=self.image,
+            width=self.width,
+            height=self.height,
+            tags=[],
+        )
+
+        header_file = TEST_HEADER_DIR / "header.yaml"
+        fhifhy = FitsHeaderItemsFromHeaderYaml(header_file)
+        exp.header = fhifhy.header_items
+        self.assertIsNotNone(exp.header["PRIMARY"])
+
+        exp.save(self.tmp_name)
+        self.hdul = fits.open(self.tmp_name)
+        self.assertIn("OBS-LAT", self.hdul[0].header)
+        self.assertIn("INHERIT", self.hdul[1].header)
+        self.assertEqual(
+            f"[1:{self.height},1:{self.width}]", self.hdul[1].header["DETSIZE"]
+        )
 
 
 if __name__ == "__main__":

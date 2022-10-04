@@ -81,9 +81,18 @@ class Exposure:
         else:
             img = fits.ImageHDU(self.buffer)
             hdul = fits.HDUList([fits.PrimaryHDU(), img])
-            hdr = hdul[0].header
+            hdr_primary = hdul[0].header
+            hdr_image1 = hdul[1].header
+            if self.header is not None:
+                for item in self.header["PRIMARY"]:
+                    hdr_primary.append(item(), end=True)
+                for item in self.header["IMAGE1"]:
+                    hdr_image1.append(item(), end=True)
+            # Updates on image extension keywords since values are not
+            # broadcast to the GCHeaderService
+            hdr_image1["DETSIZE"] = f"[1:{self.height},1:{self.width}]"
             for tag in self.tags:
-                hdr.append((tag.name, tag.value, tag.comment), end=True)
+                hdr_primary.append((tag.name, tag.value, tag.comment), end=True)
             fileobj = io.BytesIO()
             hdul.writeto(fileobj)
             fileobj.seek(0)
