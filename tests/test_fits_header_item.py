@@ -19,13 +19,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import pathlib
 import unittest
 
 from lsst.ts.genericcamera import (
+    FitsHeaderItemsFromHeaderYaml,
     FitsHeaderItemsGenerator,
     FitsHeaderTemplate,
     HEADERS_DIR,
 )
+
+TEST_HEADER_DIR = pathlib.Path(__file__).parent / "data" / "header"
 
 
 class TestFitsHeaderItem(unittest.TestCase):
@@ -48,3 +52,22 @@ class TestFitsHeaderItem(unittest.TestCase):
         self.assertEqual("FACILITY", fhi.name)
         self.assertEqual("Vera C. Rubin Observatory", fhi.value)
         self.assertEqual("Facility name", fhi.comment)
+
+
+class TestFitsHeaderFromHeaderYaml(unittest.TestCase):
+    def test(self):
+        header_file = TEST_HEADER_DIR / "header.yaml"
+        fhihy = FitsHeaderItemsFromHeaderYaml(header_file)
+        # There should be two header blocks
+        self.assertListEqual(list(fhihy.header_items.keys()), ["PRIMARY", "IMAGE1"])
+        fhi = next(
+            (tag for tag in fhihy.header_items["PRIMARY"] if tag.name == "IMGTYPE")
+        )
+        self.assertIsNotNone(fhi)
+        self.assertTupleEqual(fhi(), ("IMGTYPE", "ENGTEST", "BIAS, DARK, FLAT, OBJECT"))
+        fhi = next(
+            (tag for tag in fhihy.header_items["IMAGE1"] if tag.name == "DETSIZE")
+        )
+        self.assertIsNotNone(fhi)
+        self.assertEqual("DETSIZE", fhi.name)
+        self.assertIsNotNone(fhi.value)

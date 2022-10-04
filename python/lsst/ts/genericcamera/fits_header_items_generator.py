@@ -19,10 +19,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["FitsHeaderItemsGenerator", "FitsHeaderTemplate", "HEADERS_DIR"]
+__all__ = [
+    "FitsHeaderItemsFromHeaderYaml",
+    "FitsHeaderItemsGenerator",
+    "FitsHeaderTemplate",
+    "HEADERS_DIR",
+]
 
+from collections import defaultdict
 from enum import Enum
 import pathlib
+
+import yaml
 
 HEADERS_DIR = pathlib.Path(__file__).resolve().parents[0] / "headers"
 """The directory in which the header files reside."""
@@ -62,6 +70,9 @@ class FitsHeaderItem:
             f"value={self.value}, "
             f"comment={self.comment})"
         )
+
+    def __call__(self):
+        return (self.name, self.value, self.comment)
 
 
 class FitsHeaderItemsGenerator:
@@ -155,3 +166,77 @@ class FitsHeaderItemsGenerator:
         value = value.strip().replace("'", "")
         comment = comment.strip()
         return FitsHeaderItem(name, value, comment)
+
+
+class FitsHeaderItemsFromHeaderYaml:
+    """Convert Header Service YAML file into FitsHeaderItems
+
+    Attributes
+    ----------
+    ignore_list: `dict`
+        The set of header keywords to ignore from the YAML file.
+    header_items: `dict`
+        The set of header items generated from the YAML file.
+    """
+
+    ignore_list = {
+        "PRIMARY": ["SIMPLE", "BITPIX", "NAXIS", "EXTEND"],
+        "IMAGE1": ["XTENSION", "BITPIX", "PCOUNT", "GCOUNT"],
+    }
+
+    def __init__(self, header_file: pathlib.Path) -> None:
+        """Construct the FitsHeaderFromHeaderYaml object.
+
+        Parameters
+        ----------
+        header_file: `pathlib.Path`
+            The header file to convert into the FITS header items.
+        """
+        with header_file.open() as ifile:
+            header_info = yaml.safe_load(ifile)
+
+        self.header_items = defaultdict(list)
+
+        for key, header_set in header_info.items():
+            for keyword_dict in header_set:
+                keyword = keyword_dict["keyword"]
+                if keyword in self.ignore_list[key]:
+                    continue
+                if keyword == "COMMENT":
+                    self.header_items[key].append(FitsHeaderItem("", "", ""))
+                elif keyword is None:
+                    self.header_items[key].append(
+                        FitsHeaderItem(
+                            "", self._fixup_value(keyword_dict["comment"]), ""
+                        )
+                    )
+                else:
+                    self.header_items[key].append(
+                        FitsHeaderItem(
+                            keyword.strip(),
+                            self._fixup_value(keyword_dict["value"]),
+                            keyword_dict["comment"].strip(),
+                        )
+                    )
+
+    def _fixup_value(self, value):
+        """Fix up issues with a header value for a keyword.
+
+        Parameters
+        ----------
+        value: Any
+            The header value for fix up.
+
+        Returns
+        -------
+        keyword_value: Any
+            The fix up value for the given keyword.
+        """
+        try:
+            keyword_value = value.strip().replace("'", "")
+        except AttributeError:
+            if value is None:
+                keyword_value = ""
+            else:
+                keyword_value = value
+        return keyword_value
