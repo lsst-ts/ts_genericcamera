@@ -88,11 +88,12 @@ class Exposure:
                     hdr_primary.append(item(), end=True)
                 for item in self.header["IMAGE1"]:
                     hdr_image1.append(item(), end=True)
-            # Updates on image extension keywords since values are not
-            # broadcast to the GCHeaderService
-            hdr_image1["DETSIZE"] = f"[1:{self.height},1:{self.width}]"
-            for tag in self.tags:
-                hdr_primary.append((tag.name, tag.value, tag.comment), end=True)
+                # Updates on image extension keywords since values are not
+                # broadcast to the GCHeaderService
+                hdr_image1["DETSIZE"] = f"[1:{self.height},1:{self.width}]"
+            else:
+                for tag in self.tags:
+                    hdr_primary.append((tag.name, tag.value, tag.comment), end=True)
             fileobj = io.BytesIO()
             hdul.writeto(fileobj)
             fileobj.seek(0)

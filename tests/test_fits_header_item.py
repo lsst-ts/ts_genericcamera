@@ -25,8 +25,6 @@ import unittest
 from lsst.ts.genericcamera import (
     FitsHeaderItemsFromHeaderYaml,
     FitsHeaderItemsGenerator,
-    FitsHeaderTemplate,
-    HEADERS_DIR,
 )
 
 TEST_HEADER_DIR = pathlib.Path(__file__).parent / "data" / "header"
@@ -34,24 +32,9 @@ TEST_HEADER_DIR = pathlib.Path(__file__).parent / "data" / "header"
 
 class TestFitsHeaderItem(unittest.TestCase):
     def test(self):
-        all_sky_header_template = HEADERS_DIR / "allsky.header"
-        with open(all_sky_header_template) as f:
-            lines = f.read()
         fhig = FitsHeaderItemsGenerator()
-        self.tags = fhig.generate_fits_header_items(FitsHeaderTemplate.ALL_SKY)
-        for tag in self.tags:
-            if tag.name != "":
-                self.assertTrue(tag.name in lines)
-            if tag.value != "":
-                self.assertTrue(tag.value in lines)
-            if tag.comment != "":
-                self.assertTrue(tag.comment in lines)
-
-        fhi = next((tag for tag in self.tags if tag.name == "FACILITY"))
-        self.assertIsNotNone(fhi)
-        self.assertEqual("FACILITY", fhi.name)
-        self.assertEqual("Vera C. Rubin Observatory", fhi.value)
-        self.assertEqual("Facility name", fhi.comment)
+        tags = fhig.generate_fits_header_items()
+        self.assertEqual(len(tags), 6)
 
 
 class TestFitsHeaderFromHeaderYaml(unittest.TestCase):

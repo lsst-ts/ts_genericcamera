@@ -31,7 +31,7 @@ from lsst.ts.genericcamera import (
     Exposure,
     FitsHeaderItemsFromHeaderYaml,
     FitsHeaderItemsGenerator,
-    FitsHeaderTemplate,
+    FitsHeaderItem,
 )
 
 TEST_HEADER_DIR = pathlib.Path(__file__).parent / "data" / "header"
@@ -60,7 +60,7 @@ class TestExposure(unittest.TestCase):
 
     def test(self):
         fhig = FitsHeaderItemsGenerator()
-        tags = fhig.generate_fits_header_items(FitsHeaderTemplate.ALL_SKY)
+        tags = fhig.generate_fits_header_items()
 
         exp = Exposure(
             buffer=self.image,
@@ -79,34 +79,8 @@ class TestExposure(unittest.TestCase):
         )
         self.hdul = fits.open(self.tmp_name)
         hdr = self.hdul[0].header
-        # Keep count of how often a header name has been processed becasue some
-        # are double. The double ones mostly are empty names (i.e. '') but some
-        # other double names exist as well.
-        header_name_counts = {}
-
         for tag in tags:
-            name = tag.name
-            value = tag.value.replace("'", "")
-            comment = tag.comment
-
-            # Initialize the count for every name to 0 since astropy will
-            # return the correct header item for all values >= 0.
-            if name not in header_name_counts:
-                header_name_counts[name] = 0
-
-            # Get the current count and increase by one for the next iteration
-            # of the loop.
-            count = header_name_counts[name]
-            header_name_counts[name] = count + 1
-
-            self.assertEqual(
-                hdr[(name, count)], value, f"Header value for {name} incorrect."
-            )
-            self.assertEqual(
-                hdr.comments[(name, count)],
-                comment,
-                f"Header comment for {name} incorrect.",
-            )
+            self.assertIn(tag.name, hdr)
 
         exp.make_jpeg()
         self.assertTrue(exp.is_jpeg)
@@ -117,7 +91,7 @@ class TestExposure(unittest.TestCase):
             buffer=self.image,
             width=self.width,
             height=self.height,
-            tags=[],
+            tags=[FitsHeaderItem("ANSWER", 42, "Won't find this")],
         )
 
         header_file = TEST_HEADER_DIR / "header.yaml"
@@ -132,6 +106,7 @@ class TestExposure(unittest.TestCase):
         self.assertEqual(
             f"[1:{self.height},1:{self.width}]", self.hdul[1].header["DETSIZE"]
         )
+        self.assertNotIn("ANSWER", self.hdul[0].header)
 
 
 if __name__ == "__main__":
