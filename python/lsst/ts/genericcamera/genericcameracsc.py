@@ -587,10 +587,11 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 del self.header_file_dict[image_name]
                 header_file.unlink(missing_ok=True)
             except KeyError:
+                self.log.warning(f"Cannot find image {image_name} in lookup.")
                 pass
             exposure.header = header_info
         except ValueError:
-            self.log.warn(f"No header for image {image_name} found.")
+            self.log.warning(f"No header for image {image_name} found.")
 
         if self.use_lfa:
             key = self.s3bucket.make_key(
