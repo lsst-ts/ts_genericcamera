@@ -23,15 +23,20 @@ __all__ = ["BaseCamera"]
 
 import abc
 import ctypes
-import datetime
 import logging
 
 from astropy.coordinates import Angle, SkyCoord
 from astropy.time import Time
 from astropy import units as u
 
+from lsst.ts import utils as ts_utils
+
 from .. import exposure
-from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
+from ..fits_header_items_generator import (
+    FitsHeaderItemsGenerator,
+    FitsHeaderItem,
+)
+from .. import utils
 
 
 class BaseCamera(abc.ABC):
@@ -45,11 +50,12 @@ class BaseCamera(abc.ABC):
 
         # Load the generic FITS header items.
         fhig = FitsHeaderItemsGenerator()
-        self.tags = fhig.generate_fits_header_items(FitsHeaderTemplate.ALL_SKY)
+        self.tags = fhig.generate_fits_header_items()
 
         # Variables holding image acquisition info
-        self.datetime_start = None
-        self.datetime_end = None
+        self.timestamp_end_integration = None
+        self.timestamp_start_readout = None
+        self.timestamp_end_readout = None
 
     @staticmethod
     @abc.abstractmethod
@@ -76,6 +82,21 @@ class BaseCamera(abc.ABC):
             The configuration schema in yaml format.
         """
         raise NotImplementedError()
+
+    @property
+    def datetime_end_integration(self):
+        """Object representation of the end integration timestamp."""
+        return Time(self.timestamp_end_integration, scale="tai", format="unix_tai")
+
+    @property
+    def datetime_start_readout(self):
+        """Object representation of the start readout timestamp."""
+        return Time(self.timestamp_start_readout, scale="tai", format="unix_tai")
+
+    @property
+    def datetime_end_readout(self):
+        """Object representation of the end readout timestamp."""
+        return Time(self.timestamp_end_readout, scale="tai", format="unix_tai")
 
     async def stop(self):
         """Stop and close camera."""
@@ -179,7 +200,7 @@ class BaseCamera(abc.ABC):
         wfs : bool
             Should wave front sensor be used?
         """
-        self.datetime_start = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.timestamp_start_readout = ts_utils.current_tai()
         return True
 
     async def start_shutter_open(self):
@@ -205,7 +226,7 @@ class BaseCamera(abc.ABC):
         """End integration.
 
         This should wait for the integration period to complete."""
-        pass
+        self.timestamp_end_integration = ts_utils.current_tai()
 
     async def start_shutter_close(self):
         """Start closing the shutter.
@@ -227,7 +248,7 @@ class BaseCamera(abc.ABC):
 
     async def start_readout(self):
         """Start reading out the image."""
-        self.datetime_end = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.timestamp_end_readout = ts_utils.current_tai()
 
     async def end_readout(self):
         """End reading out the image.
@@ -253,17 +274,29 @@ class BaseCamera(abc.ABC):
 
         Returns
         -------
-        tag: FitsHeaderItem or None
-            Returns the FitsHeaderItem with the provided name, or None if it
-            doesn't exist.
+        tag: FitsHeaderItem
+            Returns the FitsHeaderItem with the provided name, or creates one
+            if it doesn't exist.
         """
         try:
             # Each tag should only exist once.
             fhi = [tag for tag in self.tags if tag.name == name][0]
         except IndexError:
-            # If no tag is found then returen None.
-            fhi = None
+            # If no tag is found then create a FitsHeaderItem.
+            fhi = FitsHeaderItem(name, None)
+            self.tags.append(fhi)
         return fhi
+
+    def get_configuration_for_key_value_map(self) -> str | None:
+        """Provide camera specific configuration to the key-value map.
+
+        Returns
+        -------
+        `str` or `None`
+            Static camera configuration in the format of
+            key1: value1, key2: value2 ...
+        """
+        return None
 
     async def _get_radec_from_altaz_location_time(self, alt, az, obs_time, location):
         """Get the Right Ascension and Declination from the altitude and
@@ -297,3 +330,21 @@ class BaseCamera(abc.ABC):
         )
         ra_dec = altaz.transform_to("icrs")
         return ra_dec
+
+    async def _set_tag_values(self):
+        """Convenience coroutine to provide values for some of the tags in the
+        FITS header."""
+
+        # ---- Date, night and basic image information ----
+        self.get_tag(name="DATE").value = Time(
+            ts_utils.current_tai(), scale="tai", format="unix_tai"
+        ).strftime(utils.DATETIME_FORMAT)
+        self.get_tag(name="DATE-OBS").value = self.datetime_start_readout.strftime(
+            utils.DATE_FORMAT
+        )
+        self.get_tag(name="DATE-BEG").value = self.datetime_start_readout.strftime(
+            utils.DATETIME_FORMAT
+        )
+        self.get_tag(name="DATE-END").value = self.datetime_end_readout.strftime(
+            utils.DATETIME_FORMAT
+        )

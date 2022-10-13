@@ -1,10 +1,11 @@
 # Default configuration for tests.
-image_service_url: "http://localhost/pick/my/name"
-require_image_service: false
+s3instance: "mock"
+image_service_url: "http://localhost/ImageUtilities/rest/imageNameService"
+require_image_service: true
 instances:
   - sal_index: 1
-    ip: "1.2.3.4"
-    port: 100
+    ip: "127.0.0.1"
+    port: 5013
     directory: "~/"
     camera: "Simulator"
     auto_exposure_nterval: 60

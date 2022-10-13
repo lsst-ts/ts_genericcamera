@@ -66,7 +66,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && setup ts_sal -t current && make_idl_files.py GenericCamera\"
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && setup ts_sal -t current && make_idl_files.py GenericCamera GCHeaderService\"
                     """
                 }
             }
@@ -85,6 +85,15 @@ pipeline {
                 script {
                     sh """
                     docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd repo && pip install --ignore-installed -e . && eups declare -r . -t saluser && setup ts_genericcamera -t saluser && pytest --junitxml=\${XML_REPORT}\"
+                    """
+                }
+            }
+        }
+        stage("Build and Upload Documentation") {
+            steps {
+                script {
+                    sh """
+                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd repo && pip install --ignore-installed -e . && pip install -r doc/requirements.txt && package-docs build && pip install ltd-conveyor && ltd upload --product ts-genericcamera --git-ref ${GIT_BRANCH} --dir doc/_build/html\"
                     """
                 }
             }

@@ -19,28 +19,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["GenericCameraCsc", "run_genericcamera"]
+__all__ = ["GenericCameraCsc", "requests", "run_genericcamera"]
 
 import asyncio
 import inspect
 import logging
-import os
-
-# TODO Use utils.current_tai() instead.
-import time
+import pathlib
 import traceback
 import types
+import typing
 
+from astropy.time import Time
 import numpy as np
+import requests
+from requests.exceptions import ConnectionError
 import yaml
 
 from .config_schema import CONFIG_SCHEMA
 from . import __version__
 from lsst.ts import salobj
+from lsst.ts import utils
 
+from .fits_header_items_generator import FitsHeaderItemsFromHeaderYaml
 from .liveview import liveview
 from . import driver
-
+from .utils import get_day_obs, make_image_names, parse_key_value_map
 
 LV_ERROR = 1000
 """Error code for when the live view loop dies and the CSC is in enable
@@ -107,12 +110,26 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         self.ip = None
         self.port = None
-        self.directory = os.path.expanduser("~/")
+        self.directory = pathlib.Path.home() / "data"
         self.file_name_format = "{timestamp}-{index}-{total}"
         self.config = None
 
         self.camera = None
         self.server = None
+
+        # The current event attribute is limited to two chars
+        # remove below and change to self.image_source when fixed
+        self.image_source_short = "GC"
+        self.image_source = f"GC{index}"
+        # GenericCameras can only be run by the OCS
+        self.image_controller = "O"
+
+        self.day_obs = None
+        self.image_sequence_num = 1
+        self.image_service_url = None
+        self.require_image_service = False
+        self.additional_keys = None
+        self.additional_values = None
 
         self.is_live = False
         self.is_auto_exposure = False
@@ -121,9 +138,32 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.live_task = None
         self.run_auto_exposure_task = False
         self.auto_exposure_task = None
+
+        self.use_lfa = False
+        self.s3bucket = None
+        self.s3bucket_name = None
+        self.s3_mock = False
+
+        self.header_service_remote = salobj.Remote(
+            self.domain,
+            "GCHeaderService",
+            index,
+            include=["largeFileObjectAvailable"],
+            evt_max_history=0,
+        )
+        self.header_service_remote.evt_largeFileObjectAvailable.flush()
+        self.header_service_remote.evt_largeFileObjectAvailable.callback = (
+            self.gc_header_service_large_file_object_available_callback
+        )
+        self.header_file_dict = {}
+
         self.log.debug("Generic Camera CSC Ready")
 
-    async def begin_enable(self, id_data):
+    async def start(self):
+        await super().start()
+        await self.header_service_remote.start_task
+
+    async def begin_enable(self, data):
         """Begin do_enable; called before state changes.
 
         This method will start the liveview server and initialize the camera
@@ -131,13 +171,16 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        id_data : `CommandIdData`
+        data : `CommandIdData`
             Command ID and data
         """
         self.server = liveview.LiveViewServer(self.config.port, log=self.log)
-        self.camera.initialise(config=self.config)
+        if self.s3bucket is None and self.use_lfa:
+            self.s3bucket = salobj.AsyncS3Bucket(
+                name=self.s3bucket_name, domock=self.s3_mock, create=self.s3_mock
+            )
 
-    async def begin_disable(self, id_data):
+    async def begin_disable(self, data):
         """Begin do_disable; called before state changes.
 
         The method will check if the camera is exposing and reject the command
@@ -145,22 +188,22 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        id_data : `CommandIdData`
+        data : `CommandIdData`
             Command ID and data
         """
         if self.is_exposing:
             raise RuntimeError("Camera is exposing, cannot disable.")
 
-    async def end_disable(self, id_data):
+    async def end_disable(self, data):
         """End do_disable; called after state changes but before command
         acknowledged.
 
         The method will stop any live view, close live view server and
-        stop the camera.
+        remove the S3 bucket handle.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
+        data : `CommandIdData`
             Command ID and data
         """
         if self.is_live:
@@ -181,6 +224,21 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             finally:
                 self.server = None
 
+        if self.s3bucket is not None:
+            self.s3bucket.stop_mock()
+        self.s3bucket = None
+        self.log.info("end_disable")
+
+    async def begin_standby(self, data):
+        """Begin do_standby; called before the state changes.
+
+        This method will stop the camera.
+
+        Parameters
+        ----------
+        data : `DataType`
+            Command data
+        """
         if self.camera is not None:
             try:
                 await self.camera.stop()
@@ -189,14 +247,13 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 self.log.exception(e)
             finally:
                 self.camera = None
-        self.log.info("end_disable")
 
-    async def do_setValue(self, id_data):
+    async def do_setValue(self, data):
         """Set a parameter/value pair.
 
         Parameters
         ----------
-        id_data :
+        data :
             id : `int`
                 The command id.
             data : `GenericCamera_command_setValueC`
@@ -207,16 +264,16 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self._assert_notlive()
 
         self.log.info("setValue - Start")
-        tokens = id_data.parametersAndValues.split(",")
+        tokens = data.parametersAndValues.split(",")
         await self.camera.set_value(tokens[0], tokens[1])
         self.log.info("setValue - End")
 
-    async def do_setROI(self, id_data):
+    async def do_setROI(self, data):
         """Set the region of interest.
 
         Parameters
         ----------
-        id_data :
+        data :
             id : `int`
                 The command id.
             data : `GenericCamera_command_setROIC`
@@ -233,26 +290,24 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self._assert_notlive()
 
         if self.evt_roi.set(
-            topPixel=id_data.topPixel,
-            leftPixel=id_data.leftPixel,
-            width=id_data.width,
-            height=id_data.height,
+            topPixel=data.topPixel,
+            leftPixel=data.leftPixel,
+            width=data.width,
+            height=data.height,
         ):
             self.log.debug("setROI - Start")
-            self.camera.set_roi(
-                id_data.topPixel, id_data.leftPixel, id_data.width, id_data.height
-            )
+            self.camera.set_roi(data.topPixel, data.leftPixel, data.width, data.height)
             await self.evt_roi.write()
             self.log.debug("setROI - End")
         else:
             self.log.warning("ROI already set with same parameters.")
 
-    async def do_setFullFrame(self, id_data):
+    async def do_setFullFrame(self, data):
         """Set the region of interest to full frame.
 
         Parameters
         ----------
-        id_data :
+        data :
             id : `int`
                 The command id.
             data : `GenericCamera_command_setFullFrameC`
@@ -265,12 +320,12 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.camera.set_full_frame()
         self.log.info("setFullFrame - End")
 
-    async def do_startLiveView(self, id_data):
+    async def do_startLiveView(self, data):
         """Starts the live view display.
 
         Parameters
         ----------
-        id_data :
+        data :
             id : int
                 The command id.
             data : GenericCamera_command_startLiveViewC
@@ -280,21 +335,21 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.log.info("startLiveView - Start")
         self._assert_notlive()
         self._assert_notautoexposure()
-        if id_data.expTime == 0.0:
+        if data.expTime == 0.0:
             raise RuntimeError("LiveView exposure time must be greater than zero.")
         self.camera.start_live_view()
         self.run_live_task = True
         await asyncio.wait_for(self.server.start(), timeout=2)
-        self.live_task = asyncio.ensure_future(self.live_view_loop(id_data.expTime))
+        self.live_task = asyncio.ensure_future(self.live_view_loop(data.expTime))
         await self.evt_startLiveView.set_write(ip=self.ip, port=self.port)
         self.log.info("startLiveView - End")
 
-    async def do_stopLiveView(self, id_data):
+    async def do_stopLiveView(self, data):
         """Stop the live view display.
 
         Parameters
         ----------
-        id_data :
+        data :
             id : `int`
                 The command id.
             data : `GenericCamera_command_stopLiveViewC`
@@ -330,12 +385,12 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         await self.evt_endLiveView.write()
 
-    async def do_takeImages(self, id_data):
+    async def do_takeImages(self, data):
         """Start taking images.
 
         Parameters
         ----------
-        id_data :
+        data :
             id : `int`
                 The command id.
             data : `GenericCamera_command_takeImagesC`
@@ -353,14 +408,19 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         try:
             self.log.info("takeImages - Start")
+            images_in_sequence = data.numImages
+            exposure_time = data.expTime
+            time_stamp = utils.current_tai()
 
-            images_in_sequence = id_data.numImages
-            exposure_time = id_data.expTime
-            time_stamp = time.time()
+            image_names, image_sequence_array = self.get_image_names_from_image_service(
+                images_in_sequence, time_stamp
+            )
+
+            self.parse_key_value_map(data.keyValueMap)
 
             # Calculate expected time for IN_PROGRESS ack
             total_shutter_time = (
-                images_in_sequence * DEFAULT_SHUTTER_TIME if id_data.shutter else 0
+                images_in_sequence * DEFAULT_SHUTTER_TIME if data.shutter else 0
             )
             total_exposure_time = images_in_sequence * exposure_time
             total_readout_time = images_in_sequence * DEFAULT_READOUT_TIME
@@ -370,42 +430,190 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             self.log.debug(f"In progress timeout: {expected_timeout} seconds")
 
             await self.cmd_takeImages.ack_in_progress(
-                data=id_data, timeout=expected_timeout
+                data=data, timeout=expected_timeout
             )
 
             await self.evt_startTakeImage.write()
-            await self.camera.start_take_image(
-                exposure_time,
-                id_data.shutter,
-                id_data.sensors,
-                id_data.keyValueMap,
-                id_data.obsNote,
-            )
 
             for image_index in range(images_in_sequence):
-                timestamp = time.time()
-                image_name = self.file_name_format.format(
-                    timestamp=int(timestamp),
-                    index=image_index,
-                    total=images_in_sequence,
+                self.image_sequence_num = image_sequence_array[image_index]
+                image_name = image_names[image_index]
+                await self.camera.start_take_image(
+                    exposure_time,
+                    data.shutter,
+                    data.sensors,
+                    data.keyValueMap,
+                    data.obsNote,
                 )
                 exposure = await self.take_image(
-                    shutter=id_data.shutter,
+                    shutter=data.shutter,
                     images_in_sequence=images_in_sequence,
                     image_index=image_index,
                     exposure_time=exposure_time,
                     timestamp=time_stamp,
                     image_name=image_name,
                 )
-                exposure.save(os.path.join(self.directory, image_name + ".fits"))
-            await self.camera.end_take_image()
+                await self.camera.end_take_image()
+                await self.handle_exposure_saving(exposure, time_stamp, image_name)
+
             await self.evt_endTakeImage.write()
+            # Adjust SEQNUM in case web service is unavailable
+            self.image_sequence_num += 1
         except Exception as e:
             self.log.exception(e)
             raise e
         finally:
             self.is_exposing = False
         self.log.info("takeImages - End")
+
+    def parse_key_value_map(self, key_value_map: str) -> None:
+        """Parse key/value map into additional keys and values.
+
+        Add extra information from the camera if necessary.
+
+        Parameters
+        ----------
+        key_value_map: `str`
+            The key/value map to parse.
+        """
+        try:
+            new_keyValueMap = ", ".join(
+                [
+                    key_value_map,
+                    self.camera.get_configuration_for_key_value_map(),
+                ]
+            )
+        except TypeError:
+            new_keyValueMap = key_value_map
+
+        self.log.debug(f"Final key/value map: {new_keyValueMap}")
+
+        self.additional_keys, self.additional_values = parse_key_value_map(
+            new_keyValueMap
+        )
+
+    def get_image_names_from_image_service(
+        self, num_images: int, timestamp: float
+    ) -> typing.Tuple[list[str], list[int]]:
+        """Get image names and sequence numbers from image service.
+
+        If the image service is not available, the code will generate the
+        required information from internal state.
+
+        Parameters
+        ----------
+        num_images: `int`
+            The number of images to request names for.
+        timestamp: `float`
+            The timestamp used in case the service isn't available.
+
+        Returns
+        -------
+        image_names: `list`
+            The set of image names returned from the service.
+        image_sequence_array: `list`
+            The set of SEQNUMs for the requested images.
+        """
+        try:
+            response = requests.get(
+                self.image_service_url,
+                params={"n": num_images, "sourceIndex": self.salinfo.index},
+            )
+            if response.status_code == 200:
+                json_response = response.json()
+                self.day_obs = json_response[0].split("_")[2]
+                image_sequence_array = [int(x.split("_")[-1]) for x in json_response]
+                image_names = json_response
+            else:
+                self.log.warning(
+                    f"Image name service returned an error: {response.status_code}"
+                )
+                if self.require_image_service:
+                    raise ConnectionError(
+                        f"Image name service returned an error: {response.status_code}"
+                    )
+                image_sequence_array = self._get_day_obs_and_seq_num_array(
+                    timestamp, num_images
+                )
+                image_names = make_image_names(
+                    self.image_source, self.day_obs, image_sequence_array
+                )
+        except ConnectionError:
+            self.log.exception("Cannot connect to image name service.")
+            if self.require_image_service:
+                raise
+            image_sequence_array = self._get_day_obs_and_seq_num_array(
+                timestamp, num_images
+            )
+            image_names = make_image_names(
+                self.image_source, self.day_obs, image_sequence_array
+            )
+        return image_names, image_sequence_array
+
+    async def gc_header_service_large_file_object_available_callback(self, lfoa):
+        """Handle callback when receiving a LFOA event from GCHeaderService.
+
+        Parameters
+        ----------
+        lfoa: `salobj.DataType`
+        """
+        result = requests.get(lfoa.url)
+        header_filename = lfoa.url.split("/")[-1]
+        header_file = self.directory / header_filename
+        with header_file.open("w") as ofile:
+            ofile.write(result.content.decode())
+        file_stem = header_file.stem
+        header_tag = "_".join(file_stem.split("_")[2:])
+        self.header_file_dict[header_tag] = header_file
+
+    async def handle_exposure_saving(self, exposure, timestamp, image_name):
+        """Save exposure to LFA or local directory.
+
+        Parameters
+        ----------
+        exposure: `lsst.ts.genericcamera.Exposure`
+            The exposure to save.
+        timestamp: `float`
+            The timestamp for the exposure.
+        image_name: `str`
+            The filename for the exposure.
+        """
+        try:
+            header_info = None
+            try:
+                header_file = self.header_file_dict[image_name]
+                fhifhy = FitsHeaderItemsFromHeaderYaml(header_file)
+                header_info = fhifhy.header_items
+                del self.header_file_dict[image_name]
+                header_file.unlink(missing_ok=True)
+            except KeyError:
+                self.log.warning(f"Cannot find image {image_name} in lookup.")
+            exposure.header = header_info
+        except ValueError:
+            self.log.warning(f"No header for image {image_name} found.")
+
+        if self.use_lfa:
+            key = self.s3bucket.make_key(
+                salname=self.salinfo.name,
+                salindexname=None,
+                generator=str(self.salinfo.index),
+                other=image_name,
+                date=Time(timestamp, scale="tai", format="unix_tai"),
+                suffix=exposure.suffix,
+            )
+            # Make image name more like bigger cameras
+            key = key[: key.rfind("/") + 1] + f"{image_name}{exposure.suffix}"
+
+            await self.s3bucket.upload(fileobj=exposure.make_fileobj(), key=key)
+
+            url = f"{self.s3bucket.service_resource.meta.client.meta.endpoint_url}/{self.s3bucket.name}/{key}"
+
+            await self.evt_largeFileObjectAvailable.set_write(
+                url=url, generator=f"{self.salinfo.name}:{self.salinfo.index}"
+            )
+        else:
+            output_file = self.directory / f"{image_name}{exposure.suffix}"
+            exposure.save(output_file)
 
     async def take_image(
         self,
@@ -444,16 +652,30 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             await self.camera.end_shutter_open()
             await self.evt_endShutterOpen.write()
 
+        # Put start integration timestamp closer to call
+        # This value is used later in the other events (endIntegration,
+        # startReadout and endReadout) so we need to keep it for those.
+        timestamp = utils.current_tai()
         await self.evt_startIntegration.set_write(
             imagesInSequence=images_in_sequence,
             imageName=image_name,
             imageIndex=image_index,
             timestampAcquisitionStart=timestamp,
             exposureTime=exposure_time,
+            imageSource=self.image_source_short,
+            imageController=self.image_controller,
+            imageNumber=self.image_sequence_num,
+            imageDate=self.day_obs,
+            additionalKeys=self.additional_keys,
+            additionalValues=self.additional_values,
         )
         await self.camera.start_integration()
         await self.camera.end_integration()
-        await self.evt_endIntegration.write()
+        await self.evt_endIntegration.set_write(
+            additionalKeys=self.additional_keys,
+            additionalValues=self.additional_values,
+            timestampAcquisitionEnd=self.camera.timestamp_end_integration,
+        )
 
         if shutter:
             await self.evt_startShutterClose.write()
@@ -466,7 +688,14 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             imageName=image_name,
             imageIndex=image_index,
             timestampAcquisitionStart=timestamp,
+            timestampStartOfReadout=utils.current_tai(),
             exposureTime=exposure_time,
+            imageSource=self.image_source_short,
+            imageController=self.image_controller,
+            imageNumber=self.image_sequence_num,
+            imageDate=self.day_obs,
+            additionalKeys=self.additional_keys,
+            additionalValues=self.additional_values,
         )
         await self.camera.start_readout()
 
@@ -476,16 +705,23 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             imageName=image_name,
             imageIndex=image_index,
             timestampAcquisitionStart=timestamp,
+            timestampEndOfReadout=self.camera.timestamp_end_readout,
             requestedExposureTime=exposure_time,
+            imageSource=self.image_source_short,
+            imageController=self.image_controller,
+            imageNumber=self.image_sequence_num,
+            imageDate=self.day_obs,
+            additionalKeys=self.additional_keys,
+            additionalValues=self.additional_values,
         )
         return exposure
 
-    async def do_startAutoExposure(self, id_data):
+    async def do_startAutoExposure(self, data):
         """Start taking exposures automatically.
 
         Parameters
         ----------
-        id_data :
+        data :
             minExpTime : `float`
                 The minimum exposure time in seconds.
             maxExpTime : `float`
@@ -507,30 +743,30 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             "keyValueMap": "",
             "obsNote": "",
         }
-        if id_data.configuration != "":
-            loaded_configuration = yaml.safe_load(id_data.configuration)
+        if data.configuration != "":
+            loaded_configuration = yaml.safe_load(data.configuration)
             for key in configuration:
                 if key in loaded_configuration:
                     configuration[key] = loaded_configuration[key]
 
+        self.parse_key_value_map(configuration["keyValueMap"])
+
         self.auto_exposure_task = asyncio.ensure_future(
-            self.run_auto_exposure_loop(
-                id_data.minExpTime, id_data.maxExpTime, configuration
-            )
+            self.run_auto_exposure_loop(data.minExpTime, data.maxExpTime, configuration)
         )
         await self.evt_autoExposureStarted.set_write(
-            minExpTime=id_data.minExpTime,
-            maxExpTime=id_data.maxExpTime,
-            configuration=id_data.configuration,
+            minExpTime=data.minExpTime,
+            maxExpTime=data.maxExpTime,
+            configuration=data.configuration,
         )
         self.log.info("startAutoExposure - End")
 
-    async def do_stopAutoExposure(self, id_data):
+    async def do_stopAutoExposure(self, data):
         """Stop taking exposures automatically.
 
         Parameters
         ----------
-        id_data
+        data
             Nothing passed on.
         """
         self.assert_enabled("stopAutoExposure")
@@ -569,7 +805,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                     exposure_time, True, True, True, True
                 )
 
-                start_frame_time = time.time()
+                start_frame_time = utils.current_tai()
 
                 self.log.debug("start shutter open")
                 await self.camera.start_shutter_open()
@@ -592,7 +828,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 exposure.make_jpeg()
                 self.log.debug(f"{exposure.buffer}")
                 await self.server.send_exposure(exposure)
-                stop_frame_time = time.time()
+                stop_frame_time = utils.current_tai()
                 frame_time = round(stop_frame_time - start_frame_time, 3)
                 self.log.debug(f"live_view_loop - {frame_time}")
         except Exception as e:
@@ -664,12 +900,12 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         # First determine the exposure time based by taking images
         # starting from the configured minimum exposure time.
-        timestamp = time.time()
-        image_name = self.file_name_format.format(
+        timestamp = utils.current_tai()
+        temp_image_name = self.file_name_format.format(
             timestamp=int(timestamp), index=0, total=1
         )
         exposure_time_auto_current = await self.determine_exposure_time(
-            min_exp_time, max_exp_time, configuration, timestamp, image_name
+            min_exp_time, max_exp_time, configuration, timestamp, temp_image_name
         )
 
         self.log.debug(
@@ -680,12 +916,13 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         # Then loop and take images using the latest exposure time and
         # update the exposure time if necessary on the way.
         while self.run_auto_exposure_task:
-            timestamp = time.time()
-            image_name = self.file_name_format.format(
-                timestamp=int(timestamp),
-                index=configuration["image_index"],
-                total=configuration["images_in_sequence"],
+            timestamp = utils.current_tai()
+            image_names, image_sequence_array = self.get_image_names_from_image_service(
+                configuration["images_in_sequence"], timestamp
             )
+            image_index = configuration["image_index"]
+            self.image_sequence_num = image_sequence_array[image_index]
+            image_name = image_names[image_index]
 
             await self.evt_startTakeImage.write()
             await self.camera.start_take_image(
@@ -717,7 +954,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
             if exposure:
                 # Save the image.
-                exposure.save(os.path.join(self.directory, image_name + ".fits"))
+                await self.handle_exposure_saving(exposure, timestamp, image_name)
                 # Update the initial exposure time for the next run of
                 # the loop.
                 self.log.debug(
@@ -953,23 +1190,40 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 f"No config found for sal_index={self.salinfo.index}"
             )
 
+        self.use_lfa = config.s3instance is not None
+        self.s3_mock = config.s3instance == "mock"
+
+        self.log.info(
+            f"s3 instance: {config.s3instance} -> use_lfa: {self.use_lfa}, s3_mock: {self.s3_mock}"
+        )
+
+        if self.use_lfa:
+            self.s3bucket_name = salobj.AsyncS3Bucket.make_bucket_name(
+                s3instance=config.s3instance
+            )
+
+        self.image_service_url = config.image_service_url
+        self.require_image_service = config.require_image_service
+
         settings = types.SimpleNamespace(**instance)
         self.config = settings
         self.ip = self.config.ip
         self.port = self.config.port
 
-        if os.path.exists(os.path.expanduser(self.config.directory)):
-            self.directory = os.path.expanduser(self.config.directory)
-        else:
-            raise RuntimeError(f"Directory {self.config.directory} does not exists.")
-
-        self.file_name_format = self.config.file_name_format
+        if not self.directory.exists():
+            raise RuntimeError(f"Directory {self.directory} does not exist.")
 
         self.camera = self.drivers[self.config.camera](log=self.log)
         camera_config = self.config.config
         config_schema = self.camera.get_config_schema()
         validator = salobj.DefaultingValidator(config_schema)
         validator.validate(camera_config)
+        self.camera.initialise(config=self.config)
+
+        await self.evt_cameraInfo.set_write(
+            cameraMakeAndModel=self.camera.get_make_and_model()
+        )
+        self.evt_configurationApplied.set(otherInfo="cameraInfo")
 
     def _assert_notlive(self):
         """Raise an exception if live view is active."""
@@ -986,3 +1240,30 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
     def _assert_autoexposure(self):
         """Raise an exception if auto exposure is not active."""
         assert self.is_auto_exposure, "Auto exposure is not active."
+
+    def _get_day_obs_and_seq_num_array(
+        self, timestamp: float, num_images: int
+    ) -> list[int]:
+        """Get the DAYOBS and a SEQNUM array
+
+        Parameters
+        ----------
+        timestamp: `float`
+            The timestamp to get the DAYOBS from. Assumed to be on UTC scale.
+        num_images: `int`
+            The number of images in the sequence.
+
+        Returns
+        -------
+        seqnum_array: `list[int]`
+            The array containing the requested number of image sequence
+            numbers.
+        """
+        day_obs = get_day_obs(timestamp)
+        if day_obs != self.day_obs:
+            self.day_obs = day_obs
+            self.image_sequence_num = 1
+        seqnum_array = list(
+            range(self.image_sequence_num, self.image_sequence_num + num_images)
+        )
+        return seqnum_array

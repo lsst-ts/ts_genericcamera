@@ -6,6 +6,15 @@
 Version History
 ###############
 
+v1.0.0
+======
+
+* Add LFA file saving capability
+* Timestamps are now TAI
+* Populate events with information necessary for GCHeaderService
+* Standardize image name with image name service
+* Use GCHeaderService for image header information
+
 v0.7.0
 ======
 
