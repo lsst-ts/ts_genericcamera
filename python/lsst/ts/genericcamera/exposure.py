@@ -31,7 +31,9 @@ class Exposure:
     """This class is used to define an exposure. It provides methods
     for manipulating an exposure and saving it to the local disk."""
 
-    def __init__(self, buffer, width, height, tags, dtype=np.uint16, is_jpeg=False):
+    def __init__(
+        self, buffer, width, height, tags, header=None, dtype=np.uint16, is_jpeg=False
+    ):
         """Constructs an exposure object.
 
         Exposures meant to be a JPEG image should have 8bit pixels.
@@ -47,6 +49,8 @@ class Exposure:
             The height of the image.
         tags : list
             A list of FitsHeaderItem tags that describe the image.
+        header: `dict`
+            A set of key/value pairs containing image information.
         dtype : dtype (optional)
             Type of image data.
         is_jpeg : bool (optional)
@@ -56,6 +60,7 @@ class Exposure:
         self.height = height
         self.buffer = buffer.reshape(height, width)
         self.tags = tags
+        self.header = header
         self.is_jpeg = is_jpeg
         self.dtype = dtype
 
@@ -74,11 +79,21 @@ class Exposure:
         if self.is_jpeg:
             fileobj = io.BytesIO(self.buffer)
         else:
-            img = fits.PrimaryHDU(self.buffer)
-            hdul = fits.HDUList([img])
-            hdr = hdul[0].header
-            for tag in self.tags:
-                hdr.append((tag.name, tag.value, tag.comment), end=True)
+            img = fits.ImageHDU(self.buffer)
+            hdul = fits.HDUList([fits.PrimaryHDU(), img])
+            hdr_primary = hdul[0].header
+            hdr_image1 = hdul[1].header
+            if self.header is not None:
+                for item in self.header["PRIMARY"]:
+                    hdr_primary.append(item(), end=True)
+                for item in self.header["IMAGE1"]:
+                    hdr_image1.append(item(), end=True)
+                # Updates on image extension keywords since values are not
+                # broadcast to the GCHeaderService
+                hdr_image1["DETSIZE"] = f"[1:{self.height},1:{self.width}]"
+            else:
+                for tag in self.tags:
+                    hdr_primary.append((tag.name, tag.value, tag.comment), end=True)
             fileobj = io.BytesIO()
             hdul.writeto(fileobj)
             fileobj.seek(0)

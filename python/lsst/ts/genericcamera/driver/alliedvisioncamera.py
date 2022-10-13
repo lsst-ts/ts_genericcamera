@@ -333,6 +333,7 @@ properties:
     async def end_readout(self):
         """Start reading out the image."""
         self.log.debug("Start end_readout")
+        await super()._set_tag_values()
         buffer_array, actual_exp_time = await self.loop.run_in_executor(
             self.executor,
             functools.partial(self._get_buffer_and_ancillary_data, self.frame),

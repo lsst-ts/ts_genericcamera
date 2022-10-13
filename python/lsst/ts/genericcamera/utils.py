@@ -22,6 +22,9 @@
 __all__ = [
     "DATE_FORMAT",
     "DATETIME_FORMAT",
+    "OBSERVATORY_LONGITUDE",
+    "OBSERVATORY_LATITUDE",
+    "OBSERVATORY_ELEVATION",
     "get_day_obs",
     "make_image_names",
     "parse_key_value_map",
@@ -37,6 +40,15 @@ DATE_FORMAT = "%Y-%m-%d"
 
 DATETIME_FORMAT = f"{DATE_FORMAT}T%H:%M:%S"
 """Format string for datetime values in the FITS header."""
+
+OBSERVATORY_LONGITUDE = -70.749417
+"""Longitude (degrees) for the Vera C. Rubin Observatory."""
+
+OBSERVATORY_LATITUDE = -30.244639
+"""Latitude (degrees) for the Vera C. Rubin Observatory."""
+
+OBSERVATORY_ELEVATION = 2663.0
+"""Elevation (meters) for the Vera C. Rubin Observatory."""
 
 
 def get_day_obs(timestamp: float) -> str:

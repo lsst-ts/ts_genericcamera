@@ -22,15 +22,12 @@
 __all__ = ["SimulatorCamera"]
 
 import asyncio
-import datetime
 
 import numpy as np
 import yaml
 
 from .. import exposure
 from . import basecamera
-from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
-from .. import utils
 
 
 class SimulatorCamera(basecamera.BaseCamera):
@@ -476,24 +473,7 @@ properties:
         """Convenience coroutine to provide values for some of the tags in the
         FITS header. More tags can be added if necessary but these were deemed
         sufficient for unit testing."""
-        # Add the Canon-related FITS header items to the generic ones.
-        self.tags.extend(
-            FitsHeaderItemsGenerator().generate_fits_header_items(
-                FitsHeaderTemplate.CANON
-            )
-        )
+        await super()._set_tag_values()
 
-        # ---- Date, night and basic image information ----
-        self.get_tag(name="DATE").value = datetime.datetime.now(
-            tz=datetime.timezone.utc
-        ).strftime(utils.DATETIME_FORMAT)
-        self.get_tag(name="DATE-OBS").value = self.datetime_start_readout.strftime(
-            utils.DATE_FORMAT
-        )
-        self.get_tag(name="DATE-BEG").value = self.datetime_start_readout.strftime(
-            utils.DATETIME_FORMAT
-        )
-        self.get_tag(name="DATE-END").value = self.datetime_end_readout.strftime(
-            utils.DATETIME_FORMAT
-        )
+        self.get_tag(name="EXPTIME").value = self.exposure_time
         self.get_tag(name="ISO").value = 100

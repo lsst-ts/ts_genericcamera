@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import datetime
 import io
 
 from astropy.coordinates import EarthLocation
@@ -30,7 +29,6 @@ import rawpy
 import yaml
 
 from .. import exposure
-from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
 from . import basecamera
 from .. import utils
 
@@ -53,13 +51,6 @@ class CanonCamera(basecamera.BaseCamera):
 
         # The path to the image in the camera
         self.file_path = None
-
-        # Add the Canon-related FITS header items to the generic ones.
-        self.tags.append(
-            FitsHeaderItemsGenerator().generate_fits_header_items(
-                FitsHeaderTemplate.CANON
-            )
-        )
 
     @staticmethod
     def name():
@@ -245,17 +236,14 @@ properties:
     async def _set_tag_values(self):
         """Convenience coroutine to provide values for all the tags in the FITS
         header."""
+        await super()._set_tag_values()
+        # NOTE: all of the tags below should be removed when the
+        # GCHeaderService is made available for this driver.
         # ---- Date, night and basic image information ----
-        now_string = datetime.datetime.now(tz=datetime.timezone.utc).strftime(
-            utils.DATETIME_FORMAT
-        )
-        date_obs = self.datetime_start_readout.strftime(utils.DATE_FORMAT)
-        date_beg = self.datetime_start_readout.strftime(utils.DATETIME_FORMAT)
-        date_end = self.datetime_end_readout.strftime(utils.DATETIME_FORMAT)
-        self.get_tag(name="DATE").value = now_string
-        self.get_tag(name="DATE-OBS").value = date_obs
-        self.get_tag(name="DATE-BEG").value = date_beg
-        self.get_tag(name="DATE-END").value = date_end
+        now_string = self.get_tag(name="DATE").value
+        date_obs = self.get_tag(name="DATE-OBS").value
+        date_beg = self.get_tag(name="DATE-BEG").value
+        date_end = self.get_tag(name="DATE-END").value
         self.get_tag(name="MJD").value = Time(now_string, format="mjd").value
         self.get_tag(name="MJD-OBS").value = Time(date_obs, format="mjd").value
         self.get_tag(name="MJD-BEG").value = Time(date_beg, format="mjd").value
@@ -270,10 +258,10 @@ properties:
         # Minor axis always points south
         azimuth = 0.0
 
-        # Retrieve observing location info
-        lon = next((tag for tag in self.tags if tag.name == "OBS-LONG")).value
-        lat = next((tag for tag in self.tags if tag.name == "OBS-LAT")).value
-        height = next((tag for tag in self.tags if tag.name == "OBS-ELEV")).value
+        # Retrieve observing location info.
+        lon = utils.OBSERVATORY_LONGITUDE
+        lat = utils.OBSERVATORY_LATITUDE
+        height = utils.OBSERVATORY_ELEVATION
         # Create EarthLocation instance for Rubin Observatory
         rubin = EarthLocation.from_geodetic(lon=lon, lat=lat, height=height)
 

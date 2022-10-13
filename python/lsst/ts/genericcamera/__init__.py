@@ -29,5 +29,6 @@ from .genericcameracsc import *
 from .exposure import *
 from .fits_header_items_generator import *
 from .liveview import *
+from .mock_gcheaderservice import *
 from .driver import *
 from .utils import *

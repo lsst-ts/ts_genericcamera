@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import contextlib
 import glob
 import os
 import pathlib
@@ -37,13 +38,36 @@ from lsst.ts import utils
 STD_TIMEOUT = 2  # standard command timeout (sec)
 LONG_TIMEOUT = 20  # timeout for starting SAL components (sec)
 TEST_CONFIG_DIR = pathlib.Path(__file__).parent / "data" / "config"
+TEST_HEADER_DIR = pathlib.Path(__file__).parent / "data" / "header"
 
 
 class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
+    @contextlib.asynccontextmanager
+    async def make_csc(
+        self,
+        initial_state,
+        config_dir=None,
+        override="",
+        simulation_mode=0,
+        log_level=None,
+    ):
+        async with super().make_csc(
+            initial_state=initial_state,
+            config_dir=config_dir,
+            override=override,
+            simulation_mode=simulation_mode,
+            log_level=log_level,
+        ), genericcamera.MockGCHeaderService(
+            index=1, initial_state=salobj.State.ENABLED
+        ) as self.gchs_csc:
+            yield
+
     @classmethod
     def setUpClass(cls):
         cls.data_dir = pathlib.Path.home() / "data"
-        cls.data_dir.mkdir()
+        cls.data_dir.mkdir(exist_ok=True)
+        header_file = TEST_HEADER_DIR / "header.yaml"
+        cls.header_contents = header_file.read_bytes()
 
     @classmethod
     def tearDownClass(cls):
@@ -203,10 +227,11 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             ["GC1_O_20220822_000005"],
             ["GC1_O_20220822_000006"],
         ]
+        self.mock_response.content = self.header_contents
 
         @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
         async def take_bias(mock_get):
-            mock_get.side_effect = ConnectionError()
+            mock_get.side_effect = [ConnectionError(), self.mock_response]
 
             await self.remote.cmd_takeImages.set_start(
                 numImages=1,
@@ -407,7 +432,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
         @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
         async def take_image_no_image_service(image_name_check, mock_get):
-            mock_get.side_effect = ConnectionError("Cannot connect to image service")
+            mock_get.side_effect = [
+                ConnectionError("Cannot connect to image service"),
+                self.mock_response,
+            ]
             await self.remote.cmd_takeImages.set_start(
                 numImages=1,
                 expTime=np.random.rand() + 1.0,
@@ -433,7 +461,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED, config_dir=TEST_CONFIG_DIR
         ):
-
+            self.gchs_csc.set_take_image_list()
             state = await self.remote.evt_summaryState.next(
                 flush=False, timeout=LONG_TIMEOUT
             )
@@ -532,12 +560,13 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             ["GC1_O_20220830_000003"],
             ["GC1_O_20220830_000004"],
         ]
+        mock_response.content = self.header_contents
         mock_get.return_value = mock_response
 
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
         ):
-
+            self.gchs_csc.set_auto_exposure_list()
             await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
 
             # Set the auto exposure time interval to a low value so

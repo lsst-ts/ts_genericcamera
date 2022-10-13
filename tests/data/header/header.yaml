@@ -1,0 +1,218 @@
+PRIMARY:
+- keyword: SIMPLE
+  value: true
+  comment: ''
+- keyword: BITPIX
+  value: 8
+  comment: bits per data value
+- keyword: NAXIS
+  value: 0
+  comment: number of axes
+- keyword: EXTEND
+  value: true
+  comment: Extensions are permitted
+- keyword: ORIGIN
+  value: LSST DM Header Service
+  comment: FITS file originator
+- keyword: COMMENT
+  value: ''
+  comment: ''
+- keyword: null
+  value: null
+  comment: '---- Date, night and basic image information ----'
+- keyword: TIMESYS
+  value: TAI
+  comment: The time scale used
+- keyword: DATE
+  value: '2022-10-03T18:35:39.961'
+  comment: Creation Date and Time of File
+- keyword: DATE-OBS
+  value: '2022-10-03T18:36:06.443'
+  comment: Date of observation (image acquisition)
+- keyword: DATE-BEG
+  value: '2022-10-03T18:36:06.443'
+  comment: Time at the start of integration
+- keyword: DATE-END
+  value: '2022-10-03T18:36:16.958'
+  comment: end date of the observation
+- keyword: MJD
+  value: 59855.77476806902
+  comment: Modified Julian Date that the file was written
+- keyword: MJD-OBS
+  value: 59855.7750745754
+  comment: Modified Julian Date of observation
+- keyword: MJD-BEG
+  value: 59855.7750745754
+  comment: Modified Julian Date derived from DATE-BEG
+- keyword: MJD-END
+  value: 59855.77519627857
+  comment: Modified Julian Date derived from DATE-END
+- keyword: OBSID
+  value: GC1_O_20221003_000001
+  comment: ImageName from Camera StartIntegration
+- keyword: IMGTYPE
+  value: ENGTEST
+  comment: BIAS, DARK, FLAT, OBJECT
+- keyword: BUNIT
+  value: 'adu     '
+  comment: Brightness units for pixel array
+- keyword: COMMENT
+  value: ''
+  comment: ''
+- keyword: null
+  value: null
+  comment: '---- Telescope info, location, observer ----'
+- keyword: FACILITY
+  value: Vera C. Rubin Observatory
+  comment: Facility name
+- keyword: TELESCOP
+  value: null
+  comment: Telescope name
+- keyword: INSTRUME
+  value: StarTracker
+  comment: Instrument used to obtain these data
+- keyword: OBSERVER
+  value: LSST
+  comment: Observer name(s)
+- keyword: OBS-LONG
+  value: -70.749417
+  comment: '[deg] Observatory east longitude'
+- keyword: OBS-LAT
+  value: -30.244639
+  comment: '[deg] Observatory latitude'
+- keyword: OBS-ELEV
+  value: 2663.0
+  comment: '[m] Observatory elevation'
+- keyword: OBSGEO-X
+  value: 1818938.94
+  comment: '[m] X-axis Geocentric coordinate'
+- keyword: OBSGEO-Y
+  value: -5208470.95
+  comment: '[m] Y-axis Geocentric coordinate'
+- keyword: OBSGEO-Z
+  value: -3195172.08
+  comment: '[m] Z-axis Geocentric coordinate'
+- keyword: COMMENT
+  value: ''
+  comment: ''
+- keyword: null
+  value: null
+  comment: '---- Image-identifying used to build OBS-ID ----'
+- keyword: CAMCODE
+  value: GC1
+  comment: The code for the telescope
+- keyword: CONTRLLR
+  value: O
+  comment: The controller (e.g. O for OCS, C for CCS)
+- keyword: DAYOBS
+  value: '20221003'
+  comment: The observation day as defined by image name
+- keyword: SEQNUM
+  value: 1
+  comment: The sequence number from the image name
+- keyword: GROUPID
+  value: '2022-10-03T18:36:05.510'
+  comment: ''
+- keyword: COMMENT
+  value: ''
+  comment: ''
+- keyword: null
+  value: null
+  comment: '---- Test Stand information ----'
+- keyword: TSTAND
+  value: null
+  comment: The Test Stand used
+- keyword: COMMENT
+  value: ''
+  comment: ''
+- keyword: null
+  value: null
+  comment: '---- Information from Camera (Common block) ----'
+- keyword: IMAGETAG
+  value: null
+  comment: DAQ Image id
+- keyword: OBSANNOT
+  value: null
+  comment: Observing annotation
+- keyword: COMMENT
+  value: ''
+  comment: ''
+- keyword: null
+  value: null
+  comment: '---- Exposure-related information ----'
+- keyword: EXPTIME
+  value: 10.0
+  comment: Exposure time in seconds
+- keyword: DARKTIME
+  value: null
+  comment: Dark time in seconds
+- keyword: COMMENT
+  value: ''
+  comment: ''
+- keyword: null
+  value: null
+  comment: '---- Header information ----'
+- keyword: FILENAME
+  value: GC1_O_20221003_000001.fits
+  comment: Original file name
+- keyword: HEADVER
+  value: 3.0.4
+  comment: Version of header
+- keyword: COMMENT
+  value: ''
+  comment: ''
+- keyword: null
+  value: null
+  comment: '---- Checksums ----'
+- keyword: CHECKSUM
+  value: null
+  comment: checksum for the current HDU
+- keyword: DATASUM
+  value: null
+  comment: checksum of the data records
+IMAGE1:
+- keyword: XTENSION
+  value: 'IMAGE   '
+  comment: marks beginning of new HDU
+- keyword: BITPIX
+  value: 32
+  comment: bits per data value
+- keyword: INHERIT
+  value: true
+  comment: Inherits global header
+- keyword: PCOUNT
+  value: 0
+  comment: Required value
+- keyword: GCOUNT
+  value: 1
+  comment: Required value
+- keyword: EXTNAME
+  value: IMAGE1
+  comment: ''
+- keyword: DATASEC
+  value: null
+  comment: ''
+- keyword: DETSEC
+  value: null
+  comment: ''
+- keyword: DETSIZE
+  value: '[1:4096,1:4004]'
+  comment: ''
+- keyword: DTV1
+  value: null
+  comment: detector transformation vector
+- keyword: DTV2
+  value: null
+  comment: detector transformation vector
+- keyword: DTM1_1
+  value: null
+  comment: detector transformation matrix
+- keyword: DTM2_2
+  value: null
+  comment: detector transformation matrix
+- keyword: DTM1_2
+  value: null
+  comment: detector transformation matrix
+- keyword: DTM2_1
+  value: null
+  comment: detector transformation matrix
