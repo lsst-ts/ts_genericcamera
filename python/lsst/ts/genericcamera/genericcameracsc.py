@@ -588,7 +588,6 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 header_file.unlink(missing_ok=True)
             except KeyError:
                 self.log.warning(f"Cannot find image {image_name} in lookup.")
-                pass
             exposure.header = header_info
         except ValueError:
             self.log.warning(f"No header for image {image_name} found.")

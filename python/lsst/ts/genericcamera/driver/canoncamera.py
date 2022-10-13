@@ -30,6 +30,7 @@ import yaml
 
 from .. import exposure
 from . import basecamera
+from .. import utils
 
 
 class CanonCamera(basecamera.BaseCamera):
@@ -258,9 +259,9 @@ properties:
         azimuth = 0.0
 
         # Retrieve observing location info.
-        lon = -70.749417
-        lat = -30.244639
-        height = 2663.0
+        lon = utils.OBSERVATORY_LONGITUDE
+        lat = utils.OBSERVATORY_LATITUDE
+        height = utils.OBSERVATORY_ELEVATION
         # Create EarthLocation instance for Rubin Observatory
         rubin = EarthLocation.from_geodetic(lon=lon, lat=lat, height=height)
 
