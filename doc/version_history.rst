@@ -6,6 +6,13 @@
 Version History
 ###############
 
+v1.1.0
+======
+
+* Fixed bug in AlliedVisionCamera class
+* Made CanonCamera driver optional
+* Updated package dependencies
+
 v1.0.0
 ======
 

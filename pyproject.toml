@@ -41,11 +41,8 @@ asyncio_mode = "auto"
 [project.optional-dependencies]
 dev = [
   "documenteer[pipelines]",
-  "Pillow",
   "tornado",
-  "numpy",
-  "astropy",
   "gphoto2",
   "rawpy",
-  "requests"
+  "vimba",
 ]
