@@ -23,10 +23,10 @@ from .basecamera import *
 
 try:
     from .alliedvisioncamera import *
-except ImportError:
+except ImportError as e:
     import warnings
 
-    warnings.warn("Vimba package is not available.")
+    warnings.warn(f"AlliedVision driver is not available: {e.args[0]}.")
 from .andorcamera import *
 from .canoncamera import *
 from .simulatorcamera import *
