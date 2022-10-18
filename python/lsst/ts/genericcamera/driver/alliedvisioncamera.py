@@ -28,7 +28,6 @@ import yaml
 
 from . import basecamera
 from .. import exposure
-from ..fits_header_items_generator import FitsHeaderItemsGenerator, FitsHeaderTemplate
 
 SECONDS_TO_MILLISECONDS = 1000
 "Allied Vision cameras have timeouts in milliseconds."
@@ -59,11 +58,6 @@ class AlliedVisionCamera(basecamera.BaseCamera):
         self.plate_scale = None
         self.loop = asyncio.get_running_loop()
         self.executor = concurrent.futures.ThreadPoolExecutor()
-
-        self.tags = FitsHeaderItemsGenerator().generate_fits_header_items(
-            FitsHeaderTemplate.STARTRACKER
-        )
-        self.log.debug(f"Tags: {self.tags}")
 
     @staticmethod
     def name():

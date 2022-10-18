@@ -18,17 +18,22 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import warnings
 
 from .basecamera import *
 
 try:
     from .alliedvisioncamera import *
-except ImportError:
-    import warnings
+except ImportError as e:
+    warnings.warn(f"AlliedVisionCamera driver is not available: {e.args[0]}.")
 
-    warnings.warn("Vimba package is not available.")
 from .andorcamera import *
-from .canoncamera import *
+
+try:
+    from .canoncamera import *
+except ImportError as e:
+    warnings.warn(f"CanonCamera driver is not available: {e.args[0]}.")
+
 from .simulatorcamera import *
 from .zwocamera import *
 from .zwofilterwheel import *
