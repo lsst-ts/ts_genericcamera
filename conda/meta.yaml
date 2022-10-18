@@ -35,3 +35,6 @@ requirements:
     - ts-idl
     - ts-salobj
     - requests
+    - numpy
+    - astropy
+    - pillow
