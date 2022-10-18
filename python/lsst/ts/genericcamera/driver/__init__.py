@@ -25,7 +25,7 @@ from .basecamera import *
 try:
     from .alliedvisioncamera import *
 except ImportError as e:
-    warnings.warn(f"AlliedVision driver is not available: {e.args[0]}.")
+    warnings.warn(f"AlliedVisionCamera driver is not available: {e.args[0]}.")
 
 from .andorcamera import *
 
