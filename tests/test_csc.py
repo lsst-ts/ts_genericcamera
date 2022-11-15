@@ -101,9 +101,9 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             desired_config_pkg_name = "ts_config_ocs"
             desired_config_env_name = desired_config_pkg_name.upper() + "_DIR"
             desired_config_pkg_dir = os.environ[desired_config_env_name]
-            desired_config_dir = (
-                pathlib.Path(desired_config_pkg_dir) / "GenericCamera/v3"
-            )
+            desired_config_dir = pathlib.Path(
+                desired_config_pkg_dir
+            ) / genericcamera.CONFIG_SCHEMA["title"].replace(" ", "/")
             self.assertEqual(self.csc.get_config_pkg(), desired_config_pkg_name)
             self.assertEqual(self.csc.config_dir, desired_config_dir)
 

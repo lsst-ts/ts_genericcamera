@@ -110,6 +110,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
         self.ip = None
         self.port = None
+        self._directory = pathlib.Path.home() / "data"
         self.directory = pathlib.Path.home() / "data"
         self.file_name_format = "{timestamp}-{index}-{total}"
         self.config = None
@@ -140,6 +141,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.auto_exposure_task = None
 
         self.use_lfa = False
+        self.always_save = True
+
         self.s3bucket = None
         self.s3bucket_name = None
         self.s3_mock = False
@@ -592,7 +595,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         except ValueError:
             self.log.warning(f"No header for image {image_name} found.")
 
+        filename = f"{image_name}{exposure.suffix}"
+
         if self.use_lfa:
+            self.log.debug("Writing file to LFA.")
             key = self.s3bucket.make_key(
                 salname=self.salinfo.name,
                 salindexname=None,
@@ -603,6 +609,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             )
             # Make image name more like bigger cameras
             key = key[: key.rfind("/") + 1] + f"{image_name}{exposure.suffix}"
+            filename = key
 
             await self.s3bucket.upload(fileobj=exposure.make_fileobj(), key=key)
 
@@ -611,8 +618,13 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             await self.evt_largeFileObjectAvailable.set_write(
                 url=url, generator=f"{self.salinfo.name}:{self.salinfo.index}"
             )
-        else:
-            output_file = self.directory / f"{image_name}{exposure.suffix}"
+
+        if self.always_save or not self.use_lfa:
+            output_file = self.directory / filename
+            if not output_file.parents[0].exists():
+                self.log.debug(f"Creating directory: {output_file.parents[0]}")
+                output_file.parents[0].mkdir(parents=True)
+            self.log.debug(f"Saving file to disk: {output_file}")
             exposure.save(output_file)
 
     async def take_image(
@@ -1182,6 +1194,15 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         summary state from `State.STANDBY` to `State.DISABLED`.
         """
 
+        self.directory = (
+            pathlib.Path(config.directory)
+            if config.directory is not None
+            else self._directory
+        )
+
+        if not self.directory.exists():
+            raise RuntimeError(f"Directory {self.directory} does not exist.")
+
         for instance in config.instances:
             if instance["sal_index"] == self.salinfo.index:
                 break
@@ -1191,6 +1212,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             )
 
         self.use_lfa = config.s3instance is not None
+        self.always_save = config.always_save
+
         self.s3_mock = config.s3instance == "mock"
 
         self.log.info(
@@ -1206,12 +1229,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.require_image_service = config.require_image_service
 
         settings = types.SimpleNamespace(**instance)
+        self.log.debug(f"Camera:{self.salinfo.index} settings: {settings}")
         self.config = settings
         self.ip = self.config.ip
         self.port = self.config.port
-
-        if not self.directory.exists():
-            raise RuntimeError(f"Directory {self.directory} does not exist.")
 
         self.camera = self.drivers[self.config.camera](log=self.log)
         camera_config = self.config.config

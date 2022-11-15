@@ -2,6 +2,8 @@
 s3instance: null
 image_service_url: "http://localhost/ImageUtilities/rest/imageNameService"
 require_image_service: false
+always_save: false
+directory: null
 instances:
   - sal_index: 1
     ip: "127.0.0.1"

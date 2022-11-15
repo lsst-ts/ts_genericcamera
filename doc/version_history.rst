@@ -6,6 +6,11 @@
 Version History
 ###############
 
+v1.2.0
+======
+
+* Add two new configuration parameters; ``always_save`` and ``directory``.
+
 v1.1.0
 ======
 
