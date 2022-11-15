@@ -28,7 +28,7 @@ CONFIG_SCHEMA = yaml.safe_load(
 $schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_genericcamera/blob/master/python/lsst/ts/genericcamera/config_schema.py
 # title must end with one or more spaces followed by the schema version, which must begin with "v"
-title: GenericCamera v3
+title: GenericCamera v4
 description: Schema for GenericCamera configuration files
 type: object
 properties:
@@ -45,6 +45,17 @@ properties:
   require_image_service:
     description: Make CSC go into FAULT if image name service is not available
     type: boolean
+  always_save:
+    description: >-
+      Should the images also be written to disk, regardless of lfa status?
+    type: boolean
+  directory:
+    description: >-
+      Path to save the files to disk. If "null", save to "~/data". If the path
+      does not exists it will raise an exception during the configuration step.
+    anyOf:
+      - type: string
+      - type: "null"
   instances:
     type: array
     description: Configuration for each GenericCamera instance.
