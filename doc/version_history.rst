@@ -6,6 +6,11 @@
 Version History
 ###############
 
+v1.2.1
+======
+
+* Fix image source definition
+
 v1.2.0
 ======
 
