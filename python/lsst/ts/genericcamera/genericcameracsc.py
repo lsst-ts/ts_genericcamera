@@ -118,9 +118,6 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.camera = None
         self.server = None
 
-        # The current event attribute is limited to two chars
-        # remove below and change to self.image_source when fixed
-        self.image_source_short = "GC"
         self.image_source = f"GC{index}"
         # GenericCameras can only be run by the OCS
         self.image_controller = "O"
@@ -674,7 +671,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             imageIndex=image_index,
             timestampAcquisitionStart=timestamp,
             exposureTime=exposure_time,
-            imageSource=self.image_source_short,
+            imageSource=self.image_source,
             imageController=self.image_controller,
             imageNumber=self.image_sequence_num,
             imageDate=self.day_obs,
@@ -702,7 +699,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             timestampAcquisitionStart=timestamp,
             timestampStartOfReadout=utils.current_tai(),
             exposureTime=exposure_time,
-            imageSource=self.image_source_short,
+            imageSource=self.image_source,
             imageController=self.image_controller,
             imageNumber=self.image_sequence_num,
             imageDate=self.day_obs,
@@ -719,7 +716,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             timestampAcquisitionStart=timestamp,
             timestampEndOfReadout=self.camera.timestamp_end_readout,
             requestedExposureTime=exposure_time,
-            imageSource=self.image_source_short,
+            imageSource=self.image_source,
             imageController=self.image_controller,
             imageNumber=self.image_sequence_num,
             imageDate=self.day_obs,

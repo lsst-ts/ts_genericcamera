@@ -351,7 +351,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(startIntegration)
-            self.assertEqual(startIntegration.imageSource, self.csc.image_source_short)
+            self.assertEqual(startIntegration.imageSource, self.csc.image_source)
             self.assertEqual(
                 startIntegration.imageController, self.csc.image_controller
             )
@@ -393,7 +393,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(startReadout)
-            self.assertEqual(startReadout.imageSource, self.csc.image_source_short)
+            self.assertEqual(startReadout.imageSource, self.csc.image_source)
             self.assertEqual(startReadout.imageController, self.csc.image_controller)
             self.assertEqual(startReadout.imageNumber, self.csc.image_sequence_num - 1)
             self.assertEqual(startReadout.imageDate, self.csc.day_obs)
@@ -407,7 +407,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 flush=False, timeout=STD_TIMEOUT
             )
             self.assertIsNotNone(endReadout)
-            self.assertEqual(endReadout.imageSource, self.csc.image_source_short)
+            self.assertEqual(endReadout.imageSource, self.csc.image_source)
             self.assertEqual(endReadout.imageController, self.csc.image_controller)
             self.assertEqual(endReadout.imageNumber, self.csc.image_sequence_num - 1)
             self.assertEqual(endReadout.imageDate, self.csc.day_obs)
