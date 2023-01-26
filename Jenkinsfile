@@ -113,7 +113,6 @@ pipeline {
         cleanup {
             sh """
                 docker stop \${container_name} || echo Could not stop container
-                docker network rm \${network_name} || echo Could not remove network
             """
             deleteDir()
         }
