@@ -22,11 +22,10 @@
 __all__ = ["LiveViewServer", "LiveViewClient", "AsyncLiveViewClient"]
 
 import asyncio
-import socket
 import logging
+import socket
 
 import numpy as np
-
 from lsst.ts.genericcamera import exposure
 
 

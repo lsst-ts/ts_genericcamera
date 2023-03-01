@@ -20,17 +20,15 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+import asyncio
+import pathlib
+import types
 import unittest
 from unittest.mock import MagicMock
 
-import asyncio
 import yaml
-import pathlib
-import types
-
-from lsst.ts.salobj.validator import DefaultingValidator
-
 from lsst.ts.genericcamera.driver import ASICamera
+from lsst.ts.salobj.validator import DefaultingValidator
 
 
 class Harness:

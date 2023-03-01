@@ -19,11 +19,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import unittest
 import asyncio
-import numpy as np
+import unittest
 
-from lsst.ts.genericcamera import Exposure, LiveViewServer, AsyncLiveViewClient
+import numpy as np
+from lsst.ts.genericcamera import AsyncLiveViewClient, Exposure, LiveViewServer
 
 
 class TestLiveView(unittest.IsolatedAsyncioTestCase):

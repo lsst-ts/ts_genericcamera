@@ -24,16 +24,13 @@ import contextlib
 import glob
 import os
 import pathlib
-import unittest
 import shutil
+import unittest
 
 import numpy as np
-from requests import ConnectionError
 import yaml
-
-from lsst.ts import salobj
-from lsst.ts import genericcamera
-from lsst.ts import utils
+from lsst.ts import genericcamera, salobj, utils
+from requests import ConnectionError
 
 STD_TIMEOUT = 2  # standard command timeout (sec)
 LONG_TIMEOUT = 20  # timeout for starting SAL components (sec)

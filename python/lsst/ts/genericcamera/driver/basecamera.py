@@ -25,18 +25,13 @@ import abc
 import ctypes
 import logging
 
+from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
 from astropy.time import Time
-from astropy import units as u
-
 from lsst.ts import utils as ts_utils
 
-from .. import exposure
-from ..fits_header_items_generator import (
-    FitsHeaderItemsGenerator,
-    FitsHeaderItem,
-)
-from .. import utils
+from .. import exposure, utils
+from ..fits_header_items_generator import FitsHeaderItem, FitsHeaderItemsGenerator
 
 
 class BaseCamera(abc.ABC):

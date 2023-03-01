@@ -21,16 +21,15 @@
 
 import io
 
-from astropy.coordinates import EarthLocation
-from astropy.time import Time
 import gphoto2 as gp
 import numpy as np
 import rawpy
 import yaml
+from astropy.coordinates import EarthLocation
+from astropy.time import Time
 
-from .. import exposure
+from .. import exposure, utils
 from . import basecamera
-from .. import utils
 
 
 class CanonCamera(basecamera.BaseCamera):

@@ -19,19 +19,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import pathlib
-import unittest
-import tempfile
-import numpy as np
 import os
+import pathlib
+import tempfile
+import unittest
 
+import numpy as np
 from astropy.io import fits
-
 from lsst.ts.genericcamera import (
     Exposure,
+    FitsHeaderItem,
     FitsHeaderItemsFromHeaderYaml,
     FitsHeaderItemsGenerator,
-    FitsHeaderItem,
 )
 
 TEST_HEADER_DIR = pathlib.Path(__file__).parent / "data" / "header"

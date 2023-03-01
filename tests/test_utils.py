@@ -22,7 +22,6 @@
 import unittest
 
 from astropy.time import Time, TimeDelta
-
 from lsst.ts.genericcamera import utils
 
 

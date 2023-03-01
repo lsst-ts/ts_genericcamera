@@ -26,8 +26,8 @@ import functools
 import vimba
 import yaml
 
-from . import basecamera
 from .. import exposure
+from . import basecamera
 
 SECONDS_TO_MILLISECONDS = 1000
 "Allied Vision cameras have timeouts in milliseconds."

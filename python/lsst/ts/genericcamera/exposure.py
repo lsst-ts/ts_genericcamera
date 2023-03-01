@@ -21,9 +21,10 @@
 
 __all__ = ["Exposure"]
 
-from astropy.io import fits
 import io
+
 import numpy as np
+from astropy.io import fits
 from PIL import Image
 
 

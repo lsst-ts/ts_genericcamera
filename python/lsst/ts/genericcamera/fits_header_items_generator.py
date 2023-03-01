@@ -25,8 +25,8 @@ __all__ = [
     "FitsHeaderItem",
 ]
 
-from collections import defaultdict
 import pathlib
+from collections import defaultdict
 
 import yaml
 

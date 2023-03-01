@@ -2,10 +2,9 @@ import io
 import logging
 import os
 
-from lsst.ts.genericcamera import exposure
-
 import gphoto2 as gp
 import numpy as np
+from lsst.ts.genericcamera import exposure
 from rawpy import RawPy
 
 logging.basicConfig(
