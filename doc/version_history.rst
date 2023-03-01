@@ -6,6 +6,11 @@
 Version History
 ###############
 
+v1.2.2
+======
+
+* Fix handling of null values from header to be None rather than empty string
+
 v1.2.1
 ======
 
