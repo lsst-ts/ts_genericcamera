@@ -21,35 +21,31 @@
 
 __all__ = ["EUI", "run_liveviewui"]
 
-import os
-
-import sys
-import traceback
 import argparse
 import asyncio
-
-from PySide2.QtCore import QTimer
-from PySide2.QtWidgets import (
-    QApplication,
-    QVBoxLayout,
-    QHBoxLayout,
-    QDialog,
-    QLabel,
-    QPushButton,
-    QDoubleSpinBox,
-    QTextEdit,
-)
-from PySide2.QtGui import QPixmap
-from PySide2 import QtCore
-from PIL import Image
+import os
+import sys
+import traceback
 
 import numpy as np
+from lsst.ts.genericcamera import version
+from lsst.ts.salobj import Domain, Remote
+from PIL import Image
+from PySide2 import QtCore
+from PySide2.QtCore import QTimer
+from PySide2.QtGui import QPixmap
+from PySide2.QtWidgets import (
+    QApplication,
+    QDialog,
+    QDoubleSpinBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 from . import liveview
-
-from lsst.ts.salobj import Remote, Domain
-
-from lsst.ts.genericcamera import version
 
 os.environ["PYQTGRAPH_QT_LIB"] = "PySide2"
 
@@ -256,7 +252,6 @@ class EUI(QDialog):
 
 
 def main(argv):
-
     parser = argparse.ArgumentParser("Start the GenericCamera CSC")
     parser.add_argument("--version", action="version", version=version.__version__)
     parser.add_argument(

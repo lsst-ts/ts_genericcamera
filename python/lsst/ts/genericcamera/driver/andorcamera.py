@@ -21,15 +21,15 @@
 
 import asyncio
 import ctypes
-from ctypes.util import find_library
 import enum
 import struct
+from ctypes.util import find_library
 
 import numpy as np
 import yaml
 
-from .basecamera import BaseCamera
 from ..exposure import Exposure
+from .basecamera import BaseCamera
 
 
 class AndorCamera(BaseCamera):

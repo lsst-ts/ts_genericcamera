@@ -24,16 +24,13 @@ import contextlib
 import glob
 import os
 import pathlib
-import unittest
 import shutil
+import unittest
 
 import numpy as np
-from requests import ConnectionError
 import yaml
-
-from lsst.ts import salobj
-from lsst.ts import genericcamera
-from lsst.ts import utils
+from lsst.ts import genericcamera, salobj, utils
+from requests import ConnectionError
 
 STD_TIMEOUT = 2  # standard command timeout (sec)
 LONG_TIMEOUT = 20  # timeout for starting SAL components (sec)
@@ -218,7 +215,6 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await check_rejected(salobj.State.STANDBY)
 
     async def test_take_image(self):
-
         self.mock_response = unittest.mock.Mock()
         self.mock_response.status_code = 200
         self.mock_response.json.side_effect = [
@@ -521,7 +517,6 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
         ):
-
             await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
 
             self.flush_take_image_events()

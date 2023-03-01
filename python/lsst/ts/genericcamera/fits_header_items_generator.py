@@ -25,8 +25,8 @@ __all__ = [
     "FitsHeaderItem",
 ]
 
-from collections import defaultdict
 import pathlib
+from collections import defaultdict
 
 import yaml
 
@@ -165,8 +165,5 @@ class FitsHeaderItemsFromHeaderYaml:
         try:
             keyword_value = value.strip().replace("'", "")
         except AttributeError:
-            if value is None:
-                keyword_value = ""
-            else:
-                keyword_value = value
+            keyword_value = value
         return keyword_value

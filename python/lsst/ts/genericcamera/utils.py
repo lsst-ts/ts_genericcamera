@@ -34,7 +34,6 @@ from typing import Tuple
 
 from astropy.time import Time, TimeDelta
 
-
 DATE_FORMAT = "%Y-%m-%d"
 """Format string for date values in the FITS header."""
 

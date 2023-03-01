@@ -27,9 +27,8 @@ import pathlib
 import numpy as np
 import yaml
 
-from . import zwofilterwheel
 from .. import exposure
-from . import basecamera
+from . import basecamera, zwofilterwheel
 
 
 class ASICamera(basecamera.BaseCamera):

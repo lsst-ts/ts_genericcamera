@@ -97,6 +97,30 @@ PRIMARY:
   comment: ''
 - keyword: null
   value: null
+  comment: '---- Pointing info, etc. ----'
+- keyword: RA
+  value: null
+  comment: RA commanded from pointing component
+- keyword: DEC
+  value: null
+  comment: DEC commanded from pointing component
+- keyword: RASTART
+  value: null
+  comment: RA of telescope from AZSTART and ELSTART
+- keyword: DECSTART
+  value: null
+  comment: DEC of telescope from AZSTART and ELSTART
+- keyword: RAEND
+  value: null
+  comment: RA of telescope from AZEND and ELEND
+- keyword: DECEND
+  value: null
+  comment: DEC of telescope from AZEND and ELEND
+- keyword: COMMENT
+  value: ''
+  comment: ''
+- keyword: null
+  value: null
   comment: '---- Image-identifying used to build OBS-ID ----'
 - keyword: CAMCODE
   value: GC1
