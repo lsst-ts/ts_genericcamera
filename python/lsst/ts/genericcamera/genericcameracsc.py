@@ -29,20 +29,17 @@ import traceback
 import types
 import typing
 
-from astropy.time import Time
 import numpy as np
 import requests
-from requests.exceptions import ConnectionError
 import yaml
+from astropy.time import Time
+from lsst.ts import salobj, utils
+from requests.exceptions import ConnectionError
 
+from . import __version__, driver
 from .config_schema import CONFIG_SCHEMA
-from . import __version__
-from lsst.ts import salobj
-from lsst.ts import utils
-
 from .fits_header_items_generator import FitsHeaderItemsFromHeaderYaml
 from .liveview import liveview
-from . import driver
 from .utils import get_day_obs, make_image_names, parse_key_value_map
 
 LV_ERROR = 1000
@@ -69,7 +66,6 @@ def run_genericcamera():
 
 
 class GenericCameraCsc(salobj.ConfigurableCsc):
-
     valid_simulation_modes = (0,)
     version = __version__
 

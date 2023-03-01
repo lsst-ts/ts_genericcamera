@@ -48,6 +48,11 @@ class TestFitsHeaderFromHeaderYaml(unittest.TestCase):
         )
         self.assertIsNotNone(fhi)
         self.assertTupleEqual(fhi(), ("IMGTYPE", "ENGTEST", "BIAS, DARK, FLAT, OBJECT"))
+        fhi = next((tag for tag in fhihy.header_items["PRIMARY"] if tag.name == "RA"))
+        self.assertIsNotNone(fhi)
+        self.assertTupleEqual(
+            fhi(), ("RA", None, "RA commanded from pointing component")
+        )
         fhi = next(
             (tag for tag in fhihy.header_items["IMAGE1"] if tag.name == "DETSIZE")
         )

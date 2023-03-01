@@ -22,23 +22,19 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import argparse
+import asyncio
 import os
 import time
-import asyncio
 
 import numpy as np
-
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
-
-from PIL import Image
-
 from lsst.ts.genericcamera import AsyncLiveViewClient
+from PIL import Image
 
 
 def main():
-
     parser = argparse.ArgumentParser(description="Start the PyImageStream server.")
 
     parser.add_argument(

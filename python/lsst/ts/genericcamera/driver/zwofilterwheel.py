@@ -19,8 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import enum
 import ctypes
+import enum
 import pathlib
 
 # from ctypes.util import find_library

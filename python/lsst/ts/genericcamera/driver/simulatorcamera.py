@@ -32,7 +32,6 @@ from . import basecamera
 
 class SimulatorCamera(basecamera.BaseCamera):
     def __init__(self, log=None):
-
         super().__init__(log=log)
 
         self.is_live_exposure = False
@@ -345,7 +344,6 @@ properties:
         """
 
         async with self.isbusy_lock:
-
             # Note that open shutter events will only be issued if shutter
             # is in use
             if self.use_shutter:
@@ -404,7 +402,6 @@ properties:
             raise RuntimeError("Ongoing exposure.")
 
         if self.exposure_time > 0.0:
-
             self.exposure_start_event.set()
 
             # imageByteCount = self.width * self.height * self.bytes_per_pixel

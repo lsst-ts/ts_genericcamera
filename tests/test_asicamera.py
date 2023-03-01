@@ -20,22 +20,19 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+import asyncio
+import pathlib
+import types
 import unittest
 from unittest.mock import MagicMock
 
-import asyncio
 import yaml
-import pathlib
-import types
-
-from lsst.ts.salobj.validator import DefaultingValidator
-
 from lsst.ts.genericcamera.driver import ASICamera
+from lsst.ts.salobj.validator import DefaultingValidator
 
 
 class Harness:
     def __init__(self):
-
         schema_path = (
             pathlib.Path(__file__)
             .resolve()
@@ -64,7 +61,6 @@ class Harness:
         self.asicam.initialise(self.config)
 
     async def take_image(self):
-
         await self.asicam.start_take_image(
             expTime=1.0, shutter=True, science=True, guide=True, wfs=True
         )
@@ -93,7 +89,6 @@ class Harness:
 class TestASICamera(unittest.TestCase):
     def testTakeImage(self):
         async def doit():
-
             harness = Harness()
 
             exposure = await harness.take_image()

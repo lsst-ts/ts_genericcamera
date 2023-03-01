@@ -25,10 +25,10 @@ except ModuleNotFoundError:
     __version__ = "?"
 
 from .config_schema import *
-from .genericcameracsc import *
+from .driver import *
 from .exposure import *
 from .fits_header_items_generator import *
+from .genericcameracsc import *
 from .liveview import *
 from .mock_gcheaderservice import *
-from .driver import *
 from .utils import *
