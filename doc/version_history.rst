@@ -10,6 +10,7 @@ v1.2.2
 ======
 
 * Fix handling of null values from header to be None rather than empty string
+* Make repo use ts-pre-commit-config methodology for pre-commit configuration
 
 v1.2.1
 ======
