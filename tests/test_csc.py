@@ -218,7 +218,6 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await check_rejected(salobj.State.STANDBY)
 
     async def test_take_image(self):
-
         self.mock_response = unittest.mock.Mock()
         self.mock_response.status_code = 200
         self.mock_response.json.side_effect = [
@@ -521,7 +520,6 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
         ):
-
             await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
 
             self.flush_take_image_events()

@@ -38,7 +38,6 @@ from lsst.ts.genericcamera import AsyncLiveViewClient
 
 
 def main():
-
     parser = argparse.ArgumentParser(description="Start the PyImageStream server.")
 
     parser.add_argument(

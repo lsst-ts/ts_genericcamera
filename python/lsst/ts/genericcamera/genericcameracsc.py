@@ -69,7 +69,6 @@ def run_genericcamera():
 
 
 class GenericCameraCsc(salobj.ConfigurableCsc):
-
     valid_simulation_modes = (0,)
     version = __version__
 

@@ -50,7 +50,6 @@ class LiveViewServer:
     """
 
     def __init__(self, port, host="0.0.0.0", log=None):
-
         # Host must be a valid IP that can be used to create a server.
         self.host = host
         self.port = port
@@ -92,7 +91,6 @@ class LiveViewServer:
         self.log.info("cmd_loop begins")
 
         while self.broad_cast:
-
             self.log.debug("Waiting for new image to be available")
             await self.new_exposure_available.wait()
 
@@ -274,11 +272,9 @@ class AsyncLiveViewClient:
             RuntimeError("Not connected to server.")
 
         while True:
-
             read_bytes = await self.reader.readline()
 
             if read_bytes.rstrip().endswith(b"[START]"):
-
                 self.log.debug(f"Image started... Got {read_bytes}")
 
                 read_bytes = await asyncio.wait_for(self.reader.readline(), timeout=2.0)

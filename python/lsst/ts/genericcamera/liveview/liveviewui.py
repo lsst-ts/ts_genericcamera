@@ -256,7 +256,6 @@ class EUI(QDialog):
 
 
 def main(argv):
-
     parser = argparse.ArgumentParser("Start the GenericCamera CSC")
     parser.add_argument("--version", action="version", version=version.__version__)
     parser.add_argument(

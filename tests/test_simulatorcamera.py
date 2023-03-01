@@ -29,7 +29,6 @@ from lsst.ts.genericcamera.utils import DATETIME_FORMAT
 class TestSimulatorCamera(unittest.IsolatedAsyncioTestCase):
     def testTakeImage(self):
         async def doit():
-
             simcam = SimulatorCamera()
 
             await simcam.start_take_image(
