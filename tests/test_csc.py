@@ -612,3 +612,15 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 cscVersion=genericcamera.__version__,
                 subsystemVersions="",
             )
+
+    async def test_streaming_mode(self):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
+            await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
+
+            with self.assertRaises(salobj.AckError):
+                await self.remote.cmd_startStreamingMode.set_start(expTime=0.001)
+
+            with self.assertRaises(salobj.AckError):
+                await self.remote.cmd_stopStreamingMode.start()

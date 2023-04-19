@@ -462,6 +462,16 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             self.is_exposing = False
         self.log.info("takeImages - End")
 
+    async def do_startStreamingMode(self, data) -> None:
+        """Starts streaming mode on the camera."""
+        # TODO: Implement (SITCOM-774)
+        raise NotImplementedError("startStreaming mode not implemented (SITCOM-774)!")
+
+    async def do_stopStreamingMode(self, _) -> None:
+        """Stop streaming mode on the camera."""
+        # TODO: Implement (SITCOM-774)
+        raise NotImplementedError("stopStreamingMode not implemented (SITCOM-774)!")
+
     def parse_key_value_map(self, key_value_map: str) -> None:
         """Parse key/value map into additional keys and values.
 
