@@ -6,6 +6,12 @@
 Version History
 ###############
 
+v1.3.0
+======
+
+* Pass camera information through cameraInfo event
+* Streaming mode handling stubs added but no implementation
+
 v1.2.2
 ======
 

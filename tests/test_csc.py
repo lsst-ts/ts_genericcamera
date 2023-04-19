@@ -156,6 +156,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 flush=False, timeout=LONG_TIMEOUT
             )
             self.assertEqual(camera_info.cameraMakeAndModel, "Simulator")
+            self.assertEqual(camera_info.lensFocalLength, 100.0)
+            self.assertEqual(camera_info.lensDiameter, 50.0)
 
             self.assertEqual(state.summaryState, salobj.State.DISABLED)
             all_fields_path = os.path.join(TEST_CONFIG_DIR, "all_fields.yaml")
@@ -259,10 +261,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(startIntegration)
             self.assertEqual(
                 startIntegration.additionalKeys,
-                "imageType:groupId:testType:focalLength:diameter",
+                "imageType:groupId:testType",
             )
             self.assertEqual(
-                startIntegration.additionalValues, "BIAS:CALIBSET_20220823:BIAS:100:50"
+                startIntegration.additionalValues, "BIAS:CALIBSET_20220823:BIAS"
             )
 
             endIntegration = await self.remote.evt_endIntegration.next(
@@ -271,10 +273,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(endIntegration)
             self.assertEqual(
                 endIntegration.additionalKeys,
-                "imageType:groupId:testType:focalLength:diameter",
+                "imageType:groupId:testType",
             )
             self.assertEqual(
-                endIntegration.additionalValues, "BIAS:CALIBSET_20220823:BIAS:100:50"
+                endIntegration.additionalValues, "BIAS:CALIBSET_20220823:BIAS"
             )
 
             with self.assertRaises(asyncio.TimeoutError):
@@ -293,10 +295,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(startReadout)
             self.assertEqual(
                 startReadout.additionalKeys,
-                "imageType:groupId:testType:focalLength:diameter",
+                "imageType:groupId:testType",
             )
             self.assertEqual(
-                startReadout.additionalValues, "BIAS:CALIBSET_20220823:BIAS:100:50"
+                startReadout.additionalValues, "BIAS:CALIBSET_20220823:BIAS"
             )
 
             endReadout = await self.remote.evt_endReadout.next(
@@ -305,11 +307,9 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(endReadout)
             self.assertEqual(
                 endReadout.additionalKeys,
-                "imageType:groupId:testType:focalLength:diameter",
+                "imageType:groupId:testType",
             )
-            self.assertEqual(
-                endReadout.additionalValues, "BIAS:CALIBSET_20220823:BIAS:100:50"
-            )
+            self.assertEqual(endReadout.additionalValues, "BIAS:CALIBSET_20220823:BIAS")
 
             endTakeImage = await self.remote.evt_endTakeImage.next(
                 flush=False, timeout=STD_TIMEOUT
@@ -357,23 +357,17 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(startIntegration.imageDate, self.csc.day_obs)
             self.assertEqual(
                 startIntegration.additionalKeys,
-                "imageType:groupId:focalLength:diameter",
+                "imageType:groupId",
             )
-            self.assertEqual(
-                startIntegration.additionalValues, "ENGTEST:TestGroup:100:50"
-            )
+            self.assertEqual(startIntegration.additionalValues, "ENGTEST:TestGroup")
             self.assertEqual(startIntegration.imageName, image_name_check)
 
             endIntegration = await self.remote.evt_endIntegration.next(
                 flush=False, timeout=LONG_TIMEOUT
             )
             self.assertIsNotNone(endIntegration)
-            self.assertEqual(
-                endIntegration.additionalKeys, "imageType:groupId:focalLength:diameter"
-            )
-            self.assertEqual(
-                endIntegration.additionalValues, "ENGTEST:TestGroup:100:50"
-            )
+            self.assertEqual(endIntegration.additionalKeys, "imageType:groupId")
+            self.assertEqual(endIntegration.additionalValues, "ENGTEST:TestGroup")
 
             startShutterClose = await self.remote.evt_startShutterClose.next(
                 flush=False, timeout=LONG_TIMEOUT
@@ -393,10 +387,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(startReadout.imageController, self.csc.image_controller)
             self.assertEqual(startReadout.imageNumber, self.csc.image_sequence_num - 1)
             self.assertEqual(startReadout.imageDate, self.csc.day_obs)
-            self.assertEqual(
-                startReadout.additionalKeys, "imageType:groupId:focalLength:diameter"
-            )
-            self.assertEqual(startReadout.additionalValues, "ENGTEST:TestGroup:100:50")
+            self.assertEqual(startReadout.additionalKeys, "imageType:groupId")
+            self.assertEqual(startReadout.additionalValues, "ENGTEST:TestGroup")
             self.assertEqual(startReadout.imageName, image_name_check)
 
             endReadout = await self.remote.evt_endReadout.next(
@@ -407,10 +399,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(endReadout.imageController, self.csc.image_controller)
             self.assertEqual(endReadout.imageNumber, self.csc.image_sequence_num - 1)
             self.assertEqual(endReadout.imageDate, self.csc.day_obs)
-            self.assertEqual(
-                endReadout.additionalKeys, "imageType:groupId:focalLength:diameter"
-            )
-            self.assertEqual(endReadout.additionalValues, "ENGTEST:TestGroup:100:50")
+            self.assertEqual(endReadout.additionalKeys, "imageType:groupId")
+            self.assertEqual(endReadout.additionalValues, "ENGTEST:TestGroup")
             self.assertEqual(startReadout.imageName, image_name_check)
 
             if check_lfoa:

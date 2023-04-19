@@ -455,16 +455,16 @@ properties:
         # Reset readout state
         self.readout_state = 0
 
-    def get_configuration_for_key_value_map(self) -> str:
-        """Provide camera specific configuration to the key-value map.
+    def get_camera_info(self) -> dict:
+        """Provide camera specific configuration for logevent_cameraInfo.
 
         Returns
         -------
-        `str`
-            Static camera configuration in the format of
-            key1: value1, key2: value2 ...
+        `dict`
+            Dictionary of topic attribute name (key) and value for attribute.
+            Example: {"lensDiameter": 50.0}
         """
-        return "focalLength: 100, diameter: 50"
+        return {"lensFocalLength": 100.0, "lensDiameter": 50.0}
 
     async def _set_tag_values(self):
         """Convenience coroutine to provide values for some of the tags in the

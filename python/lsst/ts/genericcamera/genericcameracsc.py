@@ -1245,7 +1245,9 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.camera.initialise(config=self.config)
 
         await self.evt_cameraInfo.set_write(
-            cameraMakeAndModel=self.camera.get_make_and_model()
+            cameraMakeAndModel=self.camera.get_make_and_model(),
+            **self.camera.get_camera_info(),
+            force_output=True,
         )
         self.evt_configurationApplied.set(otherInfo="cameraInfo")
 
