@@ -151,13 +151,19 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 config_applied.configurations, "_init.yaml,all_fields.yaml"
             )
-            self.assertEqual(config_applied.otherInfo, "cameraInfo")
+            self.assertEqual(config_applied.otherInfo, "cameraInfo,roi")
             camera_info = await self.remote.evt_cameraInfo.next(
                 flush=False, timeout=LONG_TIMEOUT
             )
             self.assertEqual(camera_info.cameraMakeAndModel, "Simulator")
             self.assertEqual(camera_info.lensFocalLength, 100.0)
             self.assertEqual(camera_info.lensDiameter, 50.0)
+
+            roi = await self.remote.evt_roi.next(flush=False, timeout=LONG_TIMEOUT)
+            self.assertEqual(roi.topPixel, 0)
+            self.assertEqual(roi.leftPixel, 0)
+            self.assertEqual(roi.width, 1024)
+            self.assertEqual(roi.height, 1024)
 
             self.assertEqual(state.summaryState, salobj.State.DISABLED)
             all_fields_path = os.path.join(TEST_CONFIG_DIR, "all_fields.yaml")
@@ -602,6 +608,20 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 cscVersion=genericcamera.__version__,
                 subsystemVersions="",
             )
+
+    async def test_set_full_frame(self):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
+            await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
+            self.remote.evt_roi.flush()
+            await self.remote.cmd_setFullFrame.start(timeout=STD_TIMEOUT)
+
+            roi = await self.remote.evt_roi.next(flush=False, timeout=LONG_TIMEOUT)
+            self.assertEqual(roi.topPixel, 0)
+            self.assertEqual(roi.leftPixel, 0)
+            self.assertEqual(roi.width, 1024)
+            self.assertEqual(roi.height, 1024)
 
     async def test_streaming_mode(self):
         async with self.make_csc(

@@ -102,9 +102,6 @@ class TestExposure(unittest.TestCase):
         self.hdul = fits.open(self.tmp_name)
         self.assertIn("OBS-LAT", self.hdul[0].header)
         self.assertIn("INHERIT", self.hdul[1].header)
-        self.assertEqual(
-            f"[1:{self.height},1:{self.width}]", self.hdul[1].header["DETSIZE"]
-        )
         self.assertNotIn("ANSWER", self.hdul[0].header)
 
 

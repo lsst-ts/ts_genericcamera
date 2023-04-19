@@ -11,6 +11,13 @@ v1.3.0
 
 * Pass camera information through cameraInfo event
 * Streaming mode handling stubs added but no implementation
+* Publish logevent_roi on start and setFullFrame commands
+* setROI now always publishes logevent_roi
+* GCHeaderService will now handle setting DETSIZE
+
+Requires:
+
+* IDL file for GenericCamera from ts_xml 16.0
 
 v1.2.2
 ======
