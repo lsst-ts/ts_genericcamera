@@ -347,35 +347,18 @@ properties:
         self.log.debug("Finished creating exposure")
         return image
 
-    def get_configuration_for_key_value_map(self) -> str | None:
-        """Provide camera specific configuration to the key-value map.
+    def get_camera_info(self) -> dict:
+        """Provide camera specific configuration for logevent_cameraInfo.
 
         Returns
         -------
-        `str` or `None`
-            Static camera configuration in the format of
-            key1: value1, key2: value2 ...
+        `dict`
+            Dictionary of topic attribute name (key) and value for attribute.
+            Example: {"lensDiameter": 50.0}
         """
-        kv_map = []
-        map_values = [
-            "lens_focal_length",
-            "lens_diameter",
-            "lens_aperture",
-            "plate_scale",
-        ]
-        value_formats = ["d", ".1f", "s", ".2f"]
-        for map_value, value_format in zip(map_values, value_formats):
-            value = getattr(self, map_value)
-            if value is not None:
-                if "lens_" in map_value:
-                    key = map_value.split("lens_")[-1]
-                else:
-                    key = map_value
-                if "_" in key:
-                    parts = key.split("_")
-                    key = f"{parts[0]}{''.join([x.capitalize() for x in parts[1:]])}"
-                kv_map.append(f"{key}: {value:{value_format}}")
-        if kv_map:
-            return ", ".join(kv_map)
-        else:
-            return None
+        return {
+            "lensFocalLength": self.lens_focal_length,
+            "lensDiameter": self.lens_diameter,
+            "lensAperture": self.lens_aperture,
+            "plateScale": self.plate_scale,
+        }
