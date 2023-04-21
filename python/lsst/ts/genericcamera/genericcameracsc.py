@@ -285,18 +285,16 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.assert_enabled("setROI")
         self._assert_notlive()
 
-        if self.evt_roi.set(
+        self.log.debug("setROI - Start")
+        self.camera.set_roi(data.topPixel, data.leftPixel, data.width, data.height)
+        await self.evt_roi.set_write(
             topPixel=data.topPixel,
             leftPixel=data.leftPixel,
             width=data.width,
             height=data.height,
-        ):
-            self.log.debug("setROI - Start")
-            self.camera.set_roi(data.topPixel, data.leftPixel, data.width, data.height)
-            await self.evt_roi.write()
-            self.log.debug("setROI - End")
-        else:
-            self.log.warning("ROI already set with same parameters.")
+            force_output=True,
+        )
+        self.log.debug("setROI - End")
 
     async def do_setFullFrame(self, data):
         """Set the region of interest to full frame.
@@ -314,6 +312,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.assert_enabled("setFullFrame")
         self._assert_notlive()
         self.camera.set_full_frame()
+        top, left, width, height = self.camera.get_roi()
+        await self.evt_roi.set_write(
+            topPixel=top, leftPixel=left, width=width, height=height, force_output=True
+        )
         self.log.info("setFullFrame - End")
 
     async def do_startLiveView(self, data):
@@ -461,6 +463,16 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         finally:
             self.is_exposing = False
         self.log.info("takeImages - End")
+
+    async def do_startStreamingMode(self, data) -> None:
+        """Starts streaming mode on the camera."""
+        # TODO: Implement (SITCOM-774)
+        raise NotImplementedError("startStreaming mode not implemented (SITCOM-774)!")
+
+    async def do_stopStreamingMode(self, _) -> None:
+        """Stop streaming mode on the camera."""
+        # TODO: Implement (SITCOM-774)
+        raise NotImplementedError("stopStreamingMode not implemented (SITCOM-774)!")
 
     def parse_key_value_map(self, key_value_map: str) -> None:
         """Parse key/value map into additional keys and values.
@@ -1235,9 +1247,16 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.camera.initialise(config=self.config)
 
         await self.evt_cameraInfo.set_write(
-            cameraMakeAndModel=self.camera.get_make_and_model()
+            cameraMakeAndModel=self.camera.get_make_and_model(),
+            **self.camera.get_camera_info(),
+            force_output=True,
         )
-        self.evt_configurationApplied.set(otherInfo="cameraInfo")
+        top, left, width, height = self.camera.get_roi()
+        await self.evt_roi.set_write(
+            topPixel=top, leftPixel=left, width=width, height=height, force_output=True
+        )
+
+        self.evt_configurationApplied.set(otherInfo="cameraInfo,roi")
 
     def _assert_notlive(self):
         """Raise an exception if live view is active."""

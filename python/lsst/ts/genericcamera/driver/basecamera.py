@@ -293,6 +293,17 @@ class BaseCamera(abc.ABC):
         """
         return None
 
+    def get_camera_info(self) -> dict:
+        """Provide camera specific configuration for logevent_cameraInfo.
+
+        Returns
+        -------
+        `dict`
+            Dictionary of topic attribute name (key) and value for attribute.
+            Example: {"lensDiameter": 50.0}
+        """
+        return {}
+
     async def _get_radec_from_altaz_location_time(self, alt, az, obs_time, location):
         """Get the Right Ascension and Declination from the altitude and
         azimuth for the given time and location.
