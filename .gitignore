@@ -107,6 +107,8 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+*.txt
+
 version.py
 .pre-commit-config.yaml
 .flake8

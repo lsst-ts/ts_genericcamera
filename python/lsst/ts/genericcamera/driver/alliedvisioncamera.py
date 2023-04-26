@@ -21,10 +21,14 @@
 
 import asyncio
 import concurrent.futures
+import copy
 import functools
+import time
 
 import vimba
 import yaml
+from astropy.time import Time, TimeDelta
+from lsst.ts import utils as ts_utils
 
 from .. import exposure
 from . import basecamera
@@ -58,6 +62,28 @@ class AlliedVisionCamera(basecamera.BaseCamera):
         self.plate_scale = None
         self.loop = asyncio.get_running_loop()
         self.executor = concurrent.futures.ThreadPoolExecutor()
+        self.queue: asyncio.PriorityQueue = asyncio.PriorityQueue()
+        self.run_streaming_task = False
+        self.streaming_task = ts_utils.make_done_future()
+        self.streaming_roi = None
+        self.streaming_mode_start = 1
+        self.streaming_mode_stop = 2
+        self.exposure_time_delta = None
+        self.tick_frequency = None
+        self.frames_captured = 0
+        # Extra tags for streaming mode
+        self.get_tag(name="OBSID").comment = "Image name from image naming service"
+        self.get_tag(
+            name="DAYOBS"
+        ).comment = "The observation day as defined by image name"
+        self.get_tag(name="CAMCODE").comment = "The code for the camera"
+        self.get_tag(
+            name="CONTRLLR"
+        ).comment = "The controller (e.g. O for OCS, C for CCS)"
+        self.get_tag(
+            name="CURINDEX"
+        ).comment = "Index number for frame within the sequence"
+        self.get_tag(name="MAXINDEX").comment = "Total number of frames in sequence"
 
     @staticmethod
     def name():
@@ -81,6 +107,7 @@ class AlliedVisionCamera(basecamera.BaseCamera):
         self.plate_scale = config.config["plate_scale"]
 
         with vimba.Vimba.get_instance() as v:
+            # v.enable_log(vimba.LOG_CONFIG_TRACE_CONSOLE_ONLY)
             self.camera = v.get_camera_by_id(self.id)
             with self.camera:
                 # Try to adjust GeV packet size.
@@ -171,6 +198,7 @@ properties:
             The height of the region in pixels.
         """
         with vimba.Vimba.get_instance():
+            # self.camera = v.get_camera_by_id(self.id)
             with self.camera:
                 left = self.camera.OffsetX.get()
                 top = self.camera.OffsetY.get()
@@ -192,6 +220,7 @@ properties:
         height : `int`
             The height of the region in pixels.
         """
+        self.log.debug("Setting ROI on camera.")
         with vimba.Vimba.get_instance():
             with self.camera:
                 self.camera.OffsetX.set(left)
@@ -201,6 +230,7 @@ properties:
 
     def set_full_frame(self):
         """Sets the region of interest to the whole sensor."""
+        self.log.debug("Setting camera to full frame.")
         with vimba.Vimba.get_instance():
             with self.camera:
                 self.set_roi(
@@ -231,6 +261,159 @@ properties:
             with self.camera:
                 self.camera.set_pixel_format(self.normal_image_type)
         super().stop_live_view()
+
+    def _run_streaming(self) -> None:
+        """Keep streaming mode for the camera alive."""
+        with vimba.Vimba.get_instance() as v:
+            # Need to get camera again because this follows
+            # start_streaming_mode and the context manager drops out
+            # rendering self.camera inoperable
+            camera = v.get_camera_by_id(self.id)
+            # Seem to need a log statement here for things to work
+            # Otherwise the context manager fails
+            self.log.info("Running _run_streaming")
+            with camera:
+                camera.GevTimestampControlReset.run()
+                self.streaming_mode_start = ts_utils.current_tai()
+                self.frame_time_start = Time(
+                    self.streaming_mode_start, scale="tai", format="unix_tai"
+                )
+                camera.start_streaming(
+                    handler=self._get_streaming_frame,
+                    buffer_count=100,
+                    allocation_mode=vimba.AllocationMode.AnnounceFrame,
+                )
+                self.log.info("Begin streaming keep alive loop")
+                while self.run_streaming_task:
+                    time.sleep(0.001)
+                else:
+                    self.log.info("End streaming keep alive loop")
+                    camera.stop_streaming()
+                    self.streaming_mode_stop = ts_utils.current_tai()
+
+    def start_streaming_mode(self, exp_time: float, static_data: dict) -> None:
+        """Start image streaming mode for the camera.
+
+        Parameters
+        ----------
+        exp_time : `float`
+            The exposure time in seconds.
+        static_data : `dict`
+            Data for header keywords.
+        """
+        self.handles = []
+        with vimba.Vimba.get_instance():
+            # camera = v.get_camera_by_id(self.id)
+            with self.camera:
+                self.log.debug("Starting camera streaming.")
+                queue_size = self.queue.qsize()
+                if queue_size:
+                    self.log.info(f"Queue size: {queue_size}")
+                self.camera.AcquisitionMode.set("Continuous")
+                self.camera.ExposureAuto.set("Off")
+                self.camera.ExposureTimeAbs.set(exp_time * SECONDS_TO_MICROSECONDS)
+                self.camera.set_pixel_format(self.normal_image_type)
+                self.tick_frequency = self.camera.GevTimestampTickFrequency.get()
+                self.streaming_roi = self.get_roi()
+                self.get_tag(name="EXPTIME").value = exp_time
+                self.info = []
+                self.exposure_time_delta = TimeDelta(
+                    exp_time, scale="tai", format="sec"
+                )
+                for key, value in static_data.items():
+                    self.get_tag(name=key).value = value
+                self.run_streaming_task = True
+                self.streaming_task = self.executor.submit(self._run_streaming)
+
+    def stop_streaming_mode(self) -> None:
+        """Stop image streaming mode for the camera."""
+        self.log.debug("Stopping camera streaming.")
+        self.run_streaming_task = False
+        self.log.debug(f"Is streaming task running: {self.streaming_task.running()}")
+        concurrent.futures.wait([self.streaming_task], timeout=30)
+        self.log.debug(f"Is streaming task done: {self.streaming_task.done()}")
+        frames_not_done = []
+        for i, handle in enumerate(self.handles):
+            if not handle.done():
+                frames_not_done.append(i + 1)
+        self.log.debug(f"Frames not done: {frames_not_done}")
+        # There are always a few frames marked as not done that show up in the
+        # queue during later processing. This is here to correct the maximum
+        # frame index for the MAXINDEX header entry.
+        self.frames_captured = (
+            frames_not_done[-1] if frames_not_done else self.queue.qsize()
+        )
+        self.log.info(f"Maximum frames captured: {self.frames_captured}")
+
+        with vimba.Vimba.get_instance() as v:
+            camera = v.get_camera_by_id(self.id)
+            with camera:
+                camera.AcquisitionMode.set("SingleFrame")
+
+        self.log.debug(f"Frame time start: {self.frame_time_start}")
+        del self.handles
+
+    def _get_streaming_frame(self, cam: vimba.Camera, frame: vimba.Frame) -> None:
+        """Handle frames from streaming mode.
+
+        Parameters
+        ----------
+        cam: `vimba.Camera`
+            The handle for the camera instance.
+        frame: `vimba.Frame`
+            The frame grabbed from the camera.
+        """
+        frame_id = frame.get_id()
+        self.log.debug(f"Got frame {frame_id}")
+        frame_timestamp = frame.get_timestamp()
+        item = (
+            frame_id,
+            (
+                frame.as_numpy_ndarray(),
+                self.streaming_roi[2],
+                self.streaming_roi[3],
+                frame_timestamp,
+            ),
+        )
+        handle = asyncio.run_coroutine_threadsafe(self.queue.put(item), self.loop)
+        self.handles.append(handle)
+        cam.queue_frame(frame)
+
+    async def convert_streaming_frames(self) -> (int, exposure.Exposure):
+        """Convert raw frames to exposures.
+
+        Returns
+        -------
+        frame_num: `int`
+            The integer number assigned to the streaming frame.
+        exposure: `lsst.ts.genericcamera.Exposure`
+            The exposure associated with the streaming frame.
+        """
+        frame_num, (
+            frame_array,
+            width,
+            height,
+            frame_timestamp,
+        ) = await self.queue.get()
+
+        offset = TimeDelta(
+            frame_timestamp / self.tick_frequency, scale="tai", format="sec"
+        )
+        frame_begin = self.frame_time_start + offset
+        frame_end = frame_begin + self.exposure_time_delta
+        frame_begin_dt = frame_begin.to_datetime().isoformat()
+        frame_end_dt = frame_end.to_datetime().isoformat()
+        self.get_tag(name="DATE-OBS").value = frame_begin_dt
+        self.get_tag(name="DATE-BEG").value = frame_begin_dt
+        self.get_tag(name="DATE-END").value = frame_end_dt
+        self.get_tag(name="CURINDEX").value = frame_num
+        self.get_tag(name="MAXINDEX").value = self.frames_captured
+        image = exposure.Exposure(frame_array, width, height, copy.deepcopy(self.tags))
+        self.log.debug(
+            f"Processing frame {frame_num} with timestamp: {frame_timestamp}"
+        )
+        self.queue.task_done()
+        return frame_num, image
 
     def _set_camera_exposure_time(self):
         """Set the exposure time on the camera."""

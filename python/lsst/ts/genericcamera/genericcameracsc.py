@@ -22,9 +22,12 @@
 __all__ = ["GenericCameraCsc", "requests", "run_genericcamera"]
 
 import asyncio
+import concurrent.futures
+import functools
 import inspect
 import logging
 import pathlib
+import time
 import traceback
 import types
 import typing
@@ -38,6 +41,7 @@ from requests.exceptions import ConnectionError
 
 from . import __version__, driver
 from .config_schema import CONFIG_SCHEMA
+from .exposure import Exposure
 from .fits_header_items_generator import FitsHeaderItemsFromHeaderYaml
 from .liveview import liveview
 from .utils import get_day_obs, make_image_names, parse_key_value_map
@@ -59,6 +63,13 @@ IN_PROGRESS ack timeout."""
 DEFAULT_READOUT_TIME = 1
 """The assumed readout time (seconds) for calculating the IN_PROGRESS ack
 timeout."""
+
+STREAMING_MODE_COUNTDOWN_LIMIT = 90
+"""The timeout (seconds) for a CMD_IN_PROGRESS while saving files."""
+
+STREAMING_MODE_COUNTDOWN_LIMIT_CUTOFF = 10
+"""The time (seconds) to send out another CMD_IN_PROGRESS while saving
+files."""
 
 
 def run_genericcamera():
@@ -107,7 +118,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.ip = None
         self.port = None
         self._directory = pathlib.Path.home() / "data"
-        self.directory = pathlib.Path.home() / "data"
+        # self.directory = pathlib.Path.home() / "data"
         self.file_name_format = "{timestamp}-{index}-{total}"
         self.config = None
 
@@ -128,10 +139,19 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.is_live = False
         self.is_auto_exposure = False
         self.is_exposing = False
+        self.is_streaming = False
         self.run_live_task = False
         self.live_task = None
         self.run_auto_exposure_task = False
         self.auto_exposure_task = None
+        self.streaming_task = None
+        self.streaming_mode_exposure_time = None
+        self.num_frames = 0
+        self.streaming_start_time = None
+        self.streaming_end_time = None
+        self.streaming_save_num_procs = 6
+        self.loop = asyncio.get_running_loop()
+        self.executor = concurrent.futures.ThreadPoolExecutor()
 
         self.use_lfa = False
         self.always_save = True
@@ -466,13 +486,137 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
 
     async def do_startStreamingMode(self, data) -> None:
         """Starts streaming mode on the camera."""
-        # TODO: Implement (SITCOM-774)
-        raise NotImplementedError("startStreaming mode not implemented (SITCOM-774)!")
+        self.assert_enabled("startStreamingMode")
+        self.log.info("startStreamingMode - Start")
+        self._assert_notlive()
+        self._assert_notautoexposure()
+        self._assert_notexposing()
+        if data.expTime == 0.0:
+            raise RuntimeError(
+                "Streaming mode exposure time must be greater than zero."
+            )
+        self.is_streaming = True
+        timestamp = utils.current_tai()
+        await self.cmd_startStreamingMode.ack_in_progress(data=data, timeout=120)
+        # self.image_names = ["GC301_O_20230522_000001"]
+        self.image_names, _ = self.get_image_names_from_image_service(1, timestamp)
+        self.log.debug(f"{self.image_names}")
+        image_name = self.image_names[0]
+        static_data = {
+            "OBSID": image_name,
+            "DAYOBS": image_name.split("_")[2],
+            "CAMCODE": self.image_source,
+            "CONTRLLR": self.image_controller,
+        }
+        self.num_frames = 0
+        queue_size = self.camera.queue.qsize()
+        if queue_size:
+            self.log.info(f"Queue size: {queue_size}")
+            while not self.camera.queue.empty():
+                _ = await self.camera.convert_streaming_frames()
+            self.log.info("Finished cleaning prior frames")
+        self.camera.start_streaming_mode(data.expTime, static_data)
+        self.streaming_mode_exposure_time = data.expTime
 
-    async def do_stopStreamingMode(self, _) -> None:
+        await self.evt_streamingModeStarted.set_write(
+            expTime=data.expTime, force_output=True
+        )
+        self.log.info("startStreamingMode - End")
+
+    async def do_stopStreamingMode(self, data) -> None:
         """Stop streaming mode on the camera."""
-        # TODO: Implement (SITCOM-774)
-        raise NotImplementedError("stopStreamingMode not implemented (SITCOM-774)!")
+        self.assert_enabled("stopStreamingMode")
+        self._assert_streaming()
+        self.log.info("stopStreamingMode - Start")
+        await self.cmd_stopStreamingMode.ack_in_progress(data=data, timeout=120)
+        self.camera.stop_streaming_mode()
+        self.log.debug("Camera stream stopped")
+        await self.save_streaming_mode_frames(self.image_names[0], data)
+        self.is_streaming = False
+        self.log.debug("Resetting streaming attributes")
+        fps = self.num_frames / (
+            self.camera.streaming_mode_stop - self.camera.streaming_mode_start
+        )
+        await self.evt_streamingModeStopped.set_write(
+            expTime=self.streaming_mode_exposure_time,
+            numFrames=self.num_frames,
+            avgFrameRate=fps,
+        )
+        self.log.info("stopStreamingMode - End")
+
+    async def _process_streaming_mode_frame(self, image_name: str, index: int) -> None:
+        """Process frames taken in streaming mode.
+
+        Parameters
+        ----------
+        image_name: `str`
+            The stem for the image name.
+        """
+        frames = 0
+        self.log.debug(f"Proc {index} working")
+        while not self.camera.queue.empty():
+            frame_num, exposure = await self.camera.convert_streaming_frames()
+            await self.handle_exposure_saving(
+                exposure, self.camera.streaming_mode_start, image_name, frame_num
+            )
+            frames += 1
+        self.log.debug(f"Proc {index} handled {frames} frames")
+        return frames
+
+    async def _monitor_streaming_mode_processing(self, data) -> None:
+        """Monitor the processing of the streaming mode frames.
+
+        Parameters
+        ----------
+        data: `GenericCamera_command_stopStreamingModeC`
+            The metadata for the command ack.
+        """
+        self.log.debug("Monitoring file saving")
+        countdown_limit = STREAMING_MODE_COUNTDOWN_LIMIT
+        while not self.camera.queue.empty():
+            start_iter = time.monotonic()
+            await asyncio.sleep(0.2)
+            end_iter = time.monotonic()
+            countdown_limit -= end_iter - start_iter
+            self.log.debug(
+                f"Countdown: {countdown_limit}, Frames: {self.camera.queue.qsize()}"
+            )
+            if countdown_limit < STREAMING_MODE_COUNTDOWN_LIMIT_CUTOFF:
+                msg = f"Frames remaining: {self.camera.queue.qsize()}"
+                self.log.info(msg)
+                data.result = msg
+                await self.cmd_stopStreamingMode.ack_in_progress(
+                    data=data, timeout=STREAMING_MODE_COUNTDOWN_LIMIT
+                )
+                countdown_limit = STREAMING_MODE_COUNTDOWN_LIMIT
+        self.log.debug("Done monitoring file saving")
+
+    async def save_streaming_mode_frames(self, image_name: str, data) -> None:
+        """Handle saving the frames from streaming mode.
+
+        Parameters
+        ----------
+        image_name: `str`
+            The stem for FITS file names.
+        data: ``
+            The metadata for the command ack.
+        """
+        self.log.info("save_streaming_mode_frames start")
+
+        monitor = asyncio.create_task(self._monitor_streaming_mode_processing(data))
+        tasks = [
+            asyncio.create_task(self._process_streaming_mode_frame(image_name, i))
+            for i in range(self.streaming_save_num_procs)
+        ]
+        results = await asyncio.gather(monitor, *tasks)
+
+        self.num_frames = sum(results[1:])
+
+        self.log.info(f"Num frames: {self.num_frames}")
+        queue_size = self.camera.queue.qsize()
+        if queue_size:
+            self.log.info(f"Queue size: {queue_size}")
+        self.log.info("save_streaming_mode_frames - End")
 
     def parse_key_value_map(self, key_value_map: str) -> None:
         """Parse key/value map into additional keys and values.
@@ -574,7 +718,9 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         header_tag = "_".join(file_stem.split("_")[2:])
         self.header_file_dict[header_tag] = header_file
 
-    async def handle_exposure_saving(self, exposure, timestamp, image_name):
+    async def handle_exposure_saving(
+        self, exposure, timestamp, image_name, frame_number: int | None = None
+    ):
         """Save exposure to LFA or local directory.
 
         Parameters
@@ -585,6 +731,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             The timestamp for the exposure.
         image_name: `str`
             The filename for the exposure.
+        frame_number: `int` or `None`
+            A frame number from streaming mode.
         """
         try:
             header_info = None
@@ -595,12 +743,16 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 del self.header_file_dict[image_name]
                 header_file.unlink(missing_ok=True)
             except KeyError:
-                self.log.warning(f"Cannot find image {image_name} in lookup.")
+                if not self.is_streaming:
+                    self.log.warning(f"Cannot find image {image_name} in lookup.")
             exposure.header = header_info
         except ValueError:
             self.log.warning(f"No header for image {image_name} found.")
 
-        filename = f"{image_name}{exposure.suffix}"
+        if frame_number is None:
+            filename = f"{image_name}{exposure.suffix}"
+        else:
+            filename = f"{image_name}_{frame_number:07d}{exposure.suffix}"
 
         if self.use_lfa:
             self.log.debug("Writing file to LFA.")
@@ -625,12 +777,27 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             )
 
         if self.always_save or not self.use_lfa:
-            output_file = self.directory / filename
-            if not output_file.parents[0].exists():
-                self.log.debug(f"Creating directory: {output_file.parents[0]}")
-                output_file.parents[0].mkdir(parents=True)
-            self.log.debug(f"Saving file to disk: {output_file}")
-            exposure.save(output_file)
+            await self.loop.run_in_executor(
+                self.executor,
+                functools.partial(self.write_image_to_disk, filename, exposure),
+            )
+
+    def write_image_to_disk(self, filename: str, exposure: Exposure) -> None:
+        """Write the exposure to disk.
+
+        Parameters
+        ----------
+        filename: `str`
+            The filename to use for the exposure to save
+        exposure: `lsst.ts.genericcamera.Exposure`
+            The exposure data to save.
+        """
+        output_file = self.directory / filename
+        if not output_file.parents[0].exists():
+            self.log.debug(f"Creating directory: {output_file.parents[0]}")
+            output_file.parents[0].mkdir(parents=True)
+        self.log.debug(f"Saving file to disk: {output_file}")
+        exposure.save(output_file)
 
     async def take_image(
         self,
@@ -1273,6 +1440,18 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
     def _assert_autoexposure(self):
         """Raise an exception if auto exposure is not active."""
         assert self.is_auto_exposure, "Auto exposure is not active."
+
+    def _assert_notexposing(self) -> None:
+        """Raise an exception if exposing (takeImages) is active."""
+        assert not self.is_exposing, "Image taking is active."
+
+    def _assert_notstreaming(self) -> None:
+        """Raise an exception if streaming mode is active"""
+        assert not self.is_streaming, "Streaming mode is active."
+
+    def _assert_streaming(self) -> None:
+        """Raise an exception if streaming mode is not active"""
+        assert self.is_streaming, "Streaming mode is not active."
 
     def _get_day_obs_and_seq_num_array(
         self, timestamp: float, num_images: int

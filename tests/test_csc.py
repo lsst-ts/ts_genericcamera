@@ -192,6 +192,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     "startLiveView",
                     "stopLiveView",
                     "takeImages",
+                    "startStreamingMode",
+                    "stopStreamingMode",
                 )
 
                 for bad_command in extra_commands:
