@@ -6,6 +6,11 @@
 Version History
 ###############
 
+v1.3.1
+======
+
+* Go back to having GenericCamera handle DETSIZE
+
 v1.3.0
 ======
 
