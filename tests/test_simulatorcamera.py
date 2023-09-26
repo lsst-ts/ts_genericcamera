@@ -73,6 +73,30 @@ class TestSimulatorCamera(unittest.IsolatedAsyncioTestCase):
 
         asyncio.run(doit())
 
+    def test_streaming_sleep_time(self):
+        async def doit():
+            simcam = SimulatorCamera()
+            readout_time = 0.00009
+            simcam.exposure_time = 0.01
+            value = simcam.set_streaming_sleep_time(1024, 1024)
+            self.assertEqual(value, 1 / 60 + readout_time)
+            value = simcam.set_streaming_sleep_time(640, 480)
+            self.assertEqual(value, 1 / 90 + readout_time)
+            simcam.exposure_time = 0.001
+            value = simcam.set_streaming_sleep_time(200, 200)
+            self.assertEqual(value, 1 / 180 + readout_time)
+            value = simcam.set_streaming_sleep_time(150, 150)
+            self.assertEqual(value, 1 / 230 + readout_time)
+            value = simcam.set_streaming_sleep_time(100, 100)
+            self.assertEqual(value, 1 / 300 + readout_time)
+            value = simcam.set_streaming_sleep_time(50, 50)
+            self.assertEqual(value, 1 / 430 + readout_time)
+            simcam.exposure_time = 0.02
+            value = simcam.set_streaming_sleep_time(1024, 1024)
+            self.assertEqual(value, simcam.exposure_time + readout_time)
+
+        asyncio.run(doit())
+
 
 if __name__ == "__main__":
     unittest.main()

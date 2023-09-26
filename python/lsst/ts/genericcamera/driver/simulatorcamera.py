@@ -22,15 +22,17 @@
 __all__ = ["SimulatorCamera"]
 
 import asyncio
+import time
 
+import lsst.ts.utils as ts_utils
 import numpy as np
 import yaml
 
 from .. import exposure
-from . import basecamera
+from . import streamingbasecamera
 
 
-class SimulatorCamera(basecamera.BaseCamera):
+class SimulatorCamera(streamingbasecamera.StreamingBaseCamera):
     def __init__(self, log=None):
         super().__init__(log=log)
 
@@ -74,6 +76,10 @@ class SimulatorCamera(basecamera.BaseCamera):
 
         self.readout_start_event = asyncio.Event()
         self.readout_finish_event = asyncio.Event()
+
+        self.streaming_time_sleep = 0
+        self.streaming_frames_size = 10
+        self.streaming_frames = [_ for _ in range(self.streaming_frames_size)]
 
     @staticmethod
     def name():
@@ -454,6 +460,113 @@ properties:
 
         # Reset readout state
         self.readout_state = 0
+
+    def start_streaming_mode(self, exp_time: float, static_data: dict) -> None:
+        """Start image streaming mode for the camera.
+
+        Parameters
+        ----------
+        exp_time : float
+            The exposure time in seconds.
+        static_data : `dict`
+            Data for header keywords.
+        """
+        self.handles = []
+        super().start_streaming_mode(exp_time, static_data)
+        self.log.info("In simulation camera start_streaming_mode")
+        self.tick_frequency = 10**9
+        self._generate_frames()
+        self._set_information_for_streaming()
+
+    def _generate_frames(self) -> None:
+        """Generate frames for streaming mode"""
+        _, _, width, height = self.get_roi()
+        frame_size = width * height
+        for i in range(self.streaming_frames_size):
+            buffer = np.random.randint(
+                low=np.iinfo(np.uint16).min,
+                high=np.iinfo(np.uint16).max,
+                size=frame_size,
+                dtype=np.uint16,
+            )
+            self.streaming_frames[i] = buffer
+
+    def _run_streaming(self) -> None:
+        """Keep streaming mode for the camera alive."""
+        self.log.info("Running _run_streaming")
+        self._set_streaming_start_information()
+        start_time = time.monotonic_ns()
+        width, height = self.streaming_roi[2:]
+        streaming_sleep_time = self.set_streaming_sleep_time(width, height)
+        frame = 1
+        while self.run_streaming_task:
+            item = (
+                frame,
+                (
+                    self.streaming_frames[(frame - 1) % self.streaming_frames_size],
+                    width,
+                    height,
+                    time.monotonic_ns() - start_time,
+                ),
+            )
+            handle = asyncio.run_coroutine_threadsafe(self.queue.put(item), self.loop)
+            self.handles.append(handle)
+            time.sleep(streaming_sleep_time)
+            frame += 1
+        else:
+            self.streaming_mode_stop = ts_utils.current_tai()
+
+    def set_streaming_sleep_time(self, width: int, height: int) -> float:
+        """Set the sleep time for streaming mode.
+
+        Parameters
+        ----------
+        width: `int`
+            Image width
+        height: `int`
+            Image height
+
+        Returns
+        -------
+        sleep_time: `float`
+            The sleep time required to run the streaming mode at a
+            particular frequency.
+        """
+        sleep_time = 1 / 50
+        readout_time = 0.00009
+        size = width * height
+
+        if size >= (1024 * 1024):
+            sleep_time = 1 / 60
+        elif size >= (640 * 480):
+            sleep_time = 1 / 90
+        elif size >= (200 * 200):
+            sleep_time = 1 / 180
+        elif size >= (150 * 150):
+            sleep_time = 1 / 230
+        elif size >= (100 * 100):
+            sleep_time = 1 / 300
+        elif size >= (50 * 50):
+            sleep_time = 1 / 430
+        return max(sleep_time, self.exposure_time) + readout_time
+
+    def stop_streaming_mode(self) -> None:
+        """Stop image streaming mode for the camera."""
+        super().stop_streaming_mode()
+        frames_not_done = []
+        for i, handle in enumerate(self.handles):
+            if not handle.done():
+                frames_not_done.append(i + 1)
+        self.log.debug(f"Frames not done: {frames_not_done}")
+        # There are always a few frames marked as not done that show up in the
+        # queue during later processing. This is here to correct the maximum
+        # frame index for the MAXINDEX header entry.
+        self.frames_captured = (
+            frames_not_done[-1] if frames_not_done else self.queue.qsize()
+        )
+        self.log.info(f"Maximum frames captured: {self.frames_captured}")
+        self.log.debug(f"Frame time start: {self.frame_time_start}")
+        del self.handles
 
     def get_camera_info(self) -> dict:
         """Provide camera specific configuration for logevent_cameraInfo.

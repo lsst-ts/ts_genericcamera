@@ -108,10 +108,21 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.drivers = {}
         for member in inspect.getmembers(driver):
             is_class = inspect.isclass(member[1])
+
             is_subclass = (
-                False if not is_class else issubclass(member[1], driver.BaseCamera)
+                False
+                if not is_class
+                else (
+                    issubclass(member[1], driver.BaseCamera)
+                    or issubclass(member[1], driver.StreamingBaseCamera)
+                )
             )
-            not_gencam = member[1] is not driver.BaseCamera
+
+            not_gencam = (
+                member[1] is not driver.BaseCamera
+                and member[1] is not driver.StreamingBaseCamera
+            )
+
             if is_class and is_subclass and not_gencam:
                 self.drivers[member[1].name()] = member[1]
 
@@ -499,7 +510,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         timestamp = utils.current_tai()
         await self.cmd_startStreamingMode.ack_in_progress(data=data, timeout=120)
         # self.image_names = ["GC301_O_20230522_000001"]
-        self.image_names, _ = self.get_image_names_from_image_service(1, timestamp)
+        (
+            self.image_names,
+            _,
+        ) = self.get_image_names_from_image_service(1, timestamp)
         self.log.debug(f"{self.image_names}")
         image_name = self.image_names[0]
         static_data = {
@@ -542,6 +556,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             numFrames=self.num_frames,
             avgFrameRate=fps,
         )
+        # Adjust SEQNUM in case web service is unavailable
+        self.image_sequence_num += 1
         self.log.info("stopStreamingMode - End")
 
     async def _process_streaming_mode_frame(self, image_name: str, index: int) -> None:
@@ -765,8 +781,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 suffix=exposure.suffix,
             )
             # Make image name more like bigger cameras
-            key = key[: key.rfind("/") + 1] + f"{image_name}{exposure.suffix}"
-            filename = key
+            key = key[: key.rfind("/") + 1] + filename
 
             await self.s3bucket.upload(fileobj=exposure.make_fileobj(), key=key)
 

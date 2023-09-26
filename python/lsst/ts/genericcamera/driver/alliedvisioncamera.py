@@ -316,7 +316,6 @@ properties:
                 self.tick_frequency = self.camera.GevTimestampTickFrequency.get()
                 self.streaming_roi = self.get_roi()
                 self.get_tag(name="EXPTIME").value = exp_time
-                self.info = []
                 self.exposure_time_delta = TimeDelta(
                     exp_time, scale="tai", format="sec"
                 )
