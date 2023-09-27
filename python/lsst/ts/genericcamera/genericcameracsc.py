@@ -155,11 +155,8 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.live_task = None
         self.run_auto_exposure_task = False
         self.auto_exposure_task = None
-        self.streaming_task = None
         self.streaming_mode_exposure_time = None
         self.num_frames = 0
-        self.streaming_start_time = None
-        self.streaming_end_time = None
         self.streaming_save_num_procs = 6
         self.loop = asyncio.get_running_loop()
         self.executor = concurrent.futures.ThreadPoolExecutor()
