@@ -507,10 +507,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         timestamp = utils.current_tai()
         await self.cmd_startStreamingMode.ack_in_progress(data=data, timeout=120)
         # self.image_names = ["GC301_O_20230522_000001"]
-        (
-            self.image_names,
-            _,
-        ) = self.get_image_names_from_image_service(1, timestamp)
+        self.image_names, _ = self.get_image_names_from_image_service(1, timestamp)
         self.log.debug(f"{self.image_names}")
         image_name = self.image_names[0]
         static_data = {

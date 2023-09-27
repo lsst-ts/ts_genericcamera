@@ -75,6 +75,7 @@ class StreamingBaseCamera(basecamera.BaseCamera):
         static_data : `dict`
             Data for header keywords.
         """
+        self.handles = []
         self.get_tag(name="EXPTIME").value = exp_time
         self.exposure_time_delta = TimeDelta(exp_time, scale="tai", format="sec")
         for key, value in static_data.items():
@@ -87,6 +88,21 @@ class StreamingBaseCamera(basecamera.BaseCamera):
         self.log.debug(f"Is streaming task running: {self.streaming_task.running()}")
         concurrent.futures.wait([self.streaming_task], timeout=30)
         self.log.debug(f"Is streaming task done: {self.streaming_task.done()}")
+        frames_not_done = []
+        for i, handle in enumerate(self.handles):
+            if not handle.done():
+                frames_not_done.append(i + 1)
+        self.log.debug(f"Frames not done: {frames_not_done}")
+        # There are always a few frames marked as not done that show up in the
+        # queue during later processing for the AlliedVision driver.
+        # It is here to correct the maximum frame index for the MAXINDEX header
+        # entry.
+        self.frames_captured = (
+            frames_not_done[-1] if frames_not_done else self.queue.qsize()
+        )
+        self.log.info(f"Maximum frames captured: {self.frames_captured}")
+        self.log.debug(f"Frame time start: {self.frame_time_start}")
+        del self.handles
 
     async def convert_streaming_frames(self) -> (int, exposure.Exposure):
         """Convert raw frames to exposures.

@@ -271,7 +271,6 @@ properties:
         static_data : `dict`
             Data for header keywords.
         """
-        self.handles = []
         super().start_streaming_mode(exp_time, static_data)
         with vimba.Vimba.get_instance():
             # camera = v.get_camera_by_id(self.id)
@@ -290,26 +289,11 @@ properties:
     def stop_streaming_mode(self) -> None:
         """Stop image streaming mode for the camera."""
         super().stop_streaming_mode()
-        frames_not_done = []
-        for i, handle in enumerate(self.handles):
-            if not handle.done():
-                frames_not_done.append(i + 1)
-        self.log.debug(f"Frames not done: {frames_not_done}")
-        # There are always a few frames marked as not done that show up in the
-        # queue during later processing. This is here to correct the maximum
-        # frame index for the MAXINDEX header entry.
-        self.frames_captured = (
-            frames_not_done[-1] if frames_not_done else self.queue.qsize()
-        )
-        self.log.info(f"Maximum frames captured: {self.frames_captured}")
 
         with vimba.Vimba.get_instance() as v:
             camera = v.get_camera_by_id(self.id)
             with camera:
                 camera.AcquisitionMode.set("SingleFrame")
-
-        self.log.debug(f"Frame time start: {self.frame_time_start}")
-        del self.handles
 
     def _get_streaming_frame(self, cam: vimba.Camera, frame: vimba.Frame) -> None:
         """Handle frames from streaming mode.
