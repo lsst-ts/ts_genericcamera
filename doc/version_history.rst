@@ -6,6 +6,12 @@
 Version History
 ###############
 
+v1.4.0
+======
+
+* Implement streaming mode for AlliedVision and Simulation camera drivers
+* Remove black and flake8 from pytest in pyproject.toml
+
 v1.3.1
 ======
 

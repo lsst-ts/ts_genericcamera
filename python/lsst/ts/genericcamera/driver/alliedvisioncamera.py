@@ -20,14 +20,15 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
-import concurrent.futures
 import functools
+import time
 
 import vimba
 import yaml
+from lsst.ts import utils as ts_utils
 
 from .. import exposure
-from . import basecamera
+from . import streamingbasecamera
 
 SECONDS_TO_MILLISECONDS = 1000
 "Allied Vision cameras have timeouts in milliseconds."
@@ -39,7 +40,7 @@ IMAGE_TIMEOUT_PADDING = 200
 "Additional time (ms) to add to the frame acquisition."
 
 
-class AlliedVisionCamera(basecamera.BaseCamera):
+class AlliedVisionCamera(streamingbasecamera.StreamingBaseCamera):
     """Class for handling AlliedVision Vimba cameras."""
 
     def __init__(self, log=None):
@@ -56,8 +57,6 @@ class AlliedVisionCamera(basecamera.BaseCamera):
         self.lens_diameter = None
         self.lens_aperture = None
         self.plate_scale = None
-        self.loop = asyncio.get_running_loop()
-        self.executor = concurrent.futures.ThreadPoolExecutor()
 
     @staticmethod
     def name():
@@ -81,6 +80,7 @@ class AlliedVisionCamera(basecamera.BaseCamera):
         self.plate_scale = config.config["plate_scale"]
 
         with vimba.Vimba.get_instance() as v:
+            # v.enable_log(vimba.LOG_CONFIG_TRACE_CONSOLE_ONLY)
             self.camera = v.get_camera_by_id(self.id)
             with self.camera:
                 # Try to adjust GeV packet size.
@@ -171,6 +171,7 @@ properties:
             The height of the region in pixels.
         """
         with vimba.Vimba.get_instance():
+            # self.camera = v.get_camera_by_id(self.id)
             with self.camera:
                 left = self.camera.OffsetX.get()
                 top = self.camera.OffsetY.get()
@@ -192,6 +193,7 @@ properties:
         height : `int`
             The height of the region in pixels.
         """
+        self.log.debug("Setting ROI on camera.")
         with vimba.Vimba.get_instance():
             with self.camera:
                 self.camera.OffsetX.set(left)
@@ -201,6 +203,7 @@ properties:
 
     def set_full_frame(self):
         """Sets the region of interest to the whole sensor."""
+        self.log.debug("Setting camera to full frame.")
         with vimba.Vimba.get_instance():
             with self.camera:
                 self.set_roi(
@@ -231,6 +234,92 @@ properties:
             with self.camera:
                 self.camera.set_pixel_format(self.normal_image_type)
         super().stop_live_view()
+
+    def _run_streaming(self) -> None:
+        """Keep streaming mode for the camera alive."""
+        with vimba.Vimba.get_instance() as v:
+            # Need to get camera again because this follows
+            # start_streaming_mode and the context manager drops out
+            # rendering self.camera inoperable
+            camera = v.get_camera_by_id(self.id)
+            # Seem to need a log statement here for things to work
+            # Otherwise the context manager fails
+            self.log.info("Running _run_streaming")
+            with camera:
+                camera.GevTimestampControlReset.run()
+                self._set_streaming_start_information()
+                camera.start_streaming(
+                    handler=self._get_streaming_frame,
+                    buffer_count=100,
+                    allocation_mode=vimba.AllocationMode.AnnounceFrame,
+                )
+                self.log.info("Begin streaming keep alive loop")
+                while self.run_streaming_task:
+                    time.sleep(0.001)
+                else:
+                    self.log.info("End streaming keep alive loop")
+                    camera.stop_streaming()
+                    self.streaming_mode_stop = ts_utils.current_tai()
+
+    def start_streaming_mode(self, exp_time: float, static_data: dict) -> None:
+        """Start image streaming mode for the camera.
+
+        Parameters
+        ----------
+        exp_time : `float`
+            The exposure time in seconds.
+        static_data : `dict`
+            Data for header keywords.
+        """
+        super().start_streaming_mode(exp_time, static_data)
+        with vimba.Vimba.get_instance():
+            # camera = v.get_camera_by_id(self.id)
+            with self.camera:
+                self.log.debug("Starting camera streaming.")
+                queue_size = self.queue.qsize()
+                if queue_size:
+                    self.log.info(f"Queue size: {queue_size}")
+                self.camera.AcquisitionMode.set("Continuous")
+                self.camera.ExposureAuto.set("Off")
+                self.camera.ExposureTimeAbs.set(exp_time * SECONDS_TO_MICROSECONDS)
+                self.camera.set_pixel_format(self.normal_image_type)
+                self.tick_frequency = self.camera.GevTimestampTickFrequency.get()
+                self._set_information_for_streaming()
+
+    def stop_streaming_mode(self) -> None:
+        """Stop image streaming mode for the camera."""
+        super().stop_streaming_mode()
+
+        with vimba.Vimba.get_instance() as v:
+            camera = v.get_camera_by_id(self.id)
+            with camera:
+                camera.AcquisitionMode.set("SingleFrame")
+
+    def _get_streaming_frame(self, cam: vimba.Camera, frame: vimba.Frame) -> None:
+        """Handle frames from streaming mode.
+
+        Parameters
+        ----------
+        cam: `vimba.Camera`
+            The handle for the camera instance.
+        frame: `vimba.Frame`
+            The frame grabbed from the camera.
+        """
+        frame_id = frame.get_id()
+        self.log.debug(f"Got frame {frame_id}")
+        frame_timestamp = frame.get_timestamp()
+        item = (
+            frame_id,
+            (
+                frame.as_numpy_ndarray(),
+                self.streaming_roi[2],
+                self.streaming_roi[3],
+                frame_timestamp,
+            ),
+        )
+        handle = asyncio.run_coroutine_threadsafe(self.queue.put(item), self.loop)
+        self.handles.append(handle)
+        cam.queue_frame(frame)
 
     def _set_camera_exposure_time(self):
         """Set the exposure time on the camera."""

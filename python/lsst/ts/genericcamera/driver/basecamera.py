@@ -258,6 +258,26 @@ class BaseCamera(abc.ABC):
         """End take image or images."""
         pass
 
+    def start_streaming_mode(self, exp_time: float, static_data: dict) -> None:
+        """Start image streaming mode for the camera.
+
+        Parameters
+        ----------
+        exp_time : float
+            The exposure time in seconds.
+        static_data : `dict`
+            Data for header keywords.
+        """
+        raise NotImplementedError()
+
+    def stop_streaming_mode(self) -> None:
+        """Stop image streaming mode for the camera."""
+        raise NotImplementedError()
+
+    async def convert_streaming_frames(self) -> (int, exposure.Exposure):
+        """Convert raw frames to exposures."""
+        raise NotImplementedError()
+
     def get_tag(self, name):
         """Convenience function to retrieve the FITS header tag with the
         provided name.
