@@ -192,6 +192,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     "startLiveView",
                     "stopLiveView",
                     "takeImages",
+                    "startStreamingMode",
+                    "stopStreamingMode",
                 )
 
                 for bad_command in extra_commands:
@@ -623,14 +625,34 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.assertEqual(roi.width, 1024)
             self.assertEqual(roi.height, 1024)
 
-    async def test_streaming_mode(self):
+    @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
+    async def test_streaming_mode(self, mock_get):
+        mock_response = unittest.mock.Mock()
+        mock_response.status_code = 200
+        mock_response.json.side_effect = [
+            ["GC1_O_20230926_000001"],
+        ]
+
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
         ):
             await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
 
-            with self.assertRaises(salobj.AckError):
-                await self.remote.cmd_startStreamingMode.set_start(expTime=0.001)
+            exposure_time = 0.01
+            await self.remote.cmd_startStreamingMode.set_start(expTime=exposure_time)
 
-            with self.assertRaises(salobj.AckError):
-                await self.remote.cmd_stopStreamingMode.start()
+            sm_start = await self.remote.evt_streamingModeStarted.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertIsNotNone(sm_start)
+            self.assertEqual(sm_start.expTime, exposure_time)
+
+            await self.remote.cmd_stopStreamingMode.start()
+
+            sm_stop = await self.remote.evt_streamingModeStopped.next(
+                flush=False, timeout=LONG_TIMEOUT
+            )
+            self.assertIsNotNone(sm_stop)
+            self.assertEqual(sm_stop.expTime, exposure_time)
+            self.assertNotEqual(sm_stop.numFrames, 0)
+            self.assertNotEqual(sm_stop.avgFrameRate, 0)

@@ -21,6 +21,7 @@
 import warnings
 
 from .basecamera import *
+from .streamingbasecamera import *
 
 try:
     from .alliedvisioncamera import *
