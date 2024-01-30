@@ -6,6 +6,11 @@
 Version History
 ###############
 
+v1.4.1
+======
+
+ * Fix always_save mode filename
+
 v1.4.0
 ======
 
