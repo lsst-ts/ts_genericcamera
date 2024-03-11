@@ -10,6 +10,7 @@ v1.4.2
 ======
 
 * Copy frames to avoid reuse in streaming mode
+* Put streaming mode files into sub-directory
 
 v1.4.1
 ======
