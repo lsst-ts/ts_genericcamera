@@ -6,6 +6,11 @@
 Version History
 ###############
 
+v1.4.2
+======
+
+* Copy frames to avoid reuse in streaming mode
+
 v1.4.1
 ======
 
