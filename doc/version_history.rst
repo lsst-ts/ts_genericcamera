@@ -1,6 +1,6 @@
 .. py:currentmodule:: lsst.ts.genericcamera
 
-.. _lsst.ts.ess.version_history:
+.. _lsst.ts.genericcamera.version_history:
 
 ###############
 Version History
