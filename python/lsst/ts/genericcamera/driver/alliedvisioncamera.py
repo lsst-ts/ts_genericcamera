@@ -311,7 +311,7 @@ properties:
         item = (
             frame_id,
             (
-                frame.as_numpy_ndarray(),
+                frame.as_numpy_ndarray().copy(),
                 self.streaming_roi[2],
                 self.streaming_roi[3],
                 frame_timestamp,

@@ -1,10 +1,16 @@
 .. py:currentmodule:: lsst.ts.genericcamera
 
-.. _lsst.ts.ess.version_history:
+.. _lsst.ts.genericcamera.version_history:
 
 ###############
 Version History
 ###############
+
+v1.4.2
+======
+
+* Copy frames to avoid reuse in streaming mode
+* Put streaming mode files into sub-directory
 
 v1.4.1
 ======
