@@ -775,7 +775,10 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
                 suffix=exposure.suffix,
             )
             # Make image name more like bigger cameras
-            key = key[: key.rfind("/") + 1] + filename
+            if frame_number is None:
+                key = key[: key.rfind("/") + 1] + filename
+            else:
+                key = key[: key.rfind("/") + 1] + image_name + "/" + filename
             filename = key
 
             await self.s3bucket.upload(fileobj=exposure.make_fileobj(), key=key)
