@@ -373,7 +373,7 @@ properties:
                         math.ceil(self.exposure_time) * SECONDS_TO_MILLISECONDS
                         + IMAGE_TIMEOUT_PADDING
                     )
-                self.log.debug(f"Exposure timeout = {timeout_ms} ms")
+                self.log.info(f"Exposure timeout = {timeout_ms} ms")
                 frame = self.camera.get_frame(timeout_ms=timeout_ms)
         return frame
 
