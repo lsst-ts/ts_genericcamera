@@ -6,6 +6,12 @@
 Version History
 ###############
 
+v1.4.3
+======
+
+* Fix issue with fractional exposure times for timeout in AlliedVision camera driver
+* Add imageName attribute to streaming mode events
+
 v1.4.2
 ======
 
