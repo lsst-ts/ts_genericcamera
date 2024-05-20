@@ -527,7 +527,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
         self.streaming_mode_exposure_time = data.expTime
 
         await self.evt_streamingModeStarted.set_write(
-            expTime=data.expTime, force_output=True
+            expTime=data.expTime, imageName=image_name, force_output=True
         )
         self.log.info("startStreamingMode - End")
 
@@ -549,6 +549,7 @@ class GenericCameraCsc(salobj.ConfigurableCsc):
             expTime=self.streaming_mode_exposure_time,
             numFrames=self.num_frames,
             avgFrameRate=fps,
+            imageName=self.image_names[0],
         )
         # Adjust SEQNUM in case web service is unavailable
         self.image_sequence_num += 1
