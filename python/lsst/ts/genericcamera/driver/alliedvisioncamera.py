@@ -21,6 +21,7 @@
 
 import asyncio
 import functools
+import math
 import time
 
 import vimba
@@ -363,16 +364,16 @@ properties:
         with vimba.Vimba.get_instance():
             with self.camera:
                 if self.liveview_use_autoexposure:
-                    timeout_ms = int(
+                    timeout_ms = math.ceil(
                         (self.camera.ExposureTimeAbs.get() / SECONDS_TO_MILLISECONDS)
                         + IMAGE_TIMEOUT_PADDING
                     )
                 else:
                     timeout_ms = (
-                        int(self.exposure_time) * SECONDS_TO_MILLISECONDS
+                        math.ceil(self.exposure_time) * SECONDS_TO_MILLISECONDS
                         + IMAGE_TIMEOUT_PADDING
                     )
-                self.log.debug(f"Exposure timeout = {timeout_ms} ms")
+                self.log.info(f"Exposure timeout = {timeout_ms} ms")
                 frame = self.camera.get_frame(timeout_ms=timeout_ms)
         return frame
 
