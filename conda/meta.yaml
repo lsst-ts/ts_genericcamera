@@ -18,6 +18,7 @@ test:
   requires:
     - ts-conda-build =0.4
     - ts-salobj {{ salobj_version }}
+    - ts-xml {{ xml_version }}
     - requests
     - numpy
     - astropy
@@ -41,7 +42,6 @@ requirements:
     - python {{ python }}
     - setuptools
     - setuptools_scm
-    - ts-idl
     - ts-salobj
     - requests
     - numpy
