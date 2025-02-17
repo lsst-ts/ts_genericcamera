@@ -33,7 +33,6 @@ from lsst.ts import genericcamera, salobj, utils
 from requests import ConnectionError
 
 STD_TIMEOUT = 2  # standard command timeout (sec)
-LONG_TIMEOUT = 20  # timeout for starting SAL components (sec)
 TEST_CONFIG_DIR = pathlib.Path(__file__).parent / "data" / "config"
 TEST_HEADER_DIR = pathlib.Path(__file__).parent / "data" / "header"
 
@@ -109,14 +108,11 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
         ):
             self.assertEqual(self.csc.summary_state, salobj.State.STANDBY)
-            state = await self.remote.evt_summaryState.next(
-                flush=False, timeout=LONG_TIMEOUT
+            await self.assert_next_summary_state(
+                state=salobj.State.STANDBY,
+                remote=self.remote,
             )
-            self.assertEqual(state.summaryState, salobj.State.STANDBY)
 
-            configs_available = await self.remote.evt_configurationsAvailable.next(
-                flush=False, timeout=LONG_TIMEOUT
-            )
             overrides = [
                 "all_fields.yaml",
                 "invalid_bad_camera_driver.yaml",
@@ -124,9 +120,9 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 "mock_lfa.yaml",
                 "use_image_service.yaml",
             ]
-            self.assertEqual(
-                configs_available.overrides,
-                ",".join(overrides),
+
+            await self.assert_next_sample(
+                self.remote.evt_configurationsAvailable, overrides=",".join(overrides)
             )
 
             invalid_files = glob.glob(os.path.join(TEST_CONFIG_DIR, "invalid_*.yaml"))
@@ -141,31 +137,32 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.remote.cmd_start.set(configurationOverride="all_fields.yaml")
             await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
             self.assertEqual(self.csc.summary_state, salobj.State.DISABLED)
-            state = await self.remote.evt_summaryState.next(
-                flush=False, timeout=STD_TIMEOUT
+            await self.assert_next_summary_state(
+                state=salobj.State.DISABLED,
+                remote=self.remote,
             )
 
-            config_applied = await self.remote.evt_configurationApplied.next(
-                flush=False, timeout=LONG_TIMEOUT
+            await self.assert_next_sample(
+                self.remote.evt_configurationApplied,
+                configurations="_init.yaml,all_fields.yaml",
+                otherInfo="cameraInfo,roi",
             )
-            self.assertEqual(
-                config_applied.configurations, "_init.yaml,all_fields.yaml"
-            )
-            self.assertEqual(config_applied.otherInfo, "cameraInfo,roi")
-            camera_info = await self.remote.evt_cameraInfo.next(
-                flush=False, timeout=LONG_TIMEOUT
-            )
-            self.assertEqual(camera_info.cameraMakeAndModel, "Simulator")
-            self.assertEqual(camera_info.lensFocalLength, 100.0)
-            self.assertEqual(camera_info.lensDiameter, 50.0)
 
-            roi = await self.remote.evt_roi.next(flush=False, timeout=LONG_TIMEOUT)
-            self.assertEqual(roi.topPixel, 0)
-            self.assertEqual(roi.leftPixel, 0)
-            self.assertEqual(roi.width, 1024)
-            self.assertEqual(roi.height, 1024)
+            await self.assert_next_sample(
+                self.remote.evt_cameraInfo,
+                cameraMakeAndModel="Simulator",
+                lensFocalLength=100.0,
+                lensDiameter=50.0,
+            )
 
-            self.assertEqual(state.summaryState, salobj.State.DISABLED)
+            await self.assert_next_sample(
+                self.remote.evt_roi,
+                topPixel=0,
+                leftPixel=0,
+                width=1024,
+                height=1024,
+            )
+
             all_fields_path = os.path.join(TEST_CONFIG_DIR, "all_fields.yaml")
             with open(all_fields_path, "r") as f:
                 all_fields_raw = f.read()
@@ -181,10 +178,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             async def check_rejected(expected_state):
                 self.assertEqual(self.csc.summary_state, expected_state)
-                csc_state = await self.remote.evt_summaryState.next(
-                    flush=False, timeout=LONG_TIMEOUT
+                await self.assert_next_summary_state(
+                    state=expected_state,
+                    remote=self.remote,
                 )
-                self.assertEqual(csc_state.summaryState, expected_state)
 
                 extra_commands = (
                     "setROI",
@@ -211,10 +208,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await salobj.set_summary_state(self.remote, salobj.State.ENABLED)
 
             self.assertEqual(self.csc.summary_state, salobj.State.ENABLED)
-            state = await self.remote.evt_summaryState.next(
-                flush=False, timeout=LONG_TIMEOUT
+            await self.assert_next_summary_state(
+                state=salobj.State.ENABLED,
+                remote=self.remote,
             )
-            self.assertEqual(state.summaryState, salobj.State.ENABLED)
 
             await salobj.set_summary_state(self.remote, salobj.State.DISABLED)
 
@@ -248,80 +245,50 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 obsNote="bias",
             )
 
-            startTakeImage = await self.remote.evt_startTakeImage.next(
-                flush=False, timeout=STD_TIMEOUT
+            startTakeImage = await self.assert_next_sample(
+                self.remote.evt_startTakeImage
             )
             self.assertIsNotNone(startTakeImage)
 
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_startShutterOpen.next(
-                    flush=False, timeout=STD_TIMEOUT
-                )
+                await self.assert_next_sample(self.remote.evt_startShutterOpen)
 
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_endShutterOpen.next(
-                    flush=False, timeout=STD_TIMEOUT
-                )
+                await self.assert_next_sample(self.remote.evt_endShutterOpen)
 
-            startIntegration = await self.remote.evt_startIntegration.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
-            self.assertIsNotNone(startIntegration)
-            self.assertEqual(
-                startIntegration.additionalKeys,
-                "imageType:groupId:testType",
-            )
-            self.assertEqual(
-                startIntegration.additionalValues, "BIAS:CALIBSET_20220823:BIAS"
+            await self.assert_next_sample(
+                self.remote.evt_startIntegration,
+                additionalKeys="imageType:groupId:testType",
+                additionalValues="BIAS:CALIBSET_20220823:BIAS",
             )
 
-            endIntegration = await self.remote.evt_endIntegration.next(
-                flush=False, timeout=LONG_TIMEOUT
-            )
-            self.assertIsNotNone(endIntegration)
-            self.assertEqual(
-                endIntegration.additionalKeys,
-                "imageType:groupId:testType",
-            )
-            self.assertEqual(
-                endIntegration.additionalValues, "BIAS:CALIBSET_20220823:BIAS"
+            await self.assert_next_sample(
+                self.remote.evt_endIntegration,
+                additionalKeys="imageType:groupId:testType",
+                additionalValues="BIAS:CALIBSET_20220823:BIAS",
             )
 
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_startShutterClose.next(
-                    flush=False, timeout=STD_TIMEOUT
+                await self.assert_next_sample(
+                    self.remote.evt_startShutterClose,
                 )
 
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_endShutterClose.next(
-                    flush=False, timeout=STD_TIMEOUT
-                )
+                await self.assert_next_sample(self.remote.evt_endShutterClose)
 
-            startReadout = await self.remote.evt_startReadout.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
-            self.assertIsNotNone(startReadout)
-            self.assertEqual(
-                startReadout.additionalKeys,
-                "imageType:groupId:testType",
-            )
-            self.assertEqual(
-                startReadout.additionalValues, "BIAS:CALIBSET_20220823:BIAS"
+            await self.assert_next_sample(
+                self.remote.evt_startReadout,
+                additionalKeys="imageType:groupId:testType",
+                additionalValues="BIAS:CALIBSET_20220823:BIAS",
             )
 
-            endReadout = await self.remote.evt_endReadout.next(
-                flush=False, timeout=STD_TIMEOUT
+            await self.assert_next_sample(
+                self.remote.evt_endReadout,
+                additionalKeys="imageType:groupId:testType",
+                additionalValues="BIAS:CALIBSET_20220823:BIAS",
             )
-            self.assertIsNotNone(endReadout)
-            self.assertEqual(
-                endReadout.additionalKeys,
-                "imageType:groupId:testType",
-            )
-            self.assertEqual(endReadout.additionalValues, "BIAS:CALIBSET_20220823:BIAS")
 
-            endTakeImage = await self.remote.evt_endTakeImage.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
+            endTakeImage = await self.assert_next_sample(self.remote.evt_endTakeImage)
             self.assertIsNotNone(endTakeImage)
 
         @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
@@ -336,92 +303,77 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 obsNote="image",
             )
 
-            startTakeImage = await self.remote.evt_startTakeImage.next(
-                flush=False, timeout=STD_TIMEOUT
+            startTakeImage = await self.assert_next_sample(
+                self.remote.evt_startTakeImage
             )
             self.assertIsNotNone(startTakeImage)
 
-            startShutterOpen = await self.remote.evt_startShutterOpen.next(
-                flush=False, timeout=LONG_TIMEOUT
+            startShutterOpen = await self.assert_next_sample(
+                self.remote.evt_startShutterOpen
             )
             self.assertIsNotNone(startShutterOpen)
 
-            endShutterOpen = await self.remote.evt_endShutterOpen.next(
-                flush=False, timeout=LONG_TIMEOUT
+            endShutterOpen = await self.assert_next_sample(
+                self.remote.evt_endShutterOpen
             )
             self.assertIsNotNone(endShutterOpen)
 
-            startIntegration = await self.remote.evt_startIntegration.next(
-                flush=False, timeout=STD_TIMEOUT
+            await self.assert_next_sample(
+                self.remote.evt_startIntegration,
+                imageSource=self.csc.image_source,
+                imageController=self.csc.image_controller,
+                imageNumber=self.csc.image_sequence_num - 1,
+                imageDate=self.csc.day_obs,
+                additionalKeys="imageType:groupId",
+                additionalValues="ENGTEST:TestGroup",
+                imageName=image_name_check,
             )
-            self.assertIsNotNone(startIntegration)
-            self.assertEqual(startIntegration.imageSource, self.csc.image_source)
-            self.assertEqual(
-                startIntegration.imageController, self.csc.image_controller
-            )
-            self.assertEqual(
-                startIntegration.imageNumber, self.csc.image_sequence_num - 1
-            )
-            self.assertEqual(startIntegration.imageDate, self.csc.day_obs)
-            self.assertEqual(
-                startIntegration.additionalKeys,
-                "imageType:groupId",
-            )
-            self.assertEqual(startIntegration.additionalValues, "ENGTEST:TestGroup")
-            self.assertEqual(startIntegration.imageName, image_name_check)
 
-            endIntegration = await self.remote.evt_endIntegration.next(
-                flush=False, timeout=LONG_TIMEOUT
+            await self.assert_next_sample(
+                self.remote.evt_endIntegration,
+                additionalKeys="imageType:groupId",
+                additionalValues="ENGTEST:TestGroup",
             )
-            self.assertIsNotNone(endIntegration)
-            self.assertEqual(endIntegration.additionalKeys, "imageType:groupId")
-            self.assertEqual(endIntegration.additionalValues, "ENGTEST:TestGroup")
 
-            startShutterClose = await self.remote.evt_startShutterClose.next(
-                flush=False, timeout=LONG_TIMEOUT
+            startShutterClose = await self.assert_next_sample(
+                self.remote.evt_startShutterClose
             )
             self.assertIsNotNone(startShutterClose)
 
-            endShutterClose = await self.remote.evt_endShutterClose.next(
-                flush=False, timeout=LONG_TIMEOUT
+            endShutterClose = await self.assert_next_sample(
+                self.remote.evt_endShutterClose
             )
             self.assertIsNotNone(endShutterClose)
 
-            startReadout = await self.remote.evt_startReadout.next(
-                flush=False, timeout=STD_TIMEOUT
+            await self.assert_next_sample(
+                self.remote.evt_startReadout,
+                imageSource=self.csc.image_source,
+                imageController=self.csc.image_controller,
+                imageNumber=self.csc.image_sequence_num - 1,
+                imageDate=self.csc.day_obs,
+                additionalKeys="imageType:groupId",
+                additionalValues="ENGTEST:TestGroup",
+                imageName=image_name_check,
             )
-            self.assertIsNotNone(startReadout)
-            self.assertEqual(startReadout.imageSource, self.csc.image_source)
-            self.assertEqual(startReadout.imageController, self.csc.image_controller)
-            self.assertEqual(startReadout.imageNumber, self.csc.image_sequence_num - 1)
-            self.assertEqual(startReadout.imageDate, self.csc.day_obs)
-            self.assertEqual(startReadout.additionalKeys, "imageType:groupId")
-            self.assertEqual(startReadout.additionalValues, "ENGTEST:TestGroup")
-            self.assertEqual(startReadout.imageName, image_name_check)
 
-            endReadout = await self.remote.evt_endReadout.next(
-                flush=False, timeout=STD_TIMEOUT
+            await self.assert_next_sample(
+                self.remote.evt_endReadout,
+                imageSource=self.csc.image_source,
+                imageController=self.csc.image_controller,
+                imageNumber=self.csc.image_sequence_num - 1,
+                imageDate=self.csc.day_obs,
+                additionalKeys="imageType:groupId",
+                additionalValues="ENGTEST:TestGroup",
+                imageName=image_name_check,
             )
-            self.assertIsNotNone(endReadout)
-            self.assertEqual(endReadout.imageSource, self.csc.image_source)
-            self.assertEqual(endReadout.imageController, self.csc.image_controller)
-            self.assertEqual(endReadout.imageNumber, self.csc.image_sequence_num - 1)
-            self.assertEqual(endReadout.imageDate, self.csc.day_obs)
-            self.assertEqual(endReadout.additionalKeys, "imageType:groupId")
-            self.assertEqual(endReadout.additionalValues, "ENGTEST:TestGroup")
-            self.assertEqual(startReadout.imageName, image_name_check)
 
             if check_lfoa:
-                largeFileObjectAvailable = (
-                    await self.remote.evt_largeFileObjectAvailable.next(
-                        flush=False, timeout=LONG_TIMEOUT
-                    )
+                largeFileObjectAvailable = await self.assert_next_sample(
+                    self.remote.evt_largeFileObjectAvailable
                 )
                 self.assertIsNotNone(largeFileObjectAvailable)
 
-            endTakeImage = await self.remote.evt_endTakeImage.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
+            endTakeImage = await self.assert_next_sample(self.remote.evt_endTakeImage)
             self.assertIsNotNone(endTakeImage)
 
         @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
@@ -456,11 +408,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             initial_state=salobj.State.ENABLED, config_dir=TEST_CONFIG_DIR
         ):
             self.gchs_csc.set_take_image_list()
-            state = await self.remote.evt_summaryState.next(
-                flush=False, timeout=LONG_TIMEOUT
+            await self.assert_next_summary_state(
+                state=salobj.State.ENABLED,
+                remote=self.remote,
             )
-
-            self.assertEqual(state.summaryState, salobj.State.ENABLED)
 
             self.flush_take_image_events()
 
@@ -499,8 +450,6 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             with utils.modify_environ(
                 AWS_ACCESS_KEY_ID="test",
                 AWS_SECRET_ACCESS_KEY="bar",
-                MYS3_ACCESS_KEY="test",
-                MYS3_SECRET_KEY="bar",
             ):
                 await salobj.set_summary_state(
                     self.remote, salobj.State.ENABLED, override="mock_lfa.yaml"
@@ -529,9 +478,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.remote.evt_startLiveView.flush()
             await self.remote.cmd_startLiveView.set_start(expTime=1.0)
 
-            lv_start = await self.remote.evt_startLiveView.next(
-                flush=False, timeout=LONG_TIMEOUT
-            )
+            lv_start = await self.assert_next_sample(self.remote.evt_startLiveView)
 
             self.assertIsNotNone(lv_start)
 
@@ -571,34 +518,23 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await self.remote.cmd_startAutoExposure.set_start(
                 minExpTime=1.0, maxExpTime=10.0, configuration=""
             )
-            ae_start = await self.remote.evt_autoExposureStarted.next(
-                flush=False, timeout=LONG_TIMEOUT
+            ae_start = await self.assert_next_sample(
+                self.remote.evt_autoExposureStarted
             )
             self.assertIsNotNone(ae_start)
 
-            ti_start = await self.remote.evt_startTakeImage.next(
-                flush=False, timeout=LONG_TIMEOUT
-            )
+            ti_start = await self.assert_next_sample(self.remote.evt_startTakeImage)
             self.assertIsNotNone(ti_start)
-            ti_end = await self.remote.evt_endTakeImage.next(
-                flush=False, timeout=LONG_TIMEOUT
-            )
+            ti_end = await self.assert_next_sample(self.remote.evt_endTakeImage)
             self.assertIsNotNone(ti_end)
 
-            ti_start = await self.remote.evt_startTakeImage.next(
-                flush=False,
-                timeout=LONG_TIMEOUT + 5,
-            )
+            ti_start = await self.assert_next_sample(self.remote.evt_startTakeImage)
             self.assertIsNotNone(ti_start)
-            ti_end = await self.remote.evt_endTakeImage.next(
-                flush=False, timeout=LONG_TIMEOUT
-            )
+            ti_end = await self.assert_next_sample(self.remote.evt_endTakeImage)
             self.assertIsNotNone(ti_end)
 
             await self.remote.cmd_stopAutoExposure.start()
-            ae_stop = await self.remote.evt_autoExposureStopped.next(
-                flush=False, timeout=LONG_TIMEOUT
-            )
+            ae_stop = await self.assert_next_sample(self.remote.evt_autoExposureStopped)
             self.assertIsNotNone(ae_stop)
 
     async def test_version(self):
@@ -619,11 +555,13 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.remote.evt_roi.flush()
             await self.remote.cmd_setFullFrame.start(timeout=STD_TIMEOUT)
 
-            roi = await self.remote.evt_roi.next(flush=False, timeout=LONG_TIMEOUT)
-            self.assertEqual(roi.topPixel, 0)
-            self.assertEqual(roi.leftPixel, 0)
-            self.assertEqual(roi.width, 1024)
-            self.assertEqual(roi.height, 1024)
+            await self.assert_next_sample(
+                self.remote.evt_roi,
+                topPixel=0,
+                leftPixel=0,
+                width=1024,
+                height=1024,
+            )
 
     @unittest.mock.patch("lsst.ts.genericcamera.requests.get")
     async def test_streaming_mode(self, mock_get):
@@ -641,18 +579,16 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             exposure_time = 0.01
             await self.remote.cmd_startStreamingMode.set_start(expTime=exposure_time)
 
-            sm_start = await self.remote.evt_streamingModeStarted.next(
-                flush=False, timeout=LONG_TIMEOUT
+            await self.assert_next_sample(
+                self.remote.evt_streamingModeStarted,
+                expTime=exposure_time,
             )
-            self.assertIsNotNone(sm_start)
-            self.assertEqual(sm_start.expTime, exposure_time)
 
             await self.remote.cmd_stopStreamingMode.start()
 
-            sm_stop = await self.remote.evt_streamingModeStopped.next(
-                flush=False, timeout=LONG_TIMEOUT
+            sm_stop = await self.assert_next_sample(
+                self.remote.evt_streamingModeStopped,
+                expTime=exposure_time,
             )
-            self.assertIsNotNone(sm_stop)
-            self.assertEqual(sm_stop.expTime, exposure_time)
             self.assertNotEqual(sm_stop.numFrames, 0)
             self.assertNotEqual(sm_stop.avgFrameRate, 0)
