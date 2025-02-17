@@ -13,13 +13,23 @@ build:
   entry_points:
     - run_genericcamera = lsst.ts.genericcamera.genericcameracsc:run_genericcamera
     - run_liveviewui = lsst.ts.genericcamera.liveview.liveviewui:run_liveviewui
-  script_env:
-    - PATH
-    - PYTHONPATH
-    - LD_LIBRARY_PATH
-    - OSPL_HOME
-    - PYTHON_BUILD_VERSION
-    - PYTHON_BUILD_LOCATION
+
+test:
+  requires:
+    - ts-conda-build =0.4
+    - ts-salobj {{ salobj_version }}
+    - ts-xml {{ xml_version }}
+    - requests
+    - numpy
+    - astropy
+    - pillow
+  source_files:
+    - bin
+    - pyproject.toml
+    - python
+    - tests
+  commands:
+    - pytest -v
 
 requirements:
   host:
@@ -32,7 +42,6 @@ requirements:
     - python {{ python }}
     - setuptools
     - setuptools_scm
-    - ts-idl
     - ts-salobj
     - requests
     - numpy

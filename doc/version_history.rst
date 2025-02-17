@@ -6,6 +6,13 @@
 Version History
 ###############
 
+v1.5.0
+======
+
+* Remove ts-idl reference and add ts-xml in conda/meta.yaml
+* Update conda meta.yaml to newer specs
+* Update unit tests for better stability
+
 v1.4.3
 ======
 
