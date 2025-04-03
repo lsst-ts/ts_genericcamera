@@ -6,6 +6,12 @@
 Version History
 ###############
 
+v1.5.1
+======
+
+* Use Jenkins shared library for standard build
+* Remove datetime.datetime.utcnow() deprecation warning
+
 v1.5.0
 ======
 
