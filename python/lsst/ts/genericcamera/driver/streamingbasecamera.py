@@ -53,16 +53,16 @@ class StreamingBaseCamera(basecamera.BaseCamera):
         self.static_data = {}
         # Extra tags for streaming mode
         self.get_tag(name="OBSID").comment = "Image name from image naming service"
-        self.get_tag(
-            name="DAYOBS"
-        ).comment = "The observation day as defined by image name"
+        self.get_tag(name="DAYOBS").comment = (
+            "The observation day as defined by image name"
+        )
         self.get_tag(name="CAMCODE").comment = "The code for the camera"
-        self.get_tag(
-            name="CONTRLLR"
-        ).comment = "The controller (e.g. O for OCS, C for CCS)"
-        self.get_tag(
-            name="CURINDEX"
-        ).comment = "Index number for frame within the sequence"
+        self.get_tag(name="CONTRLLR").comment = (
+            "The controller (e.g. O for OCS, C for CCS)"
+        )
+        self.get_tag(name="CURINDEX").comment = (
+            "Index number for frame within the sequence"
+        )
         self.get_tag(name="MAXINDEX").comment = "Total number of frames in sequence"
 
     def start_streaming_mode(self, exp_time: float, static_data: dict) -> None:
