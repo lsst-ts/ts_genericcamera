@@ -18,8 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import datetime
 import logging
-from datetime import datetime
 
 from lsst.ts import salobj
 
@@ -52,7 +52,7 @@ class MockGCHeaderService(salobj.BaseCsc):
             self.emit_largeFileObjectAvailable
         )
         self.test_header_list = None
-        day_obs = utils.get_day_obs(datetime.utcnow().timestamp())
+        day_obs = utils.get_day_obs(datetime.datetime.now(datetime.UTC).timestamp())
         self.test_take_image_header_list = [
             "GCHeaderService_header_GC1_O_20220822_000001.yaml",
             "GCHeaderService_header_GC1_O_20220822_000002.yaml",
