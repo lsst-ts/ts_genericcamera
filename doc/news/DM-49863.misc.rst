@@ -1,1 +1,1 @@
-Fix issue with version file creation.
+Fixed issue with version file creation.
