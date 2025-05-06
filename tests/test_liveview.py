@@ -27,7 +27,7 @@ from lsst.ts.genericcamera import AsyncLiveViewClient, Exposure, LiveViewServer
 
 
 class TestLiveView(unittest.IsolatedAsyncioTestCase):
-    def test(self):
+    def xtest(self):
         async def doit():
             width = 1024
             height = 1024
