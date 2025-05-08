@@ -8,6 +8,23 @@ Version History
 
 .. towncrier release notes start
 
+v1.5.2 (2025-05-05)
+===================
+
+Documentation
+-------------
+
+- Switched to using towncrier for version history tracking. (`DM-49863 <https://rubinobs.atlassian.net//browse/DM-49863>`_)
+
+
+Other Changes and Additions
+---------------------------
+
+- Fixed issue with version file creation. (`DM-49863 <https://rubinobs.atlassian.net//browse/DM-49863>`_)
+- Removed setup.cfg file. (`DM-49863 <https://rubinobs.atlassian.net//browse/DM-49863>`_)
+- Fix doc/news README file. (`DM-49863 <https://rubinobs.atlassian.net//browse/DM-49863>`_)
+
+
 v1.5.1
 ======
 
