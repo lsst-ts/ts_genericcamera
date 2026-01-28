@@ -10,13 +10,14 @@ source:
 build:
   noarch: generic
   script: {{ PYTHON }} -m pip install --no-deps --ignore-installed .
+  string: "py{{ PY_VER | replace('.', '') }}{{ PKG_HASH }}_{{ PKG_BUILDNUM }}"
   entry_points:
     - run_genericcamera = lsst.ts.genericcamera.genericcameracsc:run_genericcamera
     - run_liveviewui = lsst.ts.genericcamera.liveview.liveviewui:run_liveviewui
 
 test:
   requires:
-    - ts-conda-build =0.4
+    - ts-conda-build =0.5
     - ts-salobj {{ salobj_version }}
     - ts-xml {{ xml_version }}
     - requests
