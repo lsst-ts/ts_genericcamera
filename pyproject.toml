@@ -31,7 +31,7 @@ asyncio_mode = "auto"
 
 [project.optional-dependencies]
 dev = [
-  "documenteer[pipelines]",
+  "documenteer[guide]",
   "tornado",
   "gphoto2",
   "rawpy",
