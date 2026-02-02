@@ -19,18 +19,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Sphinx configuration file for an LSST stack package.
+[project]
+title = "Generic Camera"
+copyright = "Copyright 2018-2026 Association of Universities for Research in Astronomy"
 
-This configuration only affects single-package Sphinx documentation builds.
-"""
+[project.python]
+package = "ts_genericcamera"
+documentation_url_key = "documentation"
+github_url_key = "repository"
 
-# import lsst.ts.genericcamera  # noqa
-from documenteer.conf.guide import *  # noqa
+[sphinx]
+extensions = ["sphinx-jsonschema"]
 
-# project = "ts_genericcamera"
-# html_theme_options["logotext"] = project  # noqa
-# html_title = project
-# html_short_title = project
-# doxylink = {}  # Avoid warning: Could not find tag file _doxygen/doxygen.tag
-# intersphinx_mapping["ts_xml"] = ("https://ts-xml.lsst.io", None)  # noqa
-# intersphinx_mapping["ts_salobj"] = ("https://ts-salobj.lsst.io", None)  # noqa
+[sphinx.intersphinx.projects]
+ts-xml = "https://ts-xml.lsst.io"
+salobj = "https://ts-salobj.lsst.io"
+python = "https://docs.python.org/3.13/"

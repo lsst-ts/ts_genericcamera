@@ -1,0 +1,1 @@
+Fix doc build for new documenteer version.
