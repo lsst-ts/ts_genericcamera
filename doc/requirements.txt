@@ -1,1 +1,2 @@
-documenteer[pipelines]
+documenteer[guide]
+sphinx-jsonschema
