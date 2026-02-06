@@ -8,6 +8,15 @@ Version History
 
 .. towncrier release notes start
 
+v1.5.4 (2026-02-02)
+===================
+
+Documentation
+-------------
+
+- Fix doc build for new documenteer version. (`OSW-1764 <https://rubinobs.atlassian.net//browse/OSW-1764>`_)
+
+
 v1.5.3 (2026-01-28)
 ===================
 
