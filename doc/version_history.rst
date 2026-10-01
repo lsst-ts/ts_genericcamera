@@ -8,6 +8,16 @@ Version History
 
 .. towncrier release notes start
 
+v1.5.5 (2026-10-01)
+===================
+
+Other Changes and Additions
+---------------------------
+
+- Added license header to source files. (`OSW-2881 <https://rubinobs.atlassian.net//browse/OSW-2881>`_)
+- Added local_scheme to setup.py (`OSW-2933 <https://rubinobs.atlassian.net//browse/OSW-2933>`_)
+
+
 v1.5.4 (2026-02-02)
 ===================
 
