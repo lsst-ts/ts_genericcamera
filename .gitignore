@@ -115,3 +115,4 @@ version.py
 .isort.cfg
 .mypy.ini
 towncrier.toml
+.LICENSE.txt

@@ -1,6 +1,6 @@
 # This file is part of ts_genericcamera.
 #
-# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# Developed for the Vera C. Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
 # (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
@@ -13,11 +13,11 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
 import ctypes
@@ -81,8 +81,7 @@ class ASICamera(basecamera.BaseCamera):
             self.filter_number = self.zwo_lib.get_position(self.filter_id)
 
     def get_config_schema(self):
-        return yaml.safe_load(
-            """
+        return yaml.safe_load("""
 $schema: http://json-schema.org/draft-07/schema#
 description: Schema for ZWO cameras.
 type: object
@@ -122,8 +121,7 @@ properties:
     description: >
       The ID of the filter to use. Depending on the type of ZWO filter wheel
       used, this value can have a maximum of 5, 7 or 8.
-"""
-        )
+""")
 
     def get_make_and_model(self):
         """Get the make and model of the camera.

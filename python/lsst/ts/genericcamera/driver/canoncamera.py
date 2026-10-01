@@ -1,6 +1,6 @@
 # This file is part of ts_genericcamera.
 #
-# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# Developed for the Vera C. Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
 # (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
@@ -13,11 +13,11 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import io
 
@@ -79,8 +79,7 @@ class CanonCamera(basecamera.BaseCamera):
         self.camera.init()
 
     def get_config_schema(self):
-        return yaml.safe_load(
-            """
+        return yaml.safe_load("""
 $schema: http://json-schema.org/draft-07/schema#
 description: Schema for Canon cameras.
 type: object
@@ -126,8 +125,7 @@ properties:
     decription: >
       The quartic distortion correction. This must be measured from an image.
     default: 0.055
-"""
-        )
+""")
 
     def get_make_and_model(self):
         """Get the make and model of the camera.
